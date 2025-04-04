@@ -23,6 +23,9 @@ struct FLoaderOBJ
     static bool CreateTextureFromFile(const FWString& Filename);
 
     static void ComputeBoundingBox(const TArray<FStaticMeshVertex>& InVertices, FVector& OutMinVector, FVector& OutMaxVector);
+
+private:
+    static void CalculateTangent(FStaticMeshVertex& PivotVertex, const FStaticMeshVertex& Vertex1, const FStaticMeshVertex& Vertex2);
 };
 
 struct FManagerOBJ

@@ -347,24 +347,37 @@ bool FLoaderOBJ::ConvertToStaticMesh(const FObjInfo& RawData, OBJ::FStaticMeshRe
         }
         else
         {
-            FStaticMeshVertex VertexSimple = {};
-            VertexSimple.X = RawData.Vertices[VertexIndex].X;
-            VertexSimple.Y = RawData.Vertices[VertexIndex].Y;
-            VertexSimple.Z = RawData.Vertices[VertexIndex].Z;
+            FStaticMeshVertex StaticMeshVertex = {};
+            StaticMeshVertex.X = RawData.Vertices[VertexIndex].X;
+            StaticMeshVertex.Y = RawData.Vertices[VertexIndex].Y;
+            StaticMeshVertex.Z = RawData.Vertices[VertexIndex].Z;
 
-            VertexSimple.R = 0.0f; VertexSimple.G = 0.0f; VertexSimple.B = 0.0f; VertexSimple.A = 1.0f; // 기본 색상
+            StaticMeshVertex.R = 0.0f; StaticMeshVertex.G = 0.0f; StaticMeshVertex.B = 0.0f; StaticMeshVertex.A = 1.0f; // 기본 색상
 
             if (UVIndex != UINT32_MAX && UVIndex < RawData.UVs.Num())
             {
-                VertexSimple.U = RawData.UVs[UVIndex].X;
-                VertexSimple.V = 1.f - RawData.UVs[UVIndex].Y;
+                StaticMeshVertex.U = RawData.UVs[UVIndex].X;
+                StaticMeshVertex.V = 1.f - RawData.UVs[UVIndex].Y;
             }
 
             if (NormalIndex != UINT32_MAX && NormalIndex < RawData.Normals.Num())
             {
-                VertexSimple.NormalX = RawData.Normals[NormalIndex].X;
-                VertexSimple.NormalY = RawData.Normals[NormalIndex].Y;
-                VertexSimple.NormalZ = RawData.Normals[NormalIndex].Z;
+                StaticMeshVertex.NormalX = RawData.Normals[NormalIndex].X;
+                StaticMeshVertex.NormalY = RawData.Normals[NormalIndex].Y;
+                StaticMeshVertex.NormalZ = RawData.Normals[NormalIndex].Z;
+            }
+
+            if (i % 3 == 2) // 삼각형이 구성되면 Tangent 계산
+            {
+                const uint32 IndexNum = OutStaticMesh.Indices.Num();
+
+                FStaticMeshVertex& Vertex0 = OutStaticMesh.Vertices[OutStaticMesh.Indices[IndexNum - 2]];
+                FStaticMeshVertex& Vertex1 = OutStaticMesh.Vertices[OutStaticMesh.Indices[IndexNum - 1]];
+                FStaticMeshVertex& Vertex2 = StaticMeshVertex;
+
+                CalculateTangent(Vertex0, Vertex1, Vertex2);
+                CalculateTangent(Vertex1, Vertex2, Vertex0);
+                CalculateTangent(Vertex2, Vertex0, Vertex1);
             }
 
             for (int32 j = 0; j < OutStaticMesh.MaterialSubsets.Num(); j++)
@@ -372,13 +385,13 @@ bool FLoaderOBJ::ConvertToStaticMesh(const FObjInfo& RawData, OBJ::FStaticMeshRe
                 const FMaterialSubset& Subset = OutStaticMesh.MaterialSubsets[j];
                 if ( i >= Subset.IndexStart && i < Subset.IndexStart + Subset.IndexCount)
                 {
-                    VertexSimple.MaterialIndex = Subset.MaterialIndex;
+                    StaticMeshVertex.MaterialIndex = Subset.MaterialIndex;
                     break;
                 }
             }
 
             FinalIndex = OutStaticMesh.Vertices.Num();
-            OutStaticMesh.Vertices.Add(VertexSimple);
+            OutStaticMesh.Vertices.Add(StaticMeshVertex);
             IndexMap[Key] = FinalIndex;
         }
 
@@ -426,6 +439,30 @@ void FLoaderOBJ::ComputeBoundingBox(const TArray<FStaticMeshVertex>& InVertices,
 
     OutMinVector = MinVector;
     OutMaxVector = MaxVector;
+}
+
+void FLoaderOBJ::CalculateTangent(FStaticMeshVertex& PivotVertex, const FStaticMeshVertex& Vertex1, const FStaticMeshVertex& Vertex2)
+{
+    const float s1 = Vertex1.U - PivotVertex.U;
+    const float t1 = Vertex1.V - PivotVertex.V;
+    const float s2 = Vertex2.U - PivotVertex.U;
+    const float t2 = Vertex2.V - PivotVertex.V;
+    const float E1x = Vertex1.X - PivotVertex.X;
+    const float E1y = Vertex1.Y - PivotVertex.Y;
+    const float E1z = Vertex1.Z - PivotVertex.Z;
+    const float E2x = Vertex2.X - PivotVertex.X;
+    const float E2y = Vertex2.Y - PivotVertex.Y;
+    const float E2z = Vertex2.Z - PivotVertex.Z;
+    const float f = 1.f / (s1 * t2 - s2 * t1);
+    const float Tx = f * (t2 * E1x - t1 * E2x);
+    const float Ty = f * (t2 * E1y - t1 * E2y);
+    const float Tz = f * (t2 * E1z - t1 * E2z);
+
+    FVector Tangent = FVector(Tx, Ty, Tz).Normalize();
+
+    PivotVertex.TangentX = Tangent.X;
+    PivotVertex.TangentY = Tangent.Y;
+    PivotVertex.TangentZ = Tangent.Z;
 }
 
 OBJ::FStaticMeshRenderData* FManagerOBJ::LoadObjStaticMeshAsset(const FString& PathFileName)
