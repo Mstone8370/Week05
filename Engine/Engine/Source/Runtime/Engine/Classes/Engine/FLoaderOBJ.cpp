@@ -29,6 +29,23 @@ bool FLoaderOBJ::ParseOBJ(const FString& ObjFilePath, FObjInfo& OutObjInfo)
         OutObjInfo.DisplayName = fileName;
     }
 
+    /**
+     * 블렌더에서 Export 시 공통 설정
+     *   Geometry
+     *     ✅ Triangulated Mesh
+     *
+     * 방식에 따른 Export 옵션
+     *   1. 언리얼 엔진 방식 (Yaw를 -90도로 맞추어야 X축 방향에 Forward가 맞춰짐)
+     *     General
+     *       Forward Axis:  Y
+     *       Up Axis:       Z
+     *
+     *   2. 기본으로 X축 방향에 Forward가 맞춰지는 방식
+     *     General
+     *       Forward Axis: -X
+     *       Up Axis:       Z
+     */
+
     std::string Line;
 
     while (std::getline(OBJ, Line))
@@ -74,25 +91,25 @@ bool FLoaderOBJ::ParseOBJ(const FString& ObjFilePath, FObjInfo& OutObjInfo)
 
         if (Token == "v") // Vertex
         {
-            float x, y, z;
-            LineStream >> x >> y >> z;
-            OutObjInfo.Vertices.Add(FVector(x, y, z));
+            float X, Y, Z;
+            LineStream >> X >> Y >> Z;
+            OutObjInfo.Vertices.Add(FVector(X, Y * -1.f, Z));
             continue;
         }
 
         if (Token == "vn") // Normal
         {
-            float nx, ny, nz;
-            LineStream >> nx >> ny >> nz;
-            OutObjInfo.Normals.Add(FVector(nx, ny, nz));
+            float NormalX, NormalY, NormalZ;
+            LineStream >> NormalX >> NormalY >> NormalZ;
+            OutObjInfo.Normals.Add(FVector(NormalX, NormalY, NormalZ));
             continue;
         }
 
         if (Token == "vt") // Texture
         {
-            float u, v;
-            LineStream >> u >> v;
-            OutObjInfo.UVs.Add(FVector2D(u, v));
+            float U, V;
+            LineStream >> U >> V;
+            OutObjInfo.UVs.Add(FVector2D(U, V));
             continue;
         }
 
@@ -146,45 +163,45 @@ bool FLoaderOBJ::ParseOBJ(const FString& ObjFilePath, FObjInfo& OutObjInfo)
 
             if (FaceVertexIndices.Num() == 4) // 쿼드
             {
-                // 첫 번째 삼각형: 0-1-2
+                // 첫 번째 삼각형: 0-2-1
                 OutObjInfo.VertexIndices.Add(FaceVertexIndices[0]);
+                OutObjInfo.VertexIndices.Add(FaceVertexIndices[2]);
                 OutObjInfo.VertexIndices.Add(FaceVertexIndices[1]);
-                OutObjInfo.VertexIndices.Add(FaceVertexIndices[2]);
 
                 OutObjInfo.UVIndices.Add(FaceUVIndices[0]);
+                OutObjInfo.UVIndices.Add(FaceUVIndices[2]);
                 OutObjInfo.UVIndices.Add(FaceUVIndices[1]);
-                OutObjInfo.UVIndices.Add(FaceUVIndices[2]);
 
                 OutObjInfo.NormalIndices.Add(FaceNormalIndices[0]);
-                OutObjInfo.NormalIndices.Add(FaceNormalIndices[1]);
                 OutObjInfo.NormalIndices.Add(FaceNormalIndices[2]);
+                OutObjInfo.NormalIndices.Add(FaceNormalIndices[1]);
 
-                // 두 번째 삼각형: 0-2-3
+                // 두 번째 삼각형: 0-3-2
                 OutObjInfo.VertexIndices.Add(FaceVertexIndices[0]);
-                OutObjInfo.VertexIndices.Add(FaceVertexIndices[2]);
                 OutObjInfo.VertexIndices.Add(FaceVertexIndices[3]);
+                OutObjInfo.VertexIndices.Add(FaceVertexIndices[2]);
 
                 OutObjInfo.UVIndices.Add(FaceUVIndices[0]);
-                OutObjInfo.UVIndices.Add(FaceUVIndices[2]);
                 OutObjInfo.UVIndices.Add(FaceUVIndices[3]);
+                OutObjInfo.UVIndices.Add(FaceUVIndices[2]);
 
                 OutObjInfo.NormalIndices.Add(FaceNormalIndices[0]);
-                OutObjInfo.NormalIndices.Add(FaceNormalIndices[2]);
                 OutObjInfo.NormalIndices.Add(FaceNormalIndices[3]);
+                OutObjInfo.NormalIndices.Add(FaceNormalIndices[2]);
             }
             else if (FaceVertexIndices.Num() == 3) // 삼각형
             {
                 OutObjInfo.VertexIndices.Add(FaceVertexIndices[0]);
-                OutObjInfo.VertexIndices.Add(FaceVertexIndices[1]);
                 OutObjInfo.VertexIndices.Add(FaceVertexIndices[2]);
+                OutObjInfo.VertexIndices.Add(FaceVertexIndices[1]);
 
                 OutObjInfo.UVIndices.Add(FaceUVIndices[0]);
-                OutObjInfo.UVIndices.Add(FaceUVIndices[1]);
                 OutObjInfo.UVIndices.Add(FaceUVIndices[2]);
+                OutObjInfo.UVIndices.Add(FaceUVIndices[1]);
 
                 OutObjInfo.NormalIndices.Add(FaceNormalIndices[0]);
-                OutObjInfo.NormalIndices.Add(FaceNormalIndices[1]);
                 OutObjInfo.NormalIndices.Add(FaceNormalIndices[2]);
+                OutObjInfo.NormalIndices.Add(FaceNormalIndices[1]);
             }
         }
     }
@@ -340,7 +357,7 @@ bool FLoaderOBJ::ConvertToStaticMesh(const FObjInfo& RawData, OBJ::FStaticMeshRe
             if (UVIndex != UINT32_MAX && UVIndex < RawData.UVs.Num())
             {
                 VertexSimple.U = RawData.UVs[UVIndex].X;
-                VertexSimple.V = -RawData.UVs[UVIndex].Y;
+                VertexSimple.V = 1.f - RawData.UVs[UVIndex].Y;
             }
 
             if (NormalIndex != UINT32_MAX && NormalIndex < RawData.Normals.Num())
@@ -466,7 +483,7 @@ OBJ::FStaticMeshRenderData* FManagerOBJ::LoadObjStaticMeshAsset(const FString& P
         return nullptr;
     }
 
-    SaveStaticMeshToBinary(BinaryPath, *NewStaticMesh);
+    // SaveStaticMeshToBinary(BinaryPath, *NewStaticMesh); // TODO: refactoring 끝나면 활성화하기
     ObjStaticMeshMap.Add(PathFileName, NewStaticMesh);
     return NewStaticMesh;
 }
