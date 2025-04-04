@@ -30,20 +30,12 @@ bool FLoaderOBJ::ParseOBJ(const FString& ObjFilePath, FObjInfo& OutObjInfo)
     }
 
     /**
-     * 블렌더에서 Export 시 공통 설정
-     *   Geometry
-     *     ✅ Triangulated Mesh
-     *
-     * 방식에 따른 Export 옵션
-     *   1. 언리얼 엔진 방식 (Yaw를 -90도로 맞추어야 X축 방향에 Forward가 맞춰짐)
-     *     General
+     * 블렌더 Export 설정
+     *   - General
      *       Forward Axis:  Y
      *       Up Axis:       Z
-     *
-     *   2. 기본으로 X축 방향에 Forward가 맞춰지는 방식
-     *     General
-     *       Forward Axis: -X
-     *       Up Axis:       Z
+     *   - Geometry
+     *       ✅ Triangulated Mesh
      */
 
     std::string Line;
