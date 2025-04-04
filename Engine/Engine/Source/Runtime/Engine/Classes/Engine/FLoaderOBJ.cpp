@@ -161,7 +161,22 @@ bool FLoaderOBJ::ParseOBJ(const FString& ObjFilePath, FObjInfo& OutObjInfo)
                 FaceNormalIndices.Add(normalIndex);
             }
 
-            if (FaceVertexIndices.Num() == 4) // 쿼드
+            if (FaceVertexIndices.Num() == 3) // 삼각형
+            {
+                // 반시계 방향(오른손 좌표계)을 시계 방향(왼손 좌표계)으로 변환: 0-2-1
+                OutObjInfo.VertexIndices.Add(FaceVertexIndices[0]);
+                OutObjInfo.VertexIndices.Add(FaceVertexIndices[2]);
+                OutObjInfo.VertexIndices.Add(FaceVertexIndices[1]);
+
+                OutObjInfo.UVIndices.Add(FaceUVIndices[0]);
+                OutObjInfo.UVIndices.Add(FaceUVIndices[2]);
+                OutObjInfo.UVIndices.Add(FaceUVIndices[1]);
+
+                OutObjInfo.NormalIndices.Add(FaceNormalIndices[0]);
+                OutObjInfo.NormalIndices.Add(FaceNormalIndices[2]);
+                OutObjInfo.NormalIndices.Add(FaceNormalIndices[1]);
+            }
+            else if (FaceVertexIndices.Num() == 4) // 쿼드
             {
                 // 첫 번째 삼각형: 0-2-1
                 OutObjInfo.VertexIndices.Add(FaceVertexIndices[0]);
@@ -188,20 +203,6 @@ bool FLoaderOBJ::ParseOBJ(const FString& ObjFilePath, FObjInfo& OutObjInfo)
                 OutObjInfo.NormalIndices.Add(FaceNormalIndices[0]);
                 OutObjInfo.NormalIndices.Add(FaceNormalIndices[3]);
                 OutObjInfo.NormalIndices.Add(FaceNormalIndices[2]);
-            }
-            else if (FaceVertexIndices.Num() == 3) // 삼각형
-            {
-                OutObjInfo.VertexIndices.Add(FaceVertexIndices[0]);
-                OutObjInfo.VertexIndices.Add(FaceVertexIndices[2]);
-                OutObjInfo.VertexIndices.Add(FaceVertexIndices[1]);
-
-                OutObjInfo.UVIndices.Add(FaceUVIndices[0]);
-                OutObjInfo.UVIndices.Add(FaceUVIndices[2]);
-                OutObjInfo.UVIndices.Add(FaceUVIndices[1]);
-
-                OutObjInfo.NormalIndices.Add(FaceNormalIndices[0]);
-                OutObjInfo.NormalIndices.Add(FaceNormalIndices[2]);
-                OutObjInfo.NormalIndices.Add(FaceNormalIndices[1]);
             }
         }
     }
@@ -748,25 +749,26 @@ UMaterial* FManagerOBJ::GetMaterial(FString name)
     return materialMap[name];
 }
 
-UStaticMesh* FManagerOBJ::CreateStaticMesh(FString filePath)
+UStaticMesh* FManagerOBJ::CreateStaticMesh(const FString& filePath)
 {
+    OBJ::FStaticMeshRenderData* StaticMeshRenderData = FManagerOBJ::LoadObjStaticMeshAsset(filePath);
 
-    OBJ::FStaticMeshRenderData* staticMeshRenderData = FManagerOBJ::LoadObjStaticMeshAsset(filePath);
+    if (StaticMeshRenderData == nullptr) return nullptr;
 
-    if (staticMeshRenderData == nullptr) return nullptr;
-
-    UStaticMesh* staticMesh = GetStaticMesh(staticMeshRenderData->ObjectName);
-    if (staticMesh != nullptr) {
-        return staticMesh;
+    UStaticMesh* StaticMesh = GetStaticMesh(StaticMeshRenderData->ObjectName);
+    if (StaticMesh != nullptr)
+    {
+        return StaticMesh;
     }
 
-    staticMesh = FObjectFactory::ConstructObject<UStaticMesh>();
-    staticMesh->SetData(staticMeshRenderData);
+    StaticMesh = FObjectFactory::ConstructObject<UStaticMesh>();
+    StaticMesh->SetData(StaticMeshRenderData);
 
-    staticMeshMap.Add(staticMeshRenderData->ObjectName, staticMesh);
+    StaticMeshMap.Add(StaticMeshRenderData->ObjectName, StaticMesh); // TODO: 장기적으로 보면 파일 이름 대신 경로를 Key로 사용하는게 좋음.
+    return StaticMesh;
 }
 
 UStaticMesh* FManagerOBJ::GetStaticMesh(FWString name)
 {
-    return staticMeshMap[name];
+    return StaticMeshMap[name];
 }

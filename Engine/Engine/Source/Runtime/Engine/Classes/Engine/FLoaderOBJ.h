@@ -47,16 +47,16 @@ public:
 
     static int GetMaterialNum() { return materialMap.Num(); }
 
-    static UStaticMesh* CreateStaticMesh(FString filePath);
+    static UStaticMesh* CreateStaticMesh(const FString& filePath);
 
-    static const TMap<FWString, UStaticMesh*>& GetStaticMeshes() { return staticMeshMap; }
+    static const TMap<FWString, UStaticMesh*>& GetStaticMeshes() { return StaticMeshMap; }
 
     static UStaticMesh* GetStaticMesh(FWString name);
 
-    static int GetStaticMeshNum() { return staticMeshMap.Num(); }
+    static int GetStaticMeshNum() { return StaticMeshMap.Num(); }
 
 private:
     inline static TMap<FString, OBJ::FStaticMeshRenderData*> ObjStaticMeshMap;
-    inline static TMap<FWString, UStaticMesh*> staticMeshMap;
+    inline static TMap<FWString, UStaticMesh*> StaticMeshMap;
     inline static TMap<FString, UMaterial*> materialMap;
 };
