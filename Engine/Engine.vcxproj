@@ -234,8 +234,6 @@
     <ClCompile Include="Engine\Source\Runtime\Engine\Level.cpp" />
     <ClCompile Include="Engine\Source\Runtime\Engine\Classes\Components\QuadTexture.cpp" />
     <ClCompile Include="Engine\Source\ThirdParty\tinyfiledialogs\tinyfiledialogs.cpp" />
-    <ClCompile Include="Shaders\FinalPixelShader.hlsl" />
-    <ClCompile Include="Shaders\FinalVertexShader.hlsl" />
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="Engine\Source\Runtime\Core\Delegates\Delegate.h" />
@@ -410,6 +408,18 @@
       <EnableDebuggingInformation>true</EnableDebuggingInformation>
       <ExcludedFromBuild>true</ExcludedFromBuild>
     </FxCompile>
+      <FxCompile Include="Shaders\FinalVertexShader.hlsl">
+          <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">true</ExcludedFromBuild>
+          <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Release|x64'">true</ExcludedFromBuild>
+          <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">true</ExcludedFromBuild>
+          <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">true</ExcludedFromBuild>
+      </FxCompile>
+      <FxCompile Include="Shaders\FinalPixelShader.hlsl">
+          <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">true</ExcludedFromBuild>
+          <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Release|x64'">true</ExcludedFromBuild>
+          <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">true</ExcludedFromBuild>
+          <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">true</ExcludedFromBuild>
+      </FxCompile>
   </ItemGroup>
   <ItemGroup>
     <Content Include=".editorconfig" />
