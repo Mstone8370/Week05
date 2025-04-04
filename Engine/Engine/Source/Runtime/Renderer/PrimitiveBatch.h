@@ -6,7 +6,8 @@ class UPrimitiveBatch
 public:
     UPrimitiveBatch();
     ~UPrimitiveBatch();
-    static UPrimitiveBatch& GetInstance() {
+    static UPrimitiveBatch& GetInstance()
+    {
         static UPrimitiveBatch instance;
         return instance;
     }

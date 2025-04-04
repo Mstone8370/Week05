@@ -4,7 +4,7 @@
 #include "Engine/Source/Editor/PropertyEditor/ShowFlags.h"
 #include "UnrealEd/EditorViewportClient.h"
 #include "LevelEditor/SLevelEditor.h"
-#include "UnrealEd/PrimitiveBatch.h"
+#include "PrimitiveBatch.h"
 
 
 USphereComp::USphereComp()

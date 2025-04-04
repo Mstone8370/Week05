@@ -344,15 +344,15 @@ void PropertyEditorPanel::RenderMaterialView(UMaterial* Material)
     FVector MatAmbientColor = Material->GetMaterialInfo().Ambient;
     FVector MatEmissiveColor = Material->GetMaterialInfo().Emissive;
 
-    float dr = MatDiffuseColor.x;
-    float dg = MatDiffuseColor.y;
-    float db = MatDiffuseColor.z;
+    float dr = MatDiffuseColor.X;
+    float dg = MatDiffuseColor.Y;
+    float db = MatDiffuseColor.Z;
     float da = 1.0f;
     float DiffuseColorPick[4] = { dr, dg, db, da };
 
     ImGui::Text("Material Name |");
     ImGui::SameLine();
-    ImGui::Text(*Material->GetMaterialInfo().MTLName);
+    ImGui::Text(*Material->GetMaterialInfo().MaterialName);
     ImGui::Separator();
 
     ImGui::Text("  Diffuse Color");
@@ -363,9 +363,9 @@ void PropertyEditorPanel::RenderMaterialView(UMaterial* Material)
         Material->SetDiffuse(NewColor);
     }
 
-    float sr = MatSpecularColor.x;
-    float sg = MatSpecularColor.y;
-    float sb = MatSpecularColor.z;
+    float sr = MatSpecularColor.X;
+    float sg = MatSpecularColor.Y;
+    float sb = MatSpecularColor.Z;
     float sa = 1.0f;
     float SpecularColorPick[4] = { sr, sg, sb, sa };
 
@@ -378,9 +378,9 @@ void PropertyEditorPanel::RenderMaterialView(UMaterial* Material)
     }
 
 
-    float ar = MatAmbientColor.x;
-    float ag = MatAmbientColor.y;
-    float ab = MatAmbientColor.z;
+    float ar = MatAmbientColor.X;
+    float ag = MatAmbientColor.Y;
+    float ab = MatAmbientColor.Z;
     float aa = 1.0f;
     float AmbientColorPick[4] = { ar, ag, ab, aa };
 
@@ -393,9 +393,9 @@ void PropertyEditorPanel::RenderMaterialView(UMaterial* Material)
     }
 
 
-    float er = MatEmissiveColor.x;
-    float eg = MatEmissiveColor.y;
-    float eb = MatEmissiveColor.z;
+    float er = MatEmissiveColor.X;
+    float eg = MatEmissiveColor.Y;
+    float eb = MatEmissiveColor.Z;
     float ea = 1.0f;
     float EmissiveColorPick[4] = { er, eg, eb, ea };
 
@@ -423,7 +423,7 @@ void PropertyEditorPanel::RenderMaterialView(UMaterial* Material)
     // 메테리얼 이름 목록을 const char* 배열로 변환
     std::vector<const char*> materialChars;
     for (const auto& material : FManagerOBJ::GetMaterials()) {
-        materialChars.push_back(*material.Value->GetMaterialInfo().MTLName);
+        materialChars.push_back(*material.Value->GetMaterialInfo().MaterialName);
     }
 
     //// 드롭다운 표시 (currentMaterialIndex가 범위를 벗어나지 않도록 확인)
@@ -457,7 +457,7 @@ void PropertyEditorPanel::RenderCreateMaterialView()
     // 기본 텍스트 입력 필드
     ImGui::SetNextItemWidth(128);
     if (ImGui::InputText("##NewName", materialName, IM_ARRAYSIZE(materialName))) {
-        tempMaterialInfo.MTLName = materialName;
+        tempMaterialInfo.MaterialName = materialName;
     }
 
     FVector MatDiffuseColor = tempMaterialInfo.Diffuse;
@@ -465,9 +465,9 @@ void PropertyEditorPanel::RenderCreateMaterialView()
     FVector MatAmbientColor = tempMaterialInfo.Ambient;
     FVector MatEmissiveColor = tempMaterialInfo.Emissive;
 
-    float dr = MatDiffuseColor.x;
-    float dg = MatDiffuseColor.y;
-    float db = MatDiffuseColor.z;
+    float dr = MatDiffuseColor.X;
+    float dg = MatDiffuseColor.Y;
+    float db = MatDiffuseColor.Z;
     float da = 1.0f;
     float DiffuseColorPick[4] = { dr, dg, db, da };
 
@@ -482,9 +482,9 @@ void PropertyEditorPanel::RenderCreateMaterialView()
         tempMaterialInfo.Diffuse = NewColor;
     }
 
-    float sr = MatSpecularColor.x;
-    float sg = MatSpecularColor.y;
-    float sb = MatSpecularColor.z;
+    float sr = MatSpecularColor.X;
+    float sg = MatSpecularColor.Y;
+    float sb = MatSpecularColor.Z;
     float sa = 1.0f;
     float SpecularColorPick[4] = { sr, sg, sb, sa };
 
@@ -497,9 +497,9 @@ void PropertyEditorPanel::RenderCreateMaterialView()
     }
 
 
-    float ar = MatAmbientColor.x;
-    float ag = MatAmbientColor.y;
-    float ab = MatAmbientColor.z;
+    float ar = MatAmbientColor.X;
+    float ag = MatAmbientColor.Y;
+    float ab = MatAmbientColor.Z;
     float aa = 1.0f;
     float AmbientColorPick[4] = { ar, ag, ab, aa };
 
@@ -512,9 +512,9 @@ void PropertyEditorPanel::RenderCreateMaterialView()
     }
 
 
-    float er = MatEmissiveColor.x;
-    float eg = MatEmissiveColor.y;
-    float eb = MatEmissiveColor.z;
+    float er = MatEmissiveColor.X;
+    float eg = MatEmissiveColor.Y;
+    float eb = MatEmissiveColor.Z;
     float ea = 1.0f;
     float EmissiveColorPick[4] = { er, eg, eb, ea };
 
@@ -628,7 +628,7 @@ void PropertyEditorPanel::RenderForBillboard(UBillboardComponent* BillboardComp)
         WideCharToMultiByte(CP_UTF8, 0, wstr, -1, str, size_needed, nullptr, nullptr);
 
         FString PreviewName = str;
-        const TSet<FString> TextureNames = FEngineLoop::resourceMgr.GetAllTextureKeys();
+        const TSet<FString> TextureNames = FEngineLoop::ResourceManager.GetAllTextureKeys();
         if (ImGui::BeginCombo("##Sprite", GetData(PreviewName), ImGuiComboFlags_None))
         {
             for (auto Name : TextureNames)

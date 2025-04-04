@@ -35,15 +35,15 @@ void UPrimitiveBatch::GenerateGrid(float spacing, int gridCount)
 
 void UPrimitiveBatch::RenderBatch(const FMatrix& View, const FMatrix& Projection)
 {
-    FEngineLoop::renderer.PrepareLineShader();
+    FEngineLoop::Renderer.PrepareLineShader();
 
     InitializeVertexBuffer();
 
     FMatrix Model = FMatrix::Identity;
     FMatrix MVP = Model * View * Projection;
     FMatrix NormalMatrix = FMatrix::Transpose(FMatrix::Inverse(Model));
-    FEngineLoop::renderer.UpdateConstant(MVP, NormalMatrix, FVector4(0,0,0,0), false);
-    FEngineLoop::renderer.UpdateGridConstantBuffer(GridParam);
+    FEngineLoop::Renderer.UpdateConstant(MVP, NormalMatrix, FVector4(0,0,0,0), false);
+    FEngineLoop::Renderer.UpdateGridConstantBuffer(GridParam);
 
     UpdateBoundingBoxResources();
     UpdateConeResources();
@@ -51,17 +51,17 @@ void UPrimitiveBatch::RenderBatch(const FMatrix& View, const FMatrix& Projection
     int boundingBoxSize = static_cast<int>(BoundingBoxes.Num());
     int coneSize = static_cast<int>(Cones.Num());
     int obbSize = static_cast<int>(OrientedBoundingBoxes.Num());
-    FEngineLoop::renderer.UpdateLinePrimitveCountBuffer(boundingBoxSize, coneSize);
-    FEngineLoop::renderer.RenderBatch(GridParam, pVertexBuffer, boundingBoxSize, coneSize, ConeSegmentCount, obbSize);
+    FEngineLoop::Renderer.UpdateLinePrimitveCountBuffer(boundingBoxSize, coneSize);
+    FEngineLoop::Renderer.RenderBatch(GridParam, pVertexBuffer, boundingBoxSize, coneSize, ConeSegmentCount, obbSize);
     BoundingBoxes.Empty();
     Cones.Empty();
     OrientedBoundingBoxes.Empty();
-    FEngineLoop::renderer.PrepareShader();
+    FEngineLoop::Renderer.PrepareShader();
 }
 void UPrimitiveBatch::InitializeVertexBuffer()
 {
     if (!pVertexBuffer)
-        pVertexBuffer = FEngineLoop::renderer.CreateStaticVerticesBuffer();
+        pVertexBuffer = FEngineLoop::Renderer.CreateStaticVerticesBuffer();
 }
 
 void UPrimitiveBatch::UpdateBoundingBoxResources()
@@ -71,13 +71,13 @@ void UPrimitiveBatch::UpdateBoundingBoxResources()
 
         ReleaseBoundingBoxResources();
 
-        pBoundingBoxBuffer = FEngineLoop::renderer.CreateBoundingBoxBuffer(static_cast<UINT>(allocatedBoundingBoxCapacity));
-        pBoundingBoxSRV = FEngineLoop::renderer.CreateBoundingBoxSRV(pBoundingBoxBuffer, static_cast<UINT>(allocatedBoundingBoxCapacity));
+        pBoundingBoxBuffer = FEngineLoop::Renderer.CreateBoundingBoxBuffer(static_cast<UINT>(allocatedBoundingBoxCapacity));
+        pBoundingBoxSRV = FEngineLoop::Renderer.CreateBoundingBoxSRV(pBoundingBoxBuffer, static_cast<UINT>(allocatedBoundingBoxCapacity));
     }
 
     if (pBoundingBoxBuffer && pBoundingBoxSRV){
         int boundingBoxCount = static_cast<int>(BoundingBoxes.Num());
-        FEngineLoop::renderer.UpdateBoundingBoxBuffer(pBoundingBoxBuffer, BoundingBoxes, boundingBoxCount);
+        FEngineLoop::Renderer.UpdateBoundingBoxBuffer(pBoundingBoxBuffer, BoundingBoxes, boundingBoxCount);
     }
 }
 
@@ -94,13 +94,13 @@ void UPrimitiveBatch::UpdateConeResources()
 
         ReleaseConeResources();
 
-        pConesBuffer = FEngineLoop::renderer.CreateConeBuffer(static_cast<UINT>(allocatedConeCapacity));
-        pConesSRV = FEngineLoop::renderer.CreateConeSRV(pConesBuffer, static_cast<UINT>(allocatedConeCapacity));
+        pConesBuffer = FEngineLoop::Renderer.CreateConeBuffer(static_cast<UINT>(allocatedConeCapacity));
+        pConesSRV = FEngineLoop::Renderer.CreateConeSRV(pConesBuffer, static_cast<UINT>(allocatedConeCapacity));
     }
 
     if (pConesBuffer && pConesSRV) {
         int coneCount = static_cast<int>(Cones.Num());
-        FEngineLoop::renderer.UpdateConesBuffer(pConesBuffer, Cones, coneCount);
+        FEngineLoop::Renderer.UpdateConesBuffer(pConesBuffer, Cones, coneCount);
     }
 }
 
@@ -117,13 +117,13 @@ void UPrimitiveBatch::UpdateOBBResources()
 
         ReleaseOBBResources();
 
-        pOBBBuffer = FEngineLoop::renderer.CreateOBBBuffer(static_cast<UINT>(allocatedOBBCapacity));
-        pOBBSRV = FEngineLoop::renderer.CreateOBBSRV(pOBBBuffer, static_cast<UINT>(allocatedOBBCapacity));
+        pOBBBuffer = FEngineLoop::Renderer.CreateOBBBuffer(static_cast<UINT>(allocatedOBBCapacity));
+        pOBBSRV = FEngineLoop::Renderer.CreateOBBSRV(pOBBBuffer, static_cast<UINT>(allocatedOBBCapacity));
     }
 
     if (pOBBBuffer && pOBBSRV) {
         int obbCount = static_cast<int>(OrientedBoundingBoxes.Num());
-        FEngineLoop::renderer.UpdateOBBBuffer(pOBBBuffer, OrientedBoundingBoxes, obbCount);
+        FEngineLoop::Renderer.UpdateOBBBuffer(pOBBBuffer, OrientedBoundingBoxes, obbCount);
     }
 }
 void UPrimitiveBatch::ReleaseOBBResources()
@@ -134,14 +134,14 @@ void UPrimitiveBatch::ReleaseOBBResources()
 void UPrimitiveBatch::RenderAABB(const FBoundingBox& localAABB, const FVector& center, const FMatrix& modelMatrix)
 {
     FVector localVertices[8] = {
-         { localAABB.min.x, localAABB.min.y, localAABB.min.z },
-         { localAABB.max.x, localAABB.min.y, localAABB.min.z },
-         { localAABB.min.x, localAABB.max.y, localAABB.min.z },
-         { localAABB.max.x, localAABB.max.y, localAABB.min.z },
-         { localAABB.min.x, localAABB.min.y, localAABB.max.z },
-         { localAABB.max.x, localAABB.min.y, localAABB.max.z },
-         { localAABB.min.x, localAABB.max.y, localAABB.max.z },
-         { localAABB.max.x, localAABB.max.y, localAABB.max.z }
+         { localAABB.min.X, localAABB.min.Y, localAABB.min.Z },
+         { localAABB.max.X, localAABB.min.Y, localAABB.min.Z },
+         { localAABB.min.X, localAABB.max.Y, localAABB.min.Z },
+         { localAABB.max.X, localAABB.max.Y, localAABB.min.Z },
+         { localAABB.min.X, localAABB.min.Y, localAABB.max.Z },
+         { localAABB.max.X, localAABB.min.Y, localAABB.max.Z },
+         { localAABB.min.X, localAABB.max.Y, localAABB.max.Z },
+         { localAABB.max.X, localAABB.max.Y, localAABB.max.Z }
     };
 
     FVector worldVertices[8];
@@ -154,13 +154,13 @@ void UPrimitiveBatch::RenderAABB(const FBoundingBox& localAABB, const FVector& c
     {
         worldVertices[i] = center + FMatrix::TransformVector(localVertices[i], modelMatrix);
 
-        min.x = (worldVertices[i].x < min.x) ? worldVertices[i].x : min.x;
-        min.y = (worldVertices[i].y < min.y) ? worldVertices[i].y : min.y;
-        min.z = (worldVertices[i].z < min.z) ? worldVertices[i].z : min.z;
+        min.X = (worldVertices[i].X < min.X) ? worldVertices[i].X : min.X;
+        min.Y = (worldVertices[i].Y < min.Y) ? worldVertices[i].Y : min.Y;
+        min.Z = (worldVertices[i].Z < min.Z) ? worldVertices[i].Z : min.Z;
 
-        max.x = (worldVertices[i].x > max.x) ? worldVertices[i].x : max.x;
-        max.y = (worldVertices[i].y > max.y) ? worldVertices[i].y : max.y;
-        max.z = (worldVertices[i].z > max.z) ? worldVertices[i].z : max.z;
+        max.X = (worldVertices[i].X > max.X) ? worldVertices[i].X : max.X;
+        max.Y = (worldVertices[i].Y > max.Y) ? worldVertices[i].Y : max.Y;
+        max.Z = (worldVertices[i].Z > max.Z) ? worldVertices[i].Z : max.Z;
     }
     FBoundingBox BoundingBox;
     BoundingBox.min = min;
@@ -172,14 +172,14 @@ void UPrimitiveBatch::RenderOBB(const FBoundingBox& localAABB, const FVector& ce
     // 1) 로컬 AABB의 8개 꼭짓점
     FVector localVertices[8] =
     {
-        { localAABB.min.x, localAABB.min.y, localAABB.min.z },
-        { localAABB.max.x, localAABB.min.y, localAABB.min.z },
-        { localAABB.min.x, localAABB.max.y, localAABB.min.z },
-        { localAABB.max.x, localAABB.max.y, localAABB.min.z },
-        { localAABB.min.x, localAABB.min.y, localAABB.max.z },
-        { localAABB.max.x, localAABB.min.y, localAABB.max.z },
-        { localAABB.min.x, localAABB.max.y, localAABB.max.z },
-        { localAABB.max.x, localAABB.max.y, localAABB.max.z }
+        { localAABB.min.X, localAABB.min.Y, localAABB.min.Z },
+        { localAABB.max.X, localAABB.min.Y, localAABB.min.Z },
+        { localAABB.min.X, localAABB.max.Y, localAABB.min.Z },
+        { localAABB.max.X, localAABB.max.Y, localAABB.min.Z },
+        { localAABB.min.X, localAABB.min.Y, localAABB.max.Z },
+        { localAABB.max.X, localAABB.min.Y, localAABB.max.Z },
+        { localAABB.min.X, localAABB.max.Y, localAABB.max.Z },
+        { localAABB.max.X, localAABB.max.Y, localAABB.max.Z }
     };
 
     FOBB faceBB;

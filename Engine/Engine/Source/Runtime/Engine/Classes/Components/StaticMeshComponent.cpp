@@ -3,7 +3,7 @@
 #include "Level.h"
 #include "Launch/EngineLoop.h"
 #include "UObject/ObjectFactory.h"
-#include "UnrealEd/PrimitiveBatch.h"
+#include "PrimitiveBatch.h"
 
 
 void UStaticMeshComponent::DuplicateSubObjects()
@@ -33,7 +33,7 @@ UMaterial* UStaticMeshComponent::GetMaterial(uint32 ElementIndex) const
         {
             return OverrideMaterials[ElementIndex];
         }
-    
+
         if (staticMesh->GetMaterials().IsValidIndex(ElementIndex))
         {
             return staticMesh->GetMaterials()[ElementIndex]->Material;
@@ -83,7 +83,7 @@ int UStaticMeshComponent::CheckRayIntersection(FVector& rayOrigin, FVector& rayD
 
     OBJ::FStaticMeshRenderData* renderData = staticMesh->GetRenderData();
 
-    FVertexSimple* vertices = renderData->Vertices.GetData();
+    FStaticMeshVertex* vertices = renderData->Vertices.GetData();
     int vCount = renderData->Vertices.Num();
     UINT* indices = renderData->Indices.GetData();
     int iCount = renderData->Indices.Num();
@@ -107,7 +107,7 @@ int UStaticMeshComponent::CheckRayIntersection(FVector& rayOrigin, FVector& rayD
         }
 
         // 각 삼각형의 버텍스 위치를 FVector로 불러옵니다.
-        uint32 stride = sizeof(FVertexSimple);
+        uint32 stride = sizeof(FStaticMeshVertex);
         FVector v0 = *reinterpret_cast<FVector*>(pbPositions + idx0 * stride);
         FVector v1 = *reinterpret_cast<FVector*>(pbPositions + idx1 * stride);
         FVector v2 = *reinterpret_cast<FVector*>(pbPositions + idx2 * stride);

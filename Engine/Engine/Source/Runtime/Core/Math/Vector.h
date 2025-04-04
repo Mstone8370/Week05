@@ -4,29 +4,29 @@
 
 struct FVector2D
 {
-	float x,y;
-	FVector2D(float _x = 0, float _y = 0) : x(_x), y(_y) {}
+	float X,Y;
+	FVector2D(float _x = 0, float _y = 0) : X(_x), Y(_y) {}
 
 	FVector2D operator+(const FVector2D& rhs) const
 	{
-		return FVector2D(x + rhs.x, y + rhs.y);
+		return FVector2D(X + rhs.X, Y + rhs.Y);
 	}
 	FVector2D operator-(const FVector2D& rhs) const
 	{
-		return FVector2D(x - rhs.x, y - rhs.y);
+		return FVector2D(X - rhs.X, Y - rhs.Y);
 	}
 	FVector2D operator*(float rhs) const
 	{
-		return FVector2D(x * rhs, y * rhs);
+		return FVector2D(X * rhs, Y * rhs);
 	}
 	FVector2D operator/(float rhs) const
 	{
-		return FVector2D(x / rhs, y / rhs);
+		return FVector2D(X / rhs, Y / rhs);
 	}
 	FVector2D& operator+=(const FVector2D& rhs)
 	{
-		x += rhs.x;
-		y += rhs.y;
+		X += rhs.X;
+		Y += rhs.Y;
 		return *this;
 	}
 };
@@ -34,46 +34,46 @@ struct FVector2D
 // 3D 벡터
 struct FVector
 {
-    float x, y, z;
-    FVector(float _x = 0, float _y = 0, float _z = 0) : x(_x), y(_y), z(_z) {}
+    float X, Y, Z;
+    FVector(float _x = 0, float _y = 0, float _z = 0) : X(_x), Y(_y), Z(_z) {}
 
     FVector operator-(const FVector& other) const {
-        return FVector(x - other.x, y - other.y, z - other.z);
+        return FVector(X - other.X, Y - other.Y, Z - other.Z);
     }
     FVector operator+(const FVector& other) const {
-        return FVector(x + other.x, y + other.y, z + other.z);
+        return FVector(X + other.X, Y + other.Y, Z + other.Z);
     }
 
     // 벡터 내적
     float Dot(const FVector& other) const {
-        return x * other.x + y * other.y + z * other.z;
+        return X * other.X + Y * other.Y + Z * other.Z;
     }
 
     // 벡터 크기
     float Magnitude() const {
-        return sqrt(x * x + y * y + z * z);
+        return sqrt(X * X + Y * Y + Z * Z);
     }
 
     // 벡터 정규화
     FVector Normalize() const {
         float mag = Magnitude();
-        return (mag > 0) ? FVector(x / mag, y / mag, z / mag) : FVector(0, 0, 0);
+        return (mag > 0) ? FVector(X / mag, Y / mag, Z / mag) : FVector(0, 0, 0);
     }
     FVector Cross(const FVector& Other) const
     {
         return FVector{
-            y * Other.z - z * Other.y,
-            z * Other.x - x * Other.z,
-            x * Other.y - y * Other.x
+            Y * Other.Z - Z * Other.Y,
+            Z * Other.X - X * Other.Z,
+            X * Other.Y - Y * Other.X
         };
     }
     // 스칼라 곱셈
     FVector operator*(float scalar) const {
-        return FVector(x * scalar, y * scalar, z * scalar);
+        return FVector(X * scalar, Y * scalar, Z * scalar);
     }
 
     bool operator==(const FVector& other) const {
-        return (x == other.x && y == other.y && z == other.z);
+        return (X == other.X && Y == other.Y && Z == other.Z);
     }
 
     float Distance(const FVector& other) const {
@@ -82,7 +82,7 @@ struct FVector
     }
     DirectX::XMFLOAT3 ToXMFLOAT3() const
     {
-        return DirectX::XMFLOAT3(x, y, z);
+        return DirectX::XMFLOAT3(X, Y, Z);
     }
 
     static const FVector ZeroVector;

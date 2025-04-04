@@ -37,8 +37,8 @@ UObject* UParticleSubUVComp::Duplicate()
 void UParticleSubUVComp::InitializeComponent()
 {
 	Super::InitializeComponent();
-	FEngineLoop::renderer.UpdateSubUVConstant(0, 0);
-	FEngineLoop::renderer.PrepareSubUVConstant();
+	FEngineLoop::Renderer.UpdateSubUVConstant(0, 0);
+	FEngineLoop::Renderer.PrepareSubUVConstant();
 }
 
 void UParticleSubUVComp::TickComponent(float DeltaTime)
@@ -95,7 +95,7 @@ void UParticleSubUVComp::SetRowColumnCount(int _cellsPerRow, int _cellsPerColumn
 void UParticleSubUVComp::UpdateVertexBuffer(const TArray<FVertexTexture>& vertices)
 {
 	/*
-	ID3D11DeviceContext* context = FEngineLoop::graphicDevice.DeviceContext;
+	ID3D11DeviceContext* context = FEngineLoop::GraphicDevice.DeviceContext;
 	D3D11_MAPPED_SUBRESOURCE mappedResource;
 
 	context->Map(vertexTextureBuffer, 0, D3D11_MAP_WRITE_DISCARD, 0, &mappedResource);
@@ -125,6 +125,6 @@ void UParticleSubUVComp::CreateSubUVVertexBuffer()
 	vertices[3].u = normalWidthOffset;
 	vertices[3].v = normalHeightOffset;
 
-	vertexSubUVBuffer = FEngineLoop::renderer.CreateVertexBuffer(vertices.GetData(), static_cast<UINT>(vertices.Num() * sizeof(FVertexTexture)));
+	vertexSubUVBuffer = FEngineLoop::Renderer.CreateVertexBuffer(vertices.GetData(), static_cast<UINT>(vertices.Num() * sizeof(FVertexTexture)));
 	numTextVertices = static_cast<UINT>(vertices.Num());
 }

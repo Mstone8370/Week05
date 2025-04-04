@@ -30,22 +30,25 @@ void ShowFlags::Draw(std::shared_ptr<FEditorViewportClient> ActiveViewport)
 
 	if (ImGui::Begin("ShowFlags"))
 	{
-		const char* items[] = { "AABB", "Primitves","BillBoardText","UUID"};
+		const char* items[] = { "AABB", "Primitives", "BillBoardText", "UUID", "Fog" };
         uint64 curFlag = ActiveViewport->GetShowFlag();
-		bool selected[IM_ARRAYSIZE(items)] = { curFlag & static_cast<uint64>(EEngineShowFlags::SF_AABB),
-            curFlag& static_cast<uint64>(EEngineShowFlags::SF_Primitives),
-            curFlag& static_cast<uint64>(EEngineShowFlags::SF_BillboardText),
-            curFlag& static_cast<uint64>(EEngineShowFlags::SF_UUIDText) };  // 각 항목의 체크 상태 저장
+		bool Selected[IM_ARRAYSIZE(items)] = {
+		    curFlag & static_cast<uint64>(EEngineShowFlags::SF_AABB),
+            curFlag & static_cast<uint64>(EEngineShowFlags::SF_Primitives),
+            curFlag & static_cast<uint64>(EEngineShowFlags::SF_BillboardText),
+            curFlag & static_cast<uint64>(EEngineShowFlags::SF_UUIDText),
+		    curFlag & static_cast<uint64>(EEngineShowFlags::SF_Fog),
+		};  // 각 항목의 체크 상태 저장
 
 		if (ImGui::BeginCombo("Show Flags", "Select Show Flags"))
 		{
 			for (int i = 0; i < IM_ARRAYSIZE(items); i++)
 			{
-				ImGui::Checkbox(items[i], &selected[i]); 
+				ImGui::Checkbox(items[i], &Selected[i]); 
 			}
 			ImGui::EndCombo(); 
 		}
-		ActiveViewport->SetShowFlag(ConvertSelectionToFlags(selected));
+		ActiveViewport->SetShowFlag(ConvertSelectionToFlags(Selected));
 
 	}
 	ImGui::End(); // 윈도우 종료
@@ -55,13 +58,25 @@ uint64 ShowFlags::ConvertSelectionToFlags(const bool selected[])
 	uint64 flags = static_cast<uint64>(EEngineShowFlags::None);
 
 	if (selected[0])
-		flags |= static_cast<uint64>(EEngineShowFlags::SF_AABB);
+	{
+	    flags |= static_cast<uint64>(EEngineShowFlags::SF_AABB);
+	}
 	if (selected[1])
-		flags |= static_cast<uint64>(EEngineShowFlags::SF_Primitives);
+	{
+	    flags |= static_cast<uint64>(EEngineShowFlags::SF_Primitives);
+	}
 	if (selected[2])
-		flags |= static_cast<uint64>(EEngineShowFlags::SF_BillboardText);
+	{
+	    flags |= static_cast<uint64>(EEngineShowFlags::SF_BillboardText);
+	}
 	if (selected[3])
-		flags |= static_cast<uint64>(EEngineShowFlags::SF_UUIDText);
+	{
+	    flags |= static_cast<uint64>(EEngineShowFlags::SF_UUIDText);
+	}
+    if (selected[4])
+    {
+        flags |= static_cast<uint64>(EEngineShowFlags::SF_Fog);
+    }
 	return flags;
 }
 

@@ -15,7 +15,7 @@
 #include "Launch/EngineLoop.h"
 #include "Math/JungleMath.h"
 #include "UnrealEd/EditorViewportClient.h"
-#include "UnrealEd/PrimitiveBatch.h"
+#include "PrimitiveBatch.h"
 #include "UObject/Casts.h"
 #include "UObject/Object.h"
 #include "PropertyEditor/ShowFlags.h"
@@ -69,7 +69,7 @@ void FRenderer::CreateShader()
         layout, ARRAYSIZE(layout), VertexShaderCSO->GetBufferPointer(), VertexShaderCSO->GetBufferSize(), &InputLayout
     );
 
-    Stride = sizeof(FVertexSimple);
+    Stride = sizeof(FStaticMeshVertex);
     VertexShaderCSO->Release();
     PixelShaderCSO->Release();
 }
@@ -205,7 +205,7 @@ void FRenderer::RenderPrimitive(OBJ::FStaticMeshRenderData* renderData, TArray<F
 
         subMeshIndex == selectedSubMeshIndex ? UpdateSubMeshConstant(true) : UpdateSubMeshConstant(false);
 
-        overrideMaterial[materialIndex] != nullptr ? 
+        overrideMaterial[materialIndex] != nullptr ?
             UpdateMaterial(overrideMaterial[materialIndex]->GetMaterialInfo()) : UpdateMaterial(materials[materialIndex]->Material->GetMaterialInfo());
 
         if (renderData->IndexBuffer)
@@ -242,12 +242,12 @@ void FRenderer::RenderTexturedModelPrimitive(
     Graphics->DeviceContext->DrawIndexed(numIndices, 0, 0);
 }
 
-ID3D11Buffer* FRenderer::CreateVertexBuffer(FVertexSimple* vertices, UINT byteWidth) const
+ID3D11Buffer* FRenderer::CreateVertexBuffer(FStaticMeshVertex* vertices, UINT byteWidth) const
 {
     // 2. Create a vertex buffer
     D3D11_BUFFER_DESC vertexbufferdesc = {};
     vertexbufferdesc.ByteWidth = byteWidth;
-    vertexbufferdesc.Usage = D3D11_USAGE_IMMUTABLE; // will never be updated 
+    vertexbufferdesc.Usage = D3D11_USAGE_IMMUTABLE; // will never be updated
     vertexbufferdesc.BindFlags = D3D11_BIND_VERTEX_BUFFER;
 
     D3D11_SUBRESOURCE_DATA vertexbufferSRD = {vertices};
@@ -262,11 +262,11 @@ ID3D11Buffer* FRenderer::CreateVertexBuffer(FVertexSimple* vertices, UINT byteWi
     return vertexBuffer;
 }
 
-ID3D11Buffer* FRenderer::CreateVertexBuffer(const TArray<FVertexSimple>& vertices, UINT byteWidth) const
+ID3D11Buffer* FRenderer::CreateVertexBuffer(const TArray<FStaticMeshVertex>& vertices, UINT byteWidth) const
 {
     D3D11_BUFFER_DESC vertexbufferdesc = {};
     vertexbufferdesc.ByteWidth = byteWidth;
-    vertexbufferdesc.Usage = D3D11_USAGE_IMMUTABLE; // will never be updated 
+    vertexbufferdesc.Usage = D3D11_USAGE_IMMUTABLE; // will never be updated
     vertexbufferdesc.BindFlags = D3D11_BIND_VERTEX_BUFFER;
 
     D3D11_SUBRESOURCE_DATA vertexbufferSRD;
@@ -351,7 +351,7 @@ void FRenderer::CreateConstantBuffer()
 
     constantbufferdesc.ByteWidth = sizeof(FMaterialConstants) + 0xf & 0xfffffff0;
     Graphics->Device->CreateBuffer(&constantbufferdesc, nullptr, &MaterialConstantBuffer);
-    
+
     constantbufferdesc.ByteWidth = sizeof(FSubMeshConstants) + 0xf & 0xfffffff0;
     Graphics->Device->CreateBuffer(&constantbufferdesc, nullptr, &SubMeshConstantBuffer);
 
@@ -476,7 +476,7 @@ void FRenderer::UpdateMaterial(const FObjMaterialInfo& MaterialInfo) const
 
     if (MaterialInfo.bHasTexture == true)
     {
-        std::shared_ptr<FTexture> texture = FEngineLoop::resourceMgr.GetTexture(MaterialInfo.DiffuseTexturePath);
+        std::shared_ptr<FTexture> texture = FEngineLoop::ResourceManager.GetTexture(MaterialInfo.DiffuseTexturePath);
         Graphics->DeviceContext->PSSetShaderResources(0, 1, &texture->TextureSRV);
         Graphics->DeviceContext->PSSetSamplers(0, 1, &texture->SamplerState);
     }
@@ -680,7 +680,7 @@ ID3D11Buffer* FRenderer::CreateVertexTextureBuffer(FVertexTexture* vertices, UIN
     // 2. Create a vertex buffer
     D3D11_BUFFER_DESC vertexbufferdesc = {};
     vertexbufferdesc.ByteWidth = byteWidth;
-    vertexbufferdesc.Usage = D3D11_USAGE_DYNAMIC; // will never be updated 
+    vertexbufferdesc.Usage = D3D11_USAGE_DYNAMIC; // will never be updated
     vertexbufferdesc.BindFlags = D3D11_BIND_VERTEX_BUFFER;
     vertexbufferdesc.CPUAccessFlags = D3D11_CPU_ACCESS_WRITE;
 
@@ -754,7 +754,7 @@ void FRenderer::RenderTextPrimitive(
     Graphics->DeviceContext->IASetPrimitiveTopology(D3D11_PRIMITIVE_TOPOLOGY_TRIANGLELIST);
     Graphics->DeviceContext->PSSetShaderResources(0, 1, &_TextureSRV);
     Graphics->DeviceContext->PSSetSamplers(0, 1, &_SamplerState);
-    
+
     ID3D11DepthStencilState* DepthStateDisable = Graphics->DepthStateDisable;
     Graphics->DeviceContext->OMSetDepthStencilState(DepthStateDisable, 0);
 
@@ -768,7 +768,7 @@ ID3D11Buffer* FRenderer::CreateVertexBuffer(FVertexTexture* vertices, UINT byteW
     // 2. Create a vertex buffer
     D3D11_BUFFER_DESC vertexbufferdesc = {};
     vertexbufferdesc.ByteWidth = byteWidth;
-    vertexbufferdesc.Usage = D3D11_USAGE_IMMUTABLE; // will never be updated 
+    vertexbufferdesc.Usage = D3D11_USAGE_IMMUTABLE; // will never be updated
     vertexbufferdesc.BindFlags = D3D11_BIND_VERTEX_BUFFER;
 
     D3D11_SUBRESOURCE_DATA vertexbufferSRD = {vertices};
@@ -814,7 +814,7 @@ void FRenderer::PrepareLineShader() const
     Graphics->DeviceContext->VSSetShader(VertexLineShader, nullptr, 0);
     Graphics->DeviceContext->PSSetShader(PixelLineShader, nullptr, 0);
 
-    // ��� ���� ���ε�: 
+    // ��� ���� ���ε�:
     // - MatrixBuffer�� register(b0)��, Vertex Shader�� ���ε�
     // - GridConstantBuffer�� register(b1)��, Vertex�� Pixel Shader�� ���ε� (�ȼ� ���̴��� �ʿ信 ����)
     if (ConstantBuffer && GridConstantBuffer)
@@ -1066,10 +1066,10 @@ void FRenderer::PrepareRender(ULevel* Level)
             LightObjs.Add(pLightComp);
         }
     }
-    
 
 
-    
+
+
     for (const auto iter : Ss)
     {
         if (UStaticMeshComponent* pStaticMeshComp = Cast<UStaticMeshComponent>(iter))
@@ -1120,7 +1120,7 @@ void FRenderer::Render(ULevel* Level, std::shared_ptr<FEditorViewportClient> Act
         RenderTexts(Level, ActiveViewport);
     }
     RenderLight(Level, ActiveViewport);
-    
+
     ClearRenderArr();
 }
 
@@ -1163,8 +1163,8 @@ void FRenderer::RenderStaticMeshes(ULevel* Level, std::shared_ptr<FEditorViewpor
                 Model
             );
         }
-                
-    
+
+
         if (!StaticMeshComp->GetStaticMesh()) continue;
 
         OBJ::FStaticMeshRenderData* renderData = StaticMeshComp->GetStaticMesh()->GetRenderData();
@@ -1187,11 +1187,11 @@ void FRenderer::RenderGizmos(const ULevel* Level, const std::shared_ptr<FEditorV
     #pragma endregion GizmoDepth
 
     //  fill solid,  Wirframe 에서도 제대로 렌더링되기 위함
-    Graphics->DeviceContext->RSSetState(FEngineLoop::graphicDevice.RasterizerStateSOLID);
-    
+    Graphics->DeviceContext->RSSetState(FEngineLoop::GraphicDevice.RasterizerStateSOLID);
+
     for (auto GizmoComp : GizmoObjs)
     {
-        
+
         if ((GizmoComp->GetGizmoType()==UGizmoBaseComponent::ArrowX ||
             GizmoComp->GetGizmoType()==UGizmoBaseComponent::ArrowY ||
             GizmoComp->GetGizmoType()==UGizmoBaseComponent::ArrowZ)
@@ -1241,7 +1241,7 @@ void FRenderer::RenderBillboards(ULevel* Level, std::shared_ptr<FEditorViewportC
 {
     PrepareTextureShader();
     PrepareSubUVConstant();
-    
+
     for (auto BillboardComp : BillboardObjs)
     {
         UpdateSubUVConstant(BillboardComp->finalIndexU, BillboardComp->finalIndexV);
@@ -1279,7 +1279,7 @@ void FRenderer::RenderTexts(ULevel* Level, std::shared_ptr<FEditorViewportClient
 {
     PrepareFontShader();
     PrepareSubUVConstant();
-    
+
     for (auto TextComps : TextObjs)
     {
         if (UTextBillboardComponent* Text = Cast<UTextBillboardComponent>(TextComps))
@@ -1296,8 +1296,8 @@ void FRenderer::RenderTexts(ULevel* Level, std::shared_ptr<FEditorViewportClient
                 UpdateConstant(MVP, NormalMatrix, UUIDColor, true);
             else
                 UpdateConstant(MVP, NormalMatrix, UUIDColor, false);
-            
-            FEngineLoop::renderer.RenderTextPrimitive(
+
+            FEngineLoop::Renderer.RenderTextPrimitive(
                 Text->vertexTextBuffer, Text->numTextVertices,
                 Text->Texture->TextureSRV, Text->Texture->SamplerState
             );
@@ -1320,8 +1320,8 @@ void FRenderer::RenderTexts(ULevel* Level, std::shared_ptr<FEditorViewportClient
                 UpdateConstant(MVP, NormalMatrix, UUIDColor, true);
             else
                 UpdateConstant(MVP, NormalMatrix, UUIDColor, false);
-            
-            FEngineLoop::renderer.RenderTextPrimitive(
+
+            FEngineLoop::Renderer.RenderTextPrimitive(
                 Text->vertexTextBuffer, Text->numTextVertices,
                 Text->Texture->TextureSRV, Text->Texture->SamplerState
             );
