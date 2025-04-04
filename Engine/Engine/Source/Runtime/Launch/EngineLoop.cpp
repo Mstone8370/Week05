@@ -153,7 +153,7 @@ void FEngineLoop::Render()
             // renderer.UpdateLightBuffer();
             // RenderWorld();
             renderer.PrepareRender(GLevel);
-            renderer.Render(GetLevel(),LevelEditor->GetActiveViewportClient());
+            renderer.RenderScene(GetLevel(),LevelEditor->GetActiveViewportClient());
         }
         GetLevelEditor()->SetViewportClient(viewportClient);
     }
@@ -166,7 +166,10 @@ void FEngineLoop::Render()
         // renderer.UpdateLightBuffer();
         // RenderWorld();
         renderer.PrepareRender(GLevel);
-        renderer.Render(GetLevel(),LevelEditor->GetActiveViewportClient());
+        renderer.RenderScene(GetLevel(),LevelEditor->GetActiveViewportClient());
+
+        graphicDevice.PrepareFinal();
+        renderer.RenderFullScreenQuad();
     }
 }
 

@@ -234,6 +234,8 @@
     <ClCompile Include="Engine\Source\Runtime\Engine\Level.cpp" />
     <ClCompile Include="Engine\Source\Runtime\Engine\Classes\Components\QuadTexture.cpp" />
     <ClCompile Include="Engine\Source\ThirdParty\tinyfiledialogs\tinyfiledialogs.cpp" />
+    <ClCompile Include="Shaders\FinalPixelShader.hlsl" />
+    <ClCompile Include="Shaders\FinalVertexShader.hlsl" />
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="Engine\Source\Runtime\Core\Delegates\Delegate.h" />

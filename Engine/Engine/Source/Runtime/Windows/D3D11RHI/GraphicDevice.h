@@ -16,11 +16,19 @@ public:
     ID3D11Device* Device = nullptr;
     ID3D11DeviceContext* DeviceContext = nullptr;
     IDXGISwapChain* SwapChain = nullptr;
-    ID3D11Texture2D* FrameBuffer = nullptr;
-    ID3D11Texture2D* UUIDFrameBuffer = nullptr;
+
     ID3D11RenderTargetView* RTVs[2];
-    ID3D11RenderTargetView* FrameBufferRTV = nullptr;
+
+    ID3D11Texture2D* FinalFrameBuffer = nullptr;
+    ID3D11RenderTargetView* FinalFrameBufferRTV = nullptr;
+
+    ID3D11Texture2D* UUIDFrameBuffer = nullptr;
     ID3D11RenderTargetView* UUIDFrameBufferRTV = nullptr;
+
+    ID3D11Texture2D* SceneSRVTexture = nullptr;
+    ID3D11ShaderResourceView* SceneSRV = nullptr;
+    ID3D11RenderTargetView* SceneBufferRTV = nullptr;
+
     ID3D11RasterizerState* RasterizerStateSOLID = nullptr;
     ID3D11RasterizerState* RasterizerStateWIREFRAME = nullptr;
     DXGI_SWAP_CHAIN_DESC SwapchainDesc;
@@ -45,11 +53,13 @@ public:
     void CreateFrameBuffer();
     void ReleaseFrameBuffer();
     void ReleaseRasterizerState();
+    void ReleaseDepthStencilBuffer();
     void ReleaseDepthStencilResources();
     void Release();
     void SwapBuffer();
     void Prepare();
     void Prepare(D3D11_VIEWPORT* viewport);
+    void PrepareFinal();
     void OnResize(HWND hWindow);
     ID3D11RasterizerState* GetCurrentRasterizer() { return CurrentRasterizer; }
     void ChangeRasterizer(EViewModeIndex evi);

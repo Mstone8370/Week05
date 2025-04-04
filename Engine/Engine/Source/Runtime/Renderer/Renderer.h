@@ -30,6 +30,10 @@ public:
     ID3D11VertexShader* VertexShader = nullptr;
     ID3D11PixelShader* PixelShader = nullptr;
     ID3D11InputLayout* InputLayout = nullptr;
+
+    ID3D11VertexShader* FinalVertexShader = nullptr;
+    ID3D11PixelShader* FinalPixelShader = nullptr;
+    
     ID3D11Buffer* ConstantBuffer = nullptr;
     ID3D11Buffer* LightingBuffer = nullptr;
     ID3D11Buffer* FlagBuffer = nullptr;
@@ -37,6 +41,8 @@ public:
     ID3D11Buffer* SubMeshConstantBuffer = nullptr;
     ID3D11Buffer* TextureConstantBufer = nullptr;
 
+    ID3D11SamplerState* ScreenSamplerState = nullptr;
+    
     FLighting lightingData;
 
     uint32 Stride;
@@ -62,6 +68,12 @@ public:
     void ResetVertexShader() const;
     void ResetPixelShader() const;
     void CreateShader();
+    
+    void CreateFinalShader();
+    void ReleaseFinalShader();
+
+    void CreateScreenSamplerState();
+    void ReleaseScreenSamplerState();
 
     void SetVertexShader(const FWString& filename, const FString& funcname, const FString& version);
     void SetPixelShader(const FWString& filename, const FString& funcname, const FString& version);
@@ -84,6 +96,7 @@ public:
     void UpdateLitUnlitConstant(int isLit) const;
     void UpdateSubMeshConstant(bool isSelected) const;
     void UpdateTextureConstant(float UOffset, float VOffset);
+
 
 public://텍스쳐용 기능 추가
     ID3D11VertexShader* TextureVertexShader = nullptr;
@@ -148,8 +161,11 @@ public: // line shader
     void UpdateConesBuffer(ID3D11Buffer* pConeBuffer, const TArray<FCone>& Cones, int numCones) const;
 
     //Render Pass Demo
+    void RenderScene(ULevel* Level, std::shared_ptr<FEditorViewportClient> ActiveViewport);
+    void RenderFullScreenQuad();
+
+private:
     void ClearRenderArr();
-    void Render(ULevel* Level, std::shared_ptr<FEditorViewportClient> ActiveViewport);
     void RenderStaticMeshes(ULevel* Level, std::shared_ptr<FEditorViewportClient> ActiveViewport);
     void RenderGizmos(const ULevel* Level, const std::shared_ptr<FEditorViewportClient>& ActiveViewport);
     void RenderLight(ULevel* Level, std::shared_ptr<FEditorViewportClient> ActiveViewport);

@@ -28,22 +28,26 @@ void FRenderer::Initialize(FGraphicsDevice* graphics)
 {
     Graphics = graphics;
     CreateShader();
+    CreateFinalShader();
     CreateTextureShader();
     CreateFontShader();
     CreateLineShader();
     CreateConstantBuffer();
     CreateLightingBuffer();
     CreateLitUnlitBuffer();
+    CreateScreenSamplerState();
     UpdateLitUnlitConstant(1);
 }
 
 void FRenderer::Release()
 {
     ReleaseShader();
+    ReleaseFinalShader();
     ReleaseTextureShader();
     ReleaseFontShader();
     ReleaseLineShader();
     ReleaseConstantBuffer();
+    ReleaseScreenSamplerState();
 }
 
 void FRenderer::CreateShader()
@@ -56,7 +60,7 @@ void FRenderer::CreateShader()
 
     D3DCompileFromFile(L"Shaders/StaticMeshPixelShader.hlsl", nullptr, nullptr, "mainPS", "ps_5_0", 0, 0, &PixelShaderCSO, nullptr);
     Graphics->Device->CreatePixelShader(PixelShaderCSO->GetBufferPointer(), PixelShaderCSO->GetBufferSize(), nullptr, &PixelShader);
-
+    
     D3D11_INPUT_ELEMENT_DESC layout[] = {
         {"POSITION", 0, DXGI_FORMAT_R32G32B32_FLOAT, 0, 0, D3D11_INPUT_PER_VERTEX_DATA, 0},
         {"COLOR", 0, DXGI_FORMAT_R32G32B32A32_FLOAT, 0, 12, D3D11_INPUT_PER_VERTEX_DATA, 0},
@@ -72,6 +76,59 @@ void FRenderer::CreateShader()
     Stride = sizeof(FVertexSimple);
     VertexShaderCSO->Release();
     PixelShaderCSO->Release();
+}
+
+void FRenderer::CreateFinalShader()
+{
+    ID3DBlob* FinalVertexShaderCSO;
+    ID3DBlob* FinalPixelShaderCSO;
+    
+    D3DCompileFromFile(L"Shaders/FinalVertexShader.hlsl", nullptr, nullptr, "main", "vs_5_0", 0, 0, &FinalVertexShaderCSO, nullptr);
+    Graphics->Device->CreateVertexShader(FinalVertexShaderCSO->GetBufferPointer(), FinalVertexShaderCSO->GetBufferSize(), nullptr, &FinalVertexShader);
+
+    D3DCompileFromFile(L"Shaders/FinalPixelShader.hlsl", nullptr, nullptr, "main", "ps_5_0", 0, 0, &FinalPixelShaderCSO, nullptr);
+    Graphics->Device->CreatePixelShader(FinalPixelShaderCSO->GetBufferPointer(), FinalPixelShaderCSO->GetBufferSize(), nullptr, &FinalPixelShader);
+    
+    FinalVertexShaderCSO->Release();
+    FinalPixelShaderCSO->Release();
+}
+
+void FRenderer::ReleaseFinalShader()
+{
+    if (FinalVertexShader)
+    {
+        FinalVertexShader->Release();
+        FinalVertexShader = nullptr;
+    }
+
+    if (FinalPixelShader)
+    {
+        FinalPixelShader->Release();
+        FinalPixelShader = nullptr;
+    }
+}
+
+void FRenderer::CreateScreenSamplerState()
+{
+    D3D11_SAMPLER_DESC samplerDesc = {};
+    samplerDesc.Filter = D3D11_FILTER_MIN_MAG_MIP_POINT;
+    samplerDesc.AddressU = D3D11_TEXTURE_ADDRESS_CLAMP;
+    samplerDesc.AddressV = D3D11_TEXTURE_ADDRESS_CLAMP;
+    samplerDesc.AddressW = D3D11_TEXTURE_ADDRESS_CLAMP;
+    samplerDesc.ComparisonFunc = D3D11_COMPARISON_NEVER;
+    samplerDesc.MinLOD = 0;
+    samplerDesc.MaxLOD = D3D11_FLOAT32_MAX;
+
+    Graphics->Device->CreateSamplerState(&samplerDesc, &ScreenSamplerState);
+}
+
+void FRenderer::ReleaseScreenSamplerState()
+{
+    if (ScreenSamplerState)
+    {
+        ScreenSamplerState->Release();
+        ScreenSamplerState = nullptr;
+    }
 }
 
 void FRenderer::ReleaseShader()
@@ -1093,15 +1150,7 @@ void FRenderer::PrepareRender(ULevel* Level)
     }
 }
 
-void FRenderer::ClearRenderArr()
-{
-    StaticMeshObjs.Empty();
-    GizmoObjs.Empty();
-    TextObjs.Empty();
-    LightObjs.Empty();
-}
-
-void FRenderer::Render(ULevel* Level, std::shared_ptr<FEditorViewportClient> ActiveViewport)
+void FRenderer::RenderScene(ULevel* Level, std::shared_ptr<FEditorViewportClient> ActiveViewport)
 {
     Graphics->DeviceContext->RSSetViewports(1, &ActiveViewport->GetD3DViewport());
     Graphics->ChangeRasterizer(ActiveViewport->GetViewMode());
@@ -1122,6 +1171,28 @@ void FRenderer::Render(ULevel* Level, std::shared_ptr<FEditorViewportClient> Act
     RenderLight(Level, ActiveViewport);
     
     ClearRenderArr();
+}
+
+void FRenderer::RenderFullScreenQuad()
+{
+    Graphics->DeviceContext->PSSetShaderResources(0, 1, &Graphics->SceneSRV);
+    Graphics->DeviceContext->PSSetSamplers(0, 1, &ScreenSamplerState);
+    
+    Graphics->DeviceContext->VSSetShader(FinalVertexShader, nullptr, 0);
+    Graphics->DeviceContext->PSSetShader(FinalPixelShader, nullptr, 0);
+
+    // (float3(), 0, 0), (float3(), 1, 0), (float3(), 0, 1), (float3(), 1, 0), (float3(), 1, 1), (float3(), 0, 1)) 
+    Graphics->DeviceContext->IASetInputLayout(nullptr);  // 입력 레이아웃 필요 없음
+    Graphics->DeviceContext->IASetVertexBuffers(0, 0, nullptr, nullptr, nullptr);
+    Graphics->DeviceContext->Draw(6, 0);
+}
+
+void FRenderer::ClearRenderArr()
+{
+    StaticMeshObjs.Empty();
+    GizmoObjs.Empty();
+    TextObjs.Empty();
+    LightObjs.Empty();
 }
 
 void FRenderer::RenderStaticMeshes(ULevel* Level, std::shared_ptr<FEditorViewportClient> ActiveViewport)
