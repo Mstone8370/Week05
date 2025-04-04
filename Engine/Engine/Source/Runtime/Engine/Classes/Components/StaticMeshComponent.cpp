@@ -93,14 +93,17 @@ int UStaticMeshComponent::CheckRayIntersection(FVector& rayOrigin, FVector& rayD
 
     int nPrimitives = (!indices) ? (vCount / 3) : (iCount / 3);
     float fNearHitDistance = FLT_MAX;
-    for (int i = 0; i < nPrimitives; i++) {
+    for (int i = 0; i < nPrimitives; i++)
+    {
         int idx0, idx1, idx2;
-        if (!indices) {
+        if (!indices)
+        {
             idx0 = i * 3;
             idx1 = i * 3 + 1;
             idx2 = i * 3 + 2;
         }
-        else {
+        else
+        {
             idx0 = indices[i * 3];
             idx2 = indices[i * 3 + 1];
             idx1 = indices[i * 3 + 2];
@@ -113,13 +116,14 @@ int UStaticMeshComponent::CheckRayIntersection(FVector& rayOrigin, FVector& rayD
         FVector v2 = *reinterpret_cast<FVector*>(pbPositions + idx2 * stride);
 
         float fHitDistance;
-        if (IntersectRayTriangle(rayOrigin, rayDirection, v0, v1, v2, fHitDistance)) {
-            if (fHitDistance < fNearHitDistance) {
+        if (IntersectRayTriangle(rayOrigin, rayDirection, v0, v1, v2, fHitDistance))
+        {
+            if (fHitDistance < fNearHitDistance)
+            {
                 pfNearHitDistance = fNearHitDistance = fHitDistance;
             }
             nIntersections++;
         }
-
     }
     return nIntersections;
 }

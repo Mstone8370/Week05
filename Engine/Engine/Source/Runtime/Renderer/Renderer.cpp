@@ -507,7 +507,8 @@ void FRenderer::UpdateLitUnlitConstant(int isLit) const
 
 void FRenderer::UpdateSubMeshConstant(bool isSelected) const
 {
-    if (SubMeshConstantBuffer) {
+    if (SubMeshConstantBuffer)
+    {
         D3D11_MAPPED_SUBRESOURCE constantbufferMSR; // GPU �� �޸� �ּ� ����
         Graphics->DeviceContext->Map(SubMeshConstantBuffer, 0, D3D11_MAP_WRITE_DISCARD, 0, &constantbufferMSR);
         FSubMeshConstants* constants = (FSubMeshConstants*)constantbufferMSR.pData; //GPU �޸� ���� ����
@@ -520,7 +521,8 @@ void FRenderer::UpdateSubMeshConstant(bool isSelected) const
 
 void FRenderer::UpdateTextureConstant(float UOffset, float VOffset)
 {
-    if (TextureConstantBufer) {
+    if (TextureConstantBufer)
+    {
         D3D11_MAPPED_SUBRESOURCE constantbufferMSR; // GPU �� �޸� �ּ� ����
         Graphics->DeviceContext->Map(TextureConstantBufer, 0, D3D11_MAP_WRITE_DISCARD, 0, &constantbufferMSR);
         FTextureConstants* constants = (FTextureConstants*)constantbufferMSR.pData; //GPU �޸� ���� ����

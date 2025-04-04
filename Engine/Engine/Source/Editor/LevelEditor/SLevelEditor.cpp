@@ -49,7 +49,8 @@ void SLevelEditor::Initialize()
 
 void SLevelEditor::Tick(double deltaTime)
 {
-    if (bMultiViewportMode) {
+    if (bMultiViewportMode)
+    {
         POINT pt;
         GetCursorPos(&pt);
         ScreenToClient(GEngineLoop.hWnd, &pt);
@@ -159,7 +160,8 @@ void SLevelEditor::OnResize()
     float PrevHeight = EditorHeight;
     EditorWidth = GEngineLoop.GraphicDevice.screenWidth;
     EditorHeight = GEngineLoop.GraphicDevice.screenHeight;
-    if (bInitialize) {
+    if (bInitialize)
+    {
         //HSplitter 에는 바뀐 width 비율이 들어감
         HSplitter->OnResize(EditorWidth/PrevWidth, EditorHeight);
         //HSplitter 에는 바뀐 Height 비율이 들어감
@@ -170,8 +172,10 @@ void SLevelEditor::OnResize()
 
 void SLevelEditor::ResizeViewports()
 {
-    if (bMultiViewportMode) {
-        if (GetViewports()[0]) {
+    if (bMultiViewportMode)
+    {
+        if (GetViewports()[0])
+        {
             for (int i = 0;i < 4;++i)
             {
                 GetViewports()[i]->ResizeViewport(VSplitter->SideLT->Rect, VSplitter->SideRB->Rect,
@@ -207,7 +211,7 @@ void SLevelEditor::LoadConfig()
     ActiveViewportClient->Pivot.X = GetValueFromConfig(config, "OrthoPivotX", 0.0f);
     ActiveViewportClient->Pivot.Y = GetValueFromConfig(config, "OrthoPivotY", 0.0f);
     ActiveViewportClient->Pivot.Z = GetValueFromConfig(config, "OrthoPivotZ", 0.0f);
-    ActiveViewportClient->orthoSize = GetValueFromConfig(config, "OrthoZoomSize", 10.0f);
+    ActiveViewportClient->OrthoSize = GetValueFromConfig(config, "OrthoZoomSize", 10.0f);
 
     SetViewportClient(GetValueFromConfig(config, "ActiveViewportIndex", 0));
     bMultiViewportMode = GetValueFromConfig(config, "bMutiView", false);
@@ -241,7 +245,7 @@ void SLevelEditor::SaveConfig()
     config["OrthoPivotX"] = std::to_string(ActiveViewportClient->Pivot.X);
     config["OrthoPivotY"] = std::to_string(ActiveViewportClient->Pivot.Y);
     config["OrthoPivotZ"] = std::to_string(ActiveViewportClient->Pivot.Z);
-    config["OrthoZoomSize"] = std::to_string(ActiveViewportClient->orthoSize);
+    config["OrthoZoomSize"] = std::to_string(ActiveViewportClient->OrthoSize);
     WriteIniFile(IniFilePath, config);
 }
 
@@ -251,11 +255,13 @@ TMap<FString, FString> SLevelEditor::ReadIniFile(const FString& filePath)
     std::ifstream file(*filePath);
     std::string line;
 
-    while (std::getline(file, line)) {
+    while (std::getline(file, line))
+    {
         if (line.empty() || line[0] == '[' || line[0] == ';') continue;
         std::istringstream ss(line);
         std::string key, value;
-        if (std::getline(ss, key, '=') && std::getline(ss, value)) {
+        if (std::getline(ss, key, '=') && std::getline(ss, value))
+        {
             config[key] = value;
         }
     }
@@ -265,7 +271,8 @@ TMap<FString, FString> SLevelEditor::ReadIniFile(const FString& filePath)
 void SLevelEditor::WriteIniFile(const FString& filePath, const TMap<FString, FString>& config)
 {
     std::ofstream file(*filePath);
-    for (const auto& pair : config) {
+    for (const auto& pair : config)
+    {
         file << *pair.Key << "=" << *pair.Value << "\n";
     }
 }

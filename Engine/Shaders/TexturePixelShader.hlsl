@@ -25,6 +25,6 @@ float4 main(PSInput input) : SV_TARGET
     float threshold = 0.1; // 필요한 경우 임계값을 조정
     if (col.a < threshold)
         clip(-1); // 픽셀 버리기
-    
+
     return col;
 }

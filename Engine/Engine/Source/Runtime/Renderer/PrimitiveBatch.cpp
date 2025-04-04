@@ -10,7 +10,8 @@ UPrimitiveBatch::UPrimitiveBatch()
 
 UPrimitiveBatch::~UPrimitiveBatch()
 {
-    if (pVertexBuffer) {
+    if (pVertexBuffer)
+    {
         pVertexBuffer->Release();
         pVertexBuffer = nullptr;
     }

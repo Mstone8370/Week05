@@ -1,6 +1,7 @@
 #include "GraphicDevice.h"
 #include <wchar.h>
-void FGraphicsDevice::Initialize(HWND hWindow) {
+void FGraphicsDevice::Initialize(HWND hWindow)
+{
     CreateDeviceAndSwapChain(hWindow);
     CreateFrameBuffer();
     CreateDepthStencilBuffer(hWindow);
@@ -8,7 +9,9 @@ void FGraphicsDevice::Initialize(HWND hWindow) {
     CreateRasterizerState();
     CurrentRasterizer = RasterizerStateSOLID;
 }
-void FGraphicsDevice::CreateDeviceAndSwapChain(HWND hWindow) {
+
+void FGraphicsDevice::CreateDeviceAndSwapChain(HWND hWindow)
+{
     // 지원하는 Direct3D 기능 레벨을 정의
     D3D_FEATURE_LEVEL featurelevels[] = { D3D_FEATURE_LEVEL_11_0 };
 
@@ -29,7 +32,8 @@ void FGraphicsDevice::CreateDeviceAndSwapChain(HWND hWindow) {
         featurelevels, ARRAYSIZE(featurelevels), D3D11_SDK_VERSION,
         &SwapchainDesc, &SwapChain, &Device, nullptr, &DeviceContext);
 
-    if (FAILED(hr)) {
+    if (FAILED(hr))
+    {
         MessageBox(hWindow, L"CreateDeviceAndSwapChain failed!", L"Error", MB_ICONERROR | MB_OK);
         return;
     }
@@ -42,9 +46,8 @@ void FGraphicsDevice::CreateDeviceAndSwapChain(HWND hWindow) {
 
 
 
-void FGraphicsDevice::CreateDepthStencilBuffer(HWND hWindow) {
-
-
+void FGraphicsDevice::CreateDepthStencilBuffer(HWND hWindow)
+{
     RECT clientRect;
     GetClientRect(hWindow, &clientRect);
     UINT width = clientRect.right - clientRect.left;
@@ -67,11 +70,11 @@ void FGraphicsDevice::CreateDepthStencilBuffer(HWND hWindow) {
 
     HRESULT hr = Device->CreateTexture2D(&descDepth, NULL, &DepthStencilBuffer);
 
-    if (FAILED(hr)) {
+    if (FAILED(hr))
+    {
         MessageBox(hWindow, L"Failed to create depth stencilBuffer!", L"Error", MB_ICONERROR | MB_OK);
         return;
     }
-
 
     D3D11_DEPTH_STENCIL_VIEW_DESC descDSV;
     ZeroMemory(&descDSV, sizeof(descDSV));
@@ -83,7 +86,8 @@ void FGraphicsDevice::CreateDepthStencilBuffer(HWND hWindow) {
         &descDSV, // Depth stencil desc
         &DepthStencilView);  // [out] Depth stencil view
 
-    if (FAILED(hr)) {
+    if (FAILED(hr))
+    {
         wchar_t errorMsg[256];
         swprintf_s(errorMsg, L"Failed to create depth stencil view! HRESULT: 0x%08X", hr);
         MessageBox(hWindow, errorMsg, L"Error", MB_ICONERROR | MB_OK);
@@ -145,7 +149,6 @@ void FGraphicsDevice::CreateRasterizerState()
     Device->CreateRasterizerState(&rasterizerdesc, &RasterizerStateWIREFRAME);
 }
 
-
 void FGraphicsDevice::ReleaseDeviceAndSwapChain()
 {
     if (DeviceContext)
@@ -183,7 +186,7 @@ void FGraphicsDevice::CreateFrameBuffer()
     framebufferRTVdesc.ViewDimension = D3D11_RTV_DIMENSION_TEXTURE2D; // 2D 텍스처
 
     Device->CreateRenderTargetView(FrameBuffer, &framebufferRTVdesc, &FrameBufferRTV);
-    
+
     D3D11_TEXTURE2D_DESC textureDesc = {};
     textureDesc.Width = screenWidth;
     textureDesc.Height = screenHeight;
@@ -271,7 +274,7 @@ void FGraphicsDevice::ReleaseDepthStencilResources()
     }
 }
 
-void FGraphicsDevice::Release() 
+void FGraphicsDevice::Release()
 {
     ReleaseRasterizerState();
     DeviceContext->OMSetRenderTargets(0, nullptr, nullptr);
@@ -281,9 +284,11 @@ void FGraphicsDevice::Release()
     ReleaseDeviceAndSwapChain();
 }
 
-void FGraphicsDevice::SwapBuffer() {
+void FGraphicsDevice::SwapBuffer()
+{
     SwapChain->Present(1, 0);
 }
+
 void FGraphicsDevice::Prepare()
 {
     DeviceContext->ClearRenderTargetView(FrameBufferRTV, ClearColor); // 렌더 타겟 뷰에 저장된 이전 프레임 데이터를 삭제
@@ -318,9 +323,10 @@ void FGraphicsDevice::Prepare(D3D11_VIEWPORT* viewport)
 }
 
 
-void FGraphicsDevice::OnResize(HWND hWindow) {
+void FGraphicsDevice::OnResize(HWND hWindow)
+{
     DeviceContext->OMSetRenderTargets(0, RTVs, 0);
-    
+
     FrameBufferRTV->Release();
     FrameBufferRTV = nullptr;
 
@@ -334,8 +340,6 @@ void FGraphicsDevice::OnResize(HWND hWindow) {
 
     ReleaseFrameBuffer();
 
-
-
     if (screenWidth == 0 || screenHeight == 0) {
         MessageBox(hWindow, L"Invalid width or height for ResizeBuffers!", L"Error", MB_ICONERROR | MB_OK);
         return;
@@ -348,16 +352,13 @@ void FGraphicsDevice::OnResize(HWND hWindow) {
         MessageBox(hWindow, L"failed", L"ResizeBuffers failed ", MB_ICONERROR | MB_OK);
         return;
     }
-    
+
     SwapChain->GetDesc(&SwapchainDesc);
     screenWidth = SwapchainDesc.BufferDesc.Width;
     screenHeight = SwapchainDesc.BufferDesc.Height;
 
     CreateFrameBuffer();
     CreateDepthStencilBuffer(hWindow);
-
-
-
 }
 
 
@@ -382,7 +383,6 @@ void FGraphicsDevice::ChangeDepthStencilState(ID3D11DepthStencilState* newDetptS
 }
 
 uint32 FGraphicsDevice::GetPixelUUID(POINT pt)
-
 {
     // pt.x 값 제한하기
     if (pt.x < 0) {
@@ -423,7 +423,7 @@ uint32 FGraphicsDevice::GetPixelUUID(POINT pt)
     srcBox.bottom = srcBox.top + 1; // 1픽셀 높이
     srcBox.front = 0;
     srcBox.back = 1;
-    FVector4 UUIDColor{ 1, 1, 1, 1 }; 
+    FVector4 UUIDColor{ 1, 1, 1, 1 };
 
     if (stagingTexture == nullptr)
         return DecodeUUIDColor(UUIDColor);

@@ -179,7 +179,10 @@ void ControlEditorPanel::CreateMenuButton(ImVec2 ButtonSize, ImFont* IconFont)
             /* Move Cursor X Position */
             ImGui::SetCursorPosX(ContentWidth - (160.f + 10.0f));
 
-            if (ImGui::Button("OK", ImVec2(80, 0))) { PostQuitMessage(0); }
+            if (ImGui::Button("OK", ImVec2(80, 0)))
+            {
+                PostQuitMessage(0);
+            }
 
             ImGui::SameLine();
 

@@ -9,7 +9,7 @@
 #include "EngineBaseTypes.h"
 
 #define MIN_ORTHOZOOM				1.0							/* 2D ortho viewport zoom >= MIN_ORTHOZOOM */
-#define MAX_ORTHOZOOM				1e25	
+#define MAX_ORTHOZOOM				1e25
 
 extern FEngineLoop GEngineLoop;
 
@@ -17,27 +17,23 @@ extern FEngineLoop GEngineLoop;
 
 struct FViewportCameraTransform
 {
-private:
-
 public:
-
     FVector GetForwardVector();
     FVector GetRightVector();
     FVector GetUpVector();
 
-public:
     FViewportCameraTransform();
 
     /** Sets the transform's location */
-    void SetLocation(const FVector& Position)
+    void SetLocation(const FVector& InLocation)
     {
-        ViewLocation = Position;
+        ViewLocation = InLocation;
     }
 
     /** Sets the transform's rotation */
-    void SetRotation(const FVector& Rotation)
+    void SetRotation(const FVector& InRotation)
     {
-        ViewRotation = Rotation;
+        ViewRotation = InRotation;
     }
 
     /** Sets the location to look at during orbit */
@@ -68,7 +64,6 @@ public:
     /** @return The ortho zoom amount */
     FORCEINLINE float GetOrthoZoom() const { return OrthoZoom; }
 
-public:
     /** Current viewport Position. */
     FVector	ViewLocation;
     /** Current Viewport orientation; valid only for perspective projections. */
@@ -88,17 +83,19 @@ public:
     FEditorViewportClient();
     ~FEditorViewportClient();
 
-    virtual void        Draw(FViewport* Viewport) override;
-    virtual ULevel*     GetLevel() const { return NULL; };
+    virtual void Draw(FViewport* Viewport) override;
+    virtual ULevel* GetLevel() const { return NULL; };
+
     void Initialize(int32 viewportIndex);
     void Tick(float DeltaTime);
     void Release();
 
     void Input();
-    void ResizeViewport(const DXGI_SWAP_CHAIN_DESC& swapchaindesc);
+    void ResizeViewport(const DXGI_SWAP_CHAIN_DESC& SwapChainDesc);
     void ResizeViewport(FRect Top, FRect Bottom, FRect Left, FRect Right);
 
-    bool IsSelected(POINT point);
+    bool IsSelected(const POINT& Point);
+
 protected:
     /** Camera speed setting */
     int32 CameraSpeedSetting = 1;
@@ -106,41 +103,41 @@ protected:
     float CameraSpeedScalar = 1.0f;
     float GridSize;
 
-public: 
+public:
+    static FVector Pivot;
+    static float OrthoSize;
+
     FViewport* Viewport;
     int32 ViewportIndex;
     FViewport* GetViewport() { return Viewport; }
     D3D11_VIEWPORT& GetD3DViewport();
 
-
-public:
     //카메라
     /** Viewport camera transform data for perspective viewports */
     FViewportCameraTransform		ViewTransformPerspective;
     FViewportCameraTransform        ViewTransformOrthographic;
-    // 카메라 정보 
+    // 카메라 정보
     float ViewFOV = 60.0f;
     /** Viewport's stored horizontal field of view (saved in ini files). */
     float FOVAngle = 60.0f;
     float AspectRatio;
     float nearPlane = 0.1f;
     float farPlane = 1000000.0f;
-    static FVector Pivot;
-    static float orthoSize;
     ELevelViewportType ViewportType;
     uint64 ShowFlag;
     EViewModeIndex ViewMode;
 
     FMatrix View;
     FMatrix Projection;
-public: //Camera Movement
-    void CameraMoveForward(float _Value);
-    void CameraMoveRight(float _Value);
-    void CameraMoveUp(float _Value);
-    void CameraRotateYaw(float _Value);
-    void CameraRotatePitch(float _Value);
-    void PivotMoveRight(float _Value);
-    void PivotMoveUp(float _Value);
+
+    //Camera Movement
+    void CameraMoveForward(float Value);
+    void CameraMoveRight(float Value);
+    void CameraMoveUp(float Value);
+    void CameraRotateYaw(float Value);
+    void CameraRotatePitch(float Value);
+    void PivotMoveRight(float Value);
+    void PivotMoveUp(float Value);
 
     FMatrix& GetViewMatrix() { return  View; }
     FMatrix& GetProjectionMatrix() { return Projection; }
@@ -159,19 +156,20 @@ public: //Camera Movement
     bool GetIsOnRBMouseClick() { return bRightMouseDown; }
 
     //Flag Test Code
-    static void SetOthoSize(float _Value);
+    static void SetOthoSize(float Value);
+
 private: // Input
     POINT lastMousePos;
     bool bRightMouseDown = false;
-   
 
 public:
     void LoadConfig(const TMap<FString, FString>& config);
     void SaveConfig(TMap<FString, FString>& config);
+
 private:
     TMap<FString, FString> ReadIniFile(const FString& filePath);
     void WriteIniFile(const FString& filePath, const TMap<FString, FString>& config);
-	
+
 public:
     PROPERTY(int32, CameraSpeedSetting)
     PROPERTY(float, GridSize)

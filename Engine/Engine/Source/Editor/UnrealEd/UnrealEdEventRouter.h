@@ -16,13 +16,16 @@ public:
     using Callback = std::function<void(Args...)>;
 
     // Subscribe callback
-    void Subscribe(const Callback& callback) {
+    void Subscribe(const Callback& callback)
+    {
         subscribers.push_back(callback);
     }
 
     // raised event...
-    void Invoke(Args... args) {
-        for (const auto& cb : subscribers) {
+    void Invoke(Args... args)
+    {
+        for (const auto& cb : subscribers)
+        {
             cb(args...);
         }
     }

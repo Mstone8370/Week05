@@ -27,7 +27,8 @@ SceneData FSceneMgr::ParseSceneData(const FString& jsonStr)
 
         // Primitives 처리 (C++14 스타일)
         auto primitives = j["Primitives"];
-        for (auto it = primitives.begin(); it != primitives.end(); ++it) {
+        for (auto it = primitives.begin(); it != primitives.end(); ++it)
+        {
             int id = std::stoi(it.key());  // Key는 문자열, 숫자로 변환
             const json& value = it.value();
             UObject* obj = nullptr;
@@ -73,12 +74,15 @@ SceneData FSceneMgr::ParseSceneData(const FString& jsonStr)
             if (value.contains("Scale")) sceneComp->SetScale(FVector(value["Scale"].get<std::vector<float>>()[0],
                 value["Scale"].get<std::vector<float>>()[1],
                 value["Scale"].get<std::vector<float>>()[2]));
-            if (value.contains("Type")) {
+            if (value.contains("Type"))
+            {
                 UPrimitiveComponent* primitiveComp = Cast<UPrimitiveComponent>(sceneComp);
-                if (primitiveComp) {
+                if (primitiveComp)
+                {
                     primitiveComp->SetType(value["Type"].get<std::string>());
                 }
-                else {
+                else
+                {
                     std::string name = value["Type"].get<std::string>();
                     sceneComp->NamePrivate = name.c_str();
                 }
@@ -87,7 +91,8 @@ SceneData FSceneMgr::ParseSceneData(const FString& jsonStr)
         }
 
         auto perspectiveCamera = j["PerspectiveCamera"];
-        for (auto it = perspectiveCamera.begin(); it != perspectiveCamera.end(); ++it) {
+        for (auto it = perspectiveCamera.begin(); it != perspectiveCamera.end(); ++it)
+        {
             int id = std::stoi(it.key());  // Key는 문자열, 숫자로 변환
             const json& value = it.value();
             UObject* obj = FObjectFactory::ConstructObject<UCameraComponent>();
@@ -104,12 +109,13 @@ SceneData FSceneMgr::ParseSceneData(const FString& jsonStr)
             if (value.contains("FOV")) camera->SetFOV(value["FOV"].get<float>());
             if (value.contains("NearClip")) camera->SetNearClip(value["NearClip"].get<float>());
             if (value.contains("FarClip")) camera->SetNearClip(value["FarClip"].get<float>());
-            
-            
+
+
             sceneData.Cameras[id] = camera;
         }
     }
-    catch (const std::exception& e) {
+    catch (const std::exception& e)
+    {
         FString errorMessage = "Error parsing JSON: ";
         errorMessage += e.what();
 
@@ -122,16 +128,19 @@ SceneData FSceneMgr::ParseSceneData(const FString& jsonStr)
 FString FSceneMgr::LoadSceneFromFile(const FString& filename)
 {
     std::ifstream inFile(*filename);
-    if (!inFile) {
+    if (!inFile)
+    {
         UE_LOG(LogLevel::Error, "Failed to open file for reading: %s", *filename);
         return FString();
     }
 
     json j;
-    try {
+    try
+    {
         inFile >> j; // JSON 파일 읽기
     }
-    catch (const std::exception& e) {
+    catch (const std::exception& e)
+    {
         UE_LOG(LogLevel::Error, "Error parsing JSON: %s", e.what());
         return FString();
     }
@@ -159,7 +168,8 @@ std::string FSceneMgr::SerializeSceneData(const SceneData& sceneData)
 
         std::string primitiveName = *primitive->GetName();
         size_t pos = primitiveName.rfind('_');
-        if (pos != INDEX_NONE) {
+        if (pos != INDEX_NONE)
+        {
             primitiveName = primitiveName.substr(0, pos);
         }
         j["Primitives"][std::to_string(Id)] = {
@@ -178,7 +188,7 @@ std::string FSceneMgr::SerializeSceneData(const SceneData& sceneData)
         float FOV = cameraComponent->GetFOV();
         float nearClip = cameraComponent->GetNearClip();
         float farClip = cameraComponent->GetFarClip();
-    
+
         //
         j["PerspectiveCamera"][std::to_string(id)] = {
             {"Location", Location},
@@ -196,7 +206,8 @@ std::string FSceneMgr::SerializeSceneData(const SceneData& sceneData)
 bool FSceneMgr::SaveSceneToFile(const FString& filename, const SceneData& sceneData)
 {
     std::ofstream outFile(*filename);
-    if (!outFile) {
+    if (!outFile)
+    {
         FString errorMessage = "Failed to open file for writing: ";
         MessageBoxA(NULL, *errorMessage, "Error", MB_OK | MB_ICONERROR);
         return false;
