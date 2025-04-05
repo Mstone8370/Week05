@@ -47,10 +47,10 @@ public:
 
     //Render
     void RenderPrimitive(ID3D11Buffer* pBuffer, UINT numVertices) const;
-    void RenderPrimitive(ID3D11Buffer* pVertexBuffer, UINT numVertices, ID3D11Buffer* pIndexBuffer, UINT numIndices) const;
-    void RenderPrimitive(OBJ::FStaticMeshRenderData* renderData, TArray<FStaticMaterial*> materials, TArray<UMaterial*> overrideMaterial, int selectedSubMeshIndex) const;
+    void RenderPrimitive(ID3D11Buffer* pVertexBuffer, ID3D11Buffer* pIndexBuffer, UINT numIndices) const;
+    void RenderPrimitive(OBJ::FStaticMeshRenderData* RenderData, TArray<FStaticMaterial*> Materials, TArray<UMaterial*> OverrideMaterial, int SelectedSubMeshIndex) const;
 
-    void RenderTexturedModelPrimitive(ID3D11Buffer* pVertexBuffer, UINT numVertices, ID3D11Buffer* pIndexBuffer, UINT numIndices, ID3D11ShaderResourceView* InTextureSRV, ID3D11SamplerState* InSamplerState) const;
+    void RenderTexturedModelPrimitive(ID3D11Buffer* pVertexBuffer, ID3D11Buffer* pIndexBuffer, UINT numIndices, ID3D11ShaderResourceView* InTextureSRV, ID3D11SamplerState* InSamplerState) const;
     //Release
     void Release();
     void ReleaseShader();
@@ -61,10 +61,7 @@ public:
     void ResetPixelShader() const;
     void CreateShader();
 
-    void SetVertexShader(const FWString& filename, const FString& funcname, const FString& version);
-    void SetPixelShader(const FWString& filename, const FString& funcname, const FString& version);
-
-    void ChangeViewMode(EViewModeIndex evi) const;
+    void ChangeViewMode(EViewModeIndex InViewModeIndex) const;
 
     // CreateBuffer
     void CreateConstantBuffer();
@@ -72,13 +69,13 @@ public:
     void CreateLitUnlitBuffer();
     ID3D11Buffer* CreateVertexBuffer(FStaticMeshVertex* vertices, UINT byteWidth) const;
     ID3D11Buffer* CreateVertexBuffer(const TArray<FStaticMeshVertex>& vertices, UINT byteWidth) const;
-    ID3D11Buffer* CreateIndexBuffer(uint32* indices, UINT byteWidth) const;
-    ID3D11Buffer* CreateIndexBuffer(const TArray<uint32>& indices, UINT byteWidth) const;
+    ID3D11Buffer* CreateIndexBuffer(uint32* Indices, UINT ByteWidth) const;
+    ID3D11Buffer* CreateIndexBuffer(const TArray<uint32>& Indices, UINT ByteWidth) const;
 
     // update
     void UpdateObjectBuffer(const FMatrix& ModelMatrix, const FMatrix& InverseTransposedNormal, FVector4 UUIDColor, bool IsSelected) const;
-    void UdpateViewBuffer(const FMatrix& ViewMatrix, const FVector& ViewLocation);
-    void UpdateProjectionBuffer(const FMatrix& ProjectionMatrix, float NearClip, float FarClip);
+    void UpdateViewBuffer(const FMatrix& ViewMatrix, const FVector& ViewLocation) const;
+    void UpdateProjectionBuffer(const FMatrix& ProjectionMatrix, float NearClip, float FarClip) const;
 
     void UpdateLightBuffer() const;
     void UpdateMaterial(const FObjMaterialInfo& MaterialInfo) const;

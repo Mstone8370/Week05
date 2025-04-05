@@ -128,37 +128,9 @@ void FRenderer::ResetPixelShader() const
     PixelShader->Release();
 }
 
-void FRenderer::SetVertexShader(const FWString& filename, const FString& funcname, const FString& version)
+void FRenderer::ChangeViewMode(EViewModeIndex InViewModeIndex) const
 {
-    if (Graphics == nullptr)
-        assert(0);
-    if (VertexShader != nullptr)
-        ResetVertexShader();
-    if (InputLayout != nullptr)
-        InputLayout->Release();
-    ID3DBlob* vertexshaderCSO;
-
-    D3DCompileFromFile(filename.c_str(), nullptr, D3D_COMPILE_STANDARD_FILE_INCLUDE, *funcname, *version, 0, 0, &vertexshaderCSO, nullptr);
-    Graphics->Device->CreateVertexShader(vertexshaderCSO->GetBufferPointer(), vertexshaderCSO->GetBufferSize(), nullptr, &VertexShader);
-    vertexshaderCSO->Release();
-}
-
-void FRenderer::SetPixelShader(const FWString& filename, const FString& funcname, const FString& version)
-{
-    if (Graphics == nullptr)
-        assert(0);
-    if (VertexShader != nullptr)
-        ResetVertexShader();
-    ID3DBlob* pixelshaderCSO;
-    D3DCompileFromFile(filename.c_str(), nullptr, D3D_COMPILE_STANDARD_FILE_INCLUDE, *funcname, *version, 0, 0, &pixelshaderCSO, nullptr);
-    Graphics->Device->CreatePixelShader(pixelshaderCSO->GetBufferPointer(), pixelshaderCSO->GetBufferSize(), nullptr, &PixelShader);
-
-    pixelshaderCSO->Release();
-}
-
-void FRenderer::ChangeViewMode(EViewModeIndex evi) const
-{
-    switch (evi)
+    switch (InViewModeIndex)
     {
     case EViewModeIndex::VMI_Lit:
         UpdateLitUnlitConstant(1);
@@ -178,7 +150,7 @@ void FRenderer::RenderPrimitive(ID3D11Buffer* pBuffer, UINT numVertices) const
     Graphics->DeviceContext->Draw(numVertices, 0);
 }
 
-void FRenderer::RenderPrimitive(ID3D11Buffer* pVertexBuffer, UINT numVertices, ID3D11Buffer* pIndexBuffer, UINT numIndices) const
+void FRenderer::RenderPrimitive(ID3D11Buffer* pVertexBuffer, ID3D11Buffer* pIndexBuffer, UINT numIndices) const
 {
     uint32 Stride = sizeof(FStaticMeshVertex);
     uint32 Offset = 0;
@@ -188,42 +160,50 @@ void FRenderer::RenderPrimitive(ID3D11Buffer* pVertexBuffer, UINT numVertices, I
     Graphics->DeviceContext->DrawIndexed(numIndices, 0, 0);
 }
 
-void FRenderer::RenderPrimitive(OBJ::FStaticMeshRenderData* renderData, TArray<FStaticMaterial*> materials, TArray<UMaterial*> overrideMaterial, int selectedSubMeshIndex = -1) const
+void FRenderer::RenderPrimitive(OBJ::FStaticMeshRenderData* RenderData, TArray<FStaticMaterial*> Materials, TArray<UMaterial*> OverrideMaterial, int SelectedSubMeshIndex = -1) const
 {
     uint32 Stride = sizeof(FStaticMeshVertex);
     uint32 Offset = 0;
-    Graphics->DeviceContext->IASetVertexBuffers(0, 1, &renderData->VertexBuffer, &Stride, &Offset);
+    Graphics->DeviceContext->IASetVertexBuffers(0, 1, &RenderData->VertexBuffer, &Stride, &Offset);
 
-    if (renderData->IndexBuffer)
-        Graphics->DeviceContext->IASetIndexBuffer(renderData->IndexBuffer, DXGI_FORMAT_R32_UINT, 0);
-
-    if (renderData->MaterialSubsets.Num() == 0)
+    if (RenderData->IndexBuffer)
     {
-        // no submesh
-        Graphics->DeviceContext->DrawIndexed(renderData->Indices.Num(), 0, 0);
+        Graphics->DeviceContext->IASetIndexBuffer(RenderData->IndexBuffer, DXGI_FORMAT_R32_UINT, 0);
     }
 
-    for (int subMeshIndex = 0; subMeshIndex < renderData->MaterialSubsets.Num(); subMeshIndex++)
+    if (RenderData->MaterialSubsets.Num() == 0)
     {
-        int materialIndex = renderData->MaterialSubsets[subMeshIndex].MaterialIndex;
+        // no submesh
+        Graphics->DeviceContext->DrawIndexed(RenderData->Indices.Num(), 0, 0);
+    }
 
-        subMeshIndex == selectedSubMeshIndex ? UpdateSubMeshConstant(true) : UpdateSubMeshConstant(false);
+    for (int subMeshIndex = 0; subMeshIndex < RenderData->MaterialSubsets.Num(); subMeshIndex++)
+    {
+        int materialIndex = RenderData->MaterialSubsets[subMeshIndex].MaterialIndex;
 
-        overrideMaterial[materialIndex] != nullptr ?
-            UpdateMaterial(overrideMaterial[materialIndex]->GetMaterialInfo()) : UpdateMaterial(materials[materialIndex]->Material->GetMaterialInfo());
+        subMeshIndex == SelectedSubMeshIndex ? UpdateSubMeshConstant(true) : UpdateSubMeshConstant(false);
 
-        if (renderData->IndexBuffer)
+        if (OverrideMaterial[materialIndex])
+        {
+            UpdateMaterial(OverrideMaterial[materialIndex]->GetMaterialInfo());
+        }
+        else
+        {
+            UpdateMaterial(Materials[materialIndex]->Material->GetMaterialInfo());
+        }
+
+        if (RenderData->IndexBuffer)
         {
             // index draw
-            uint64 startIndex = renderData->MaterialSubsets[subMeshIndex].IndexStart;
-            uint64 indexCount = renderData->MaterialSubsets[subMeshIndex].IndexCount;
+            uint64 startIndex = RenderData->MaterialSubsets[subMeshIndex].IndexStart;
+            uint64 indexCount = RenderData->MaterialSubsets[subMeshIndex].IndexCount;
             Graphics->DeviceContext->DrawIndexed(indexCount, startIndex, 0);
         }
     }
 }
 
 void FRenderer::RenderTexturedModelPrimitive(
-    ID3D11Buffer* pVertexBuffer, UINT numVertices, ID3D11Buffer* pIndexBuffer, UINT numIndices, ID3D11ShaderResourceView* InTextureSRV,
+    ID3D11Buffer* pVertexBuffer, ID3D11Buffer* pIndexBuffer, UINT numIndices, ID3D11ShaderResourceView* InTextureSRV,
     ID3D11SamplerState* InSamplerState
 ) const
 {
@@ -287,41 +267,42 @@ ID3D11Buffer* FRenderer::CreateVertexBuffer(const TArray<FStaticMeshVertex>& ver
     return vertexBuffer;
 }
 
-ID3D11Buffer* FRenderer::CreateIndexBuffer(uint32* indices, UINT byteWidth) const
+ID3D11Buffer* FRenderer::CreateIndexBuffer(uint32* Indices, UINT ByteWidth) const
 {
-    D3D11_BUFFER_DESC indexbufferdesc = {};
-    indexbufferdesc.Usage = D3D11_USAGE_IMMUTABLE;
-    indexbufferdesc.BindFlags = D3D11_BIND_INDEX_BUFFER;
-    indexbufferdesc.ByteWidth = byteWidth;
+    D3D11_BUFFER_DESC IndexBufferDesc = {};
+    IndexBufferDesc.Usage = D3D11_USAGE_IMMUTABLE;
+    IndexBufferDesc.BindFlags = D3D11_BIND_INDEX_BUFFER;
+    IndexBufferDesc.ByteWidth = ByteWidth;
 
-    D3D11_SUBRESOURCE_DATA indexbufferSRD = {indices};
+    D3D11_SUBRESOURCE_DATA IndexBufferData = {};
+    IndexBufferData.pSysMem = Indices;
 
     ID3D11Buffer* indexBuffer;
 
-    HRESULT hr = Graphics->Device->CreateBuffer(&indexbufferdesc, &indexbufferSRD, &indexBuffer);
+    HRESULT hr = Graphics->Device->CreateBuffer(&IndexBufferDesc, &IndexBufferData, &indexBuffer);
     if (FAILED(hr))
     {
-        UE_LOG(LogLevel::Warning, "IndexBuffer Creation faild");
+        UE_LOG(LogLevel::Warning, "IndexBuffer Creation failed");
     }
     return indexBuffer;
 }
 
-ID3D11Buffer* FRenderer::CreateIndexBuffer(const TArray<uint32>& indices, UINT byteWidth) const
+ID3D11Buffer* FRenderer::CreateIndexBuffer(const TArray<uint32>& Indices, UINT ByteWidth) const
 {
-    D3D11_BUFFER_DESC indexbufferdesc = {};
-    indexbufferdesc.Usage = D3D11_USAGE_IMMUTABLE;
-    indexbufferdesc.BindFlags = D3D11_BIND_INDEX_BUFFER;
-    indexbufferdesc.ByteWidth = byteWidth;
+    D3D11_BUFFER_DESC IndexBufferDesc = {};
+    IndexBufferDesc.Usage = D3D11_USAGE_IMMUTABLE;
+    IndexBufferDesc.BindFlags = D3D11_BIND_INDEX_BUFFER;
+    IndexBufferDesc.ByteWidth = ByteWidth;
 
-    D3D11_SUBRESOURCE_DATA indexbufferSRD;
-    indexbufferSRD.pSysMem = indices.GetData();
+    D3D11_SUBRESOURCE_DATA IndexBufferData = {};
+    IndexBufferData.pSysMem = Indices.GetData();
 
     ID3D11Buffer* indexBuffer;
 
-    HRESULT hr = Graphics->Device->CreateBuffer(&indexbufferdesc, &indexbufferSRD, &indexBuffer);
+    HRESULT hr = Graphics->Device->CreateBuffer(&IndexBufferDesc, &IndexBufferData, &indexBuffer);
     if (FAILED(hr))
     {
-        UE_LOG(LogLevel::Warning, "IndexBuffer Creation faild");
+        UE_LOG(LogLevel::Warning, "IndexBuffer Creation failed");
     }
     return indexBuffer;
 }
@@ -372,73 +353,34 @@ void FRenderer::CreateConstantBuffer()
 
 void FRenderer::CreateLightingBuffer()
 {
-    D3D11_BUFFER_DESC constantbufferdesc = {};
-    constantbufferdesc.ByteWidth = sizeof(FLighting);
-    constantbufferdesc.Usage = D3D11_USAGE_DYNAMIC;
-    constantbufferdesc.CPUAccessFlags = D3D11_CPU_ACCESS_WRITE;
-    constantbufferdesc.BindFlags = D3D11_BIND_CONSTANT_BUFFER;
-    Graphics->Device->CreateBuffer(&constantbufferdesc, nullptr, &LightingBuffer);
+    D3D11_BUFFER_DESC ConstantBufferDesc = {};
+    ConstantBufferDesc.ByteWidth = sizeof(FLighting);
+    ConstantBufferDesc.Usage = D3D11_USAGE_DYNAMIC;
+    ConstantBufferDesc.CPUAccessFlags = D3D11_CPU_ACCESS_WRITE;
+    ConstantBufferDesc.BindFlags = D3D11_BIND_CONSTANT_BUFFER;
+    Graphics->Device->CreateBuffer(&ConstantBufferDesc, nullptr, &LightingBuffer);
 }
 
 void FRenderer::CreateLitUnlitBuffer()
 {
-    D3D11_BUFFER_DESC constantbufferdesc = {};
-    constantbufferdesc.ByteWidth = sizeof(FLitUnlitConstants);
-    constantbufferdesc.Usage = D3D11_USAGE_DYNAMIC;
-    constantbufferdesc.CPUAccessFlags = D3D11_CPU_ACCESS_WRITE;
-    constantbufferdesc.BindFlags = D3D11_BIND_CONSTANT_BUFFER;
-    Graphics->Device->CreateBuffer(&constantbufferdesc, nullptr, &FlagBuffer);
+    D3D11_BUFFER_DESC ConstantBufferDesc = {};
+    ConstantBufferDesc.ByteWidth = sizeof(FLitUnlitConstants);
+    ConstantBufferDesc.Usage = D3D11_USAGE_DYNAMIC;
+    ConstantBufferDesc.CPUAccessFlags = D3D11_CPU_ACCESS_WRITE;
+    ConstantBufferDesc.BindFlags = D3D11_BIND_CONSTANT_BUFFER;
+    Graphics->Device->CreateBuffer(&ConstantBufferDesc, nullptr, &FlagBuffer);
 }
 
 void FRenderer::ReleaseConstantBuffer()
 {
-    if (ObjectConstantBuffer)
-    {
-        ObjectConstantBuffer->Release();
-        ObjectConstantBuffer = nullptr;
-    }
-
-    if (ViewConstantBuffer)
-    {
-        ViewConstantBuffer->Release();
-        ViewConstantBuffer = nullptr;
-    }
-
-    if (ProjectionConstantBuffer)
-    {
-        ProjectionConstantBuffer->Release();
-        ProjectionConstantBuffer = nullptr;
-    }
-
-    if (LightingBuffer)
-    {
-        LightingBuffer->Release();
-        LightingBuffer = nullptr;
-    }
-
-    if (FlagBuffer)
-    {
-        FlagBuffer->Release();
-        FlagBuffer = nullptr;
-    }
-
-    if (MaterialConstantBuffer)
-    {
-        MaterialConstantBuffer->Release();
-        MaterialConstantBuffer = nullptr;
-    }
-
-    if (SubMeshConstantBuffer)
-    {
-        SubMeshConstantBuffer->Release();
-        SubMeshConstantBuffer = nullptr;
-    }
-
-    if (TextureConstantBuffer)
-    {
-        TextureConstantBuffer->Release();
-        TextureConstantBuffer = nullptr;
-    }
+    ReleaseBuffer(ObjectConstantBuffer);
+    ReleaseBuffer(ViewConstantBuffer);
+    ReleaseBuffer(ProjectionConstantBuffer);
+    ReleaseBuffer(LightingBuffer);
+    ReleaseBuffer(FlagBuffer);
+    ReleaseBuffer(MaterialConstantBuffer);
+    ReleaseBuffer(SubMeshConstantBuffer);
+    ReleaseBuffer(TextureConstantBuffer);
 }
 
 void FRenderer::UpdateObjectBuffer(const FMatrix& ModelMatrix, const FMatrix& InverseTransposedNormal, FVector4 UUIDColor, bool IsSelected) const
@@ -448,8 +390,8 @@ void FRenderer::UpdateObjectBuffer(const FMatrix& ModelMatrix, const FMatrix& In
         D3D11_MAPPED_SUBRESOURCE ConstantBufferMSR;
 
         Graphics->DeviceContext->Map(ObjectConstantBuffer, 0, D3D11_MAP_WRITE_DISCARD, 0, &ConstantBufferMSR);
+        if (FObjectConstants* constants = static_cast<FObjectConstants*>(ConstantBufferMSR.pData))
         {
-            FObjectConstants* constants = static_cast<FObjectConstants*>(ConstantBufferMSR.pData);
             constants->ModelMatrix = ModelMatrix;
             constants->ModelMatrixInverseTranspose = InverseTransposedNormal;
             constants->UUIDColor = UUIDColor;
@@ -459,15 +401,15 @@ void FRenderer::UpdateObjectBuffer(const FMatrix& ModelMatrix, const FMatrix& In
     }
 }
 
-void FRenderer::UdpateViewBuffer(const FMatrix& ViewMatrix, const FVector& ViewLocation)
+void FRenderer::UpdateViewBuffer(const FMatrix& ViewMatrix, const FVector& ViewLocation) const
 {
     if (ViewConstantBuffer)
     {
         D3D11_MAPPED_SUBRESOURCE ConstantBufferMSR;
 
         Graphics->DeviceContext->Map(ViewConstantBuffer, 0, D3D11_MAP_WRITE_DISCARD, 0, &ConstantBufferMSR);
+        if (FViewConstants* constants = static_cast<FViewConstants*>(ConstantBufferMSR.pData))
         {
-            FViewConstants* constants = static_cast<FViewConstants*>(ConstantBufferMSR.pData);
             constants->ViewMatrix = ViewMatrix;
             constants->ViewLocation = ViewLocation;
         }
@@ -475,15 +417,15 @@ void FRenderer::UdpateViewBuffer(const FMatrix& ViewMatrix, const FVector& ViewL
     }
 }
 
-void FRenderer::UpdateProjectionBuffer(const FMatrix& ProjectionMatrix, float NearClip, float FarClip)
+void FRenderer::UpdateProjectionBuffer(const FMatrix& ProjectionMatrix, float NearClip, float FarClip) const
 {
     if (ProjectionConstantBuffer)
     {
         D3D11_MAPPED_SUBRESOURCE ConstantBufferMSR;
 
         Graphics->DeviceContext->Map(ProjectionConstantBuffer, 0, D3D11_MAP_WRITE_DISCARD, 0, &ConstantBufferMSR);
+        if (FProjectionConstants* constants = static_cast<FProjectionConstants*>(ConstantBufferMSR.pData))
         {
-            FProjectionConstants* constants = static_cast<FProjectionConstants*>(ConstantBufferMSR.pData);
             constants->ProjectionMatrix = ProjectionMatrix;
             constants->NearClip = NearClip;
             constants->FarClip = FarClip;
@@ -497,8 +439,8 @@ void FRenderer::UpdateLightBuffer() const
     if (!LightingBuffer) return;
     D3D11_MAPPED_SUBRESOURCE mappedResource;
     Graphics->DeviceContext->Map(LightingBuffer, 0, D3D11_MAP_WRITE_DISCARD, 0, &mappedResource);
+    if (FLighting* constants = static_cast<FLighting*>(mappedResource.pData))
     {
-        FLighting* constants = static_cast<FLighting*>(mappedResource.pData);
         constants->lightDirX = 1.0f;
         constants->lightDirY = 1.0f;
         constants->lightDirZ = 1.0f;
@@ -517,8 +459,8 @@ void FRenderer::UpdateMaterial(const FObjMaterialInfo& MaterialInfo) const
         D3D11_MAPPED_SUBRESOURCE ConstantBufferMSR;
 
         Graphics->DeviceContext->Map(MaterialConstantBuffer, 0, D3D11_MAP_WRITE_DISCARD, 0, &ConstantBufferMSR); // update constant buffer every frame
+        if (FMaterialConstants* constants = static_cast<FMaterialConstants*>(ConstantBufferMSR.pData))
         {
-            FMaterialConstants* constants = static_cast<FMaterialConstants*>(ConstantBufferMSR.pData);
             constants->DiffuseColor = MaterialInfo.Diffuse;
             constants->TransparencyScalar = MaterialInfo.TransparencyScalar;
             constants->AmbientColor = MaterialInfo.Ambient;
@@ -552,7 +494,7 @@ void FRenderer::UpdateLitUnlitConstant(int isLit) const
     {
         D3D11_MAPPED_SUBRESOURCE constantbufferMSR;
         Graphics->DeviceContext->Map(FlagBuffer, 0, D3D11_MAP_WRITE_DISCARD, 0, &constantbufferMSR);
-        auto constants = static_cast<FLitUnlitConstants*>(constantbufferMSR.pData);
+        if (FLitUnlitConstants* constants = static_cast<FLitUnlitConstants*>(constantbufferMSR.pData))
         {
             constants->isLit = isLit;
         }
@@ -566,7 +508,7 @@ void FRenderer::UpdateSubMeshConstant(bool isSelected) const
     {
         D3D11_MAPPED_SUBRESOURCE constantbufferMSR;
         Graphics->DeviceContext->Map(SubMeshConstantBuffer, 0, D3D11_MAP_WRITE_DISCARD, 0, &constantbufferMSR);
-        FSubMeshConstants* constants = (FSubMeshConstants*)constantbufferMSR.pData;
+        if (FSubMeshConstants* constants = static_cast<FSubMeshConstants*>(constantbufferMSR.pData))
         {
             constants->isSelectedSubMesh = isSelected;
         }
@@ -578,9 +520,9 @@ void FRenderer::UpdateTextureConstant(float UOffset, float VOffset)
 {
     if (TextureConstantBuffer)
     {
-        D3D11_MAPPED_SUBRESOURCE constantbufferMSR;
-        Graphics->DeviceContext->Map(TextureConstantBuffer, 0, D3D11_MAP_WRITE_DISCARD, 0, &constantbufferMSR);
-        FTextureConstants* constants = (FTextureConstants*)constantbufferMSR.pData;
+        D3D11_MAPPED_SUBRESOURCE MappedSubresource;
+        Graphics->DeviceContext->Map(TextureConstantBuffer, 0, D3D11_MAP_WRITE_DISCARD, 0, &MappedSubresource);
+        if (FTextureConstants* constants = static_cast<FTextureConstants*>(MappedSubresource.pData))
         {
             constants->UOffset = UOffset;
             constants->VOffset = VOffset;
@@ -1099,6 +1041,8 @@ void FRenderer::RenderBatch(
 
 void FRenderer::PrepareRender(ULevel* Level)
 {
+    // TODO: 임시로 진행한 코드이므로, 수정 필수
+
     TArray<USceneComponent*> Ss;
     for (const auto& A : Level->GetActors())
     {
@@ -1163,7 +1107,7 @@ void FRenderer::Render(ULevel* Level, std::shared_ptr<FEditorViewportClient> Act
     ChangeViewMode(ActiveViewport->GetViewMode());
 
     // TODO: 임시로 여기에서 View 상수 버퍼와 Projection 상수 버퍼 업데이트
-    UdpateViewBuffer(ActiveViewport->GetViewMatrix(), ActiveViewport->ViewTransformPerspective.GetLocation());
+    UpdateViewBuffer(ActiveViewport->GetViewMatrix(), ActiveViewport->ViewTransformPerspective.GetLocation());
     UpdateProjectionBuffer(ActiveViewport->GetProjectionMatrix(), ActiveViewport->nearPlane, ActiveViewport->farPlane);
 
     UpdateLightBuffer();

@@ -10,7 +10,6 @@
 #include "LevelEditor/SLevelEditor.h"
 #include "PropertyEditor/ShowFlags.h"
 
-
 UBillboardComponent::UBillboardComponent()
 {
     SetType(StaticClass()->GetName());
@@ -46,10 +45,9 @@ UObject* UBillboardComponent::Duplicate()
 void UBillboardComponent::InitializeComponent()
 {
     Super::InitializeComponent();
+
 	CreateQuadTextureVertexBuffer();
 }
-
-
 
 void UBillboardComponent::TickComponent(float DeltaTime)
 {
@@ -62,8 +60,7 @@ int UBillboardComponent::CheckRayIntersection(FVector& rayOrigin, FVector& rayDi
 	TArray<FVector> quad;
 	for (int i = 0; i < 4; i++)
 	{
-		quad.Add(FVector(quadTextureVertices[i].x, 
-			quadTextureVertices[i].y, quadTextureVertices[i].z));
+		quad.Add(FVector(quadTextureVertices[i].x, quadTextureVertices[i].y, quadTextureVertices[i].z));
 	}
 	return CheckPickingOnNDC(quad,pfNearHitDistance);
 }
@@ -93,7 +90,7 @@ FMatrix UBillboardComponent::CreateBillboardMatrix()
 	CameraView.M[1][2] = -CameraView.M[1][2];
 	CameraView.M[2][2] = -CameraView.M[2][2];
 	FMatrix LookAtCamera = FMatrix::Transpose(CameraView);
-	
+
 	FVector worldLocation = GetWorldLocation();
 	FVector worldScale = RelativeScale3D;
 	FMatrix S = FMatrix::CreateScale(worldScale.X, worldScale.Y, worldScale.Z);
@@ -111,10 +108,12 @@ void UBillboardComponent::CreateQuadTextureVertexBuffer()
 	vertexTextureBuffer = FEngineLoop::Renderer.CreateVertexBuffer(quadTextureVertices, sizeof(quadTextureVertices));
 	indexTextureBuffer = FEngineLoop::Renderer.CreateIndexBuffer(quadTextureInices, sizeof(quadTextureInices));
 
-	if (!vertexTextureBuffer) {
+	if (!vertexTextureBuffer)
+	{
 		Console::GetInstance().AddLog(LogLevel::Warning, "Buffer Error");
 	}
-	if (!indexTextureBuffer) {
+	if (!indexTextureBuffer)
+	{
 		Console::GetInstance().AddLog(LogLevel::Warning, "Buffer Error");
 	}
 }
@@ -154,7 +153,7 @@ bool UBillboardComponent::CheckPickingOnNDC(const TArray<FVector>& checkQuad, fl
 	{
 		FVector4 v = FVector4(checkQuad[i].X, checkQuad[i].Y, checkQuad[i].Z, 1.0f);
 		FVector4 clipPos = FMatrix::TransformVector(v, MVP);
-		
+
 		if (clipPos.a != 0)	clipPos = clipPos/clipPos.a;
 
 		minX = FMath::Min(minX, clipPos.x);

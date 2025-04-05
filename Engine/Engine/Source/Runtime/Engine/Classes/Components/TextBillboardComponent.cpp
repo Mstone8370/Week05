@@ -139,7 +139,7 @@ void UTextBillboardComponent::SetText(FWString _text)
 	quad.Add(FVector(lastX,1.0f,0.0f));
 	quad.Add(FVector(lastX,-1.0f,0.0f));
 
-	CreateTextTextureVertexBuffer(vertexTextureArr,byteWidth);
+	CreateTextTextureVertexBuffer(vertexTextureArr, byteWidth);
 }
 void UTextBillboardComponent::setStartUV(wchar_t hangul, float& outStartU, float& outStartV)
 {
@@ -250,8 +250,4 @@ void UTextBillboardComponent::CreateTextTextureVertexBuffer(const TArray<FVertex
 		UE_LOG(LogLevel::Warning, "VertexBuffer Creation faild");
 	}
 	vertexTextBuffer = vertexBuffer;
-
-	//FEngineLoop::ResourceManager.RegisterMesh(&FEngineLoop::Renderer, "JungleText", _vertex, _vertex.Num() * sizeof(FVertexTexture),
-	//	nullptr, 0);
-
 }
