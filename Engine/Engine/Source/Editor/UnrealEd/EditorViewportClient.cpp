@@ -85,7 +85,8 @@ void FEditorViewportClient::Input()
             int32 deltaY = currentMousePos.y - lastMousePos.y;
 
             // Yaw(좌우 회전) 및 Pitch(상하 회전) 값 변경
-            if (IsPerspective()) {
+            if (IsPerspective())
+            {
                 CameraRotateYaw(deltaX * 0.1f);  // X 이동에 따라 좌우 회전
                 CameraRotatePitch(deltaY * 0.1f);  // Y 이동에 따라 상하 회전
             }

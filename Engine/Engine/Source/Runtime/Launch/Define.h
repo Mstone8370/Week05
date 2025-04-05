@@ -109,6 +109,7 @@ struct FObjMaterialInfo
     FString AlphaTextureName;    // map_d : Alpha texture
     FWString AlphaTexturePath;
 };
+
 enum class EWorldType
 {
     Editor,
@@ -123,8 +124,6 @@ struct FWorldContext
     EWorldType worldType;
 
 };
-
-
 
 // Cooked Data
 namespace OBJ
@@ -154,6 +153,7 @@ struct FVertexTexture
 	float x, y, z;    // Position
 	float u, v; // Texture
 };
+
 struct FGridParameters
 {
 	float gridSpacing;
@@ -161,20 +161,25 @@ struct FGridParameters
 	FVector gridOrigin;
 	float pad;
 };
+
 struct FSimpleVertex
 {
 	float dummy; // 내용은 사용되지 않음
     float padding[11];
 };
-struct FOBB {
+
+struct FOrientedBoundingBox
+{
     FVector corners[8];
 };
+
 struct FRect
 {
     FRect() : leftTopX(0), leftTopY(0), width(0), height(0) {}
     FRect(float x, float y, float w, float h) : leftTopX(x), leftTopY(y), width(w), height(h) {}
     float leftTopX, leftTopY, width, height;
 };
+
 struct FPoint
 {
     FPoint() : x(0), y(0) {}
@@ -184,14 +189,17 @@ struct FPoint
 
     float x, y;
 };
+
 struct FBoundingBox
 {
-    FBoundingBox(){}
+    FBoundingBox() {}
     FBoundingBox(FVector _min, FVector _max) : min(_min), max(_max) {}
+
 	FVector min; // Minimum extents
 	float pad;
 	FVector max; // Maximum extents
 	float pad1;
+
     bool Intersect(const FVector& rayOrigin, const FVector& rayDir, float& outDistance)
     {
         float tmin = -FLT_MAX;
@@ -269,6 +277,7 @@ struct FBoundingBox
     }
 
 };
+
 struct FCone
 {
     FVector ConeApex; // 원뿔의 꼭짓점
@@ -282,26 +291,29 @@ struct FCone
     float pad[3];
 
 };
+
 struct FPrimitiveCounts
 {
 	int BoundingBoxCount;
-	int pad;
 	int ConeCount;
+	int pad;
 	int pad1;
 };
+
 struct FLighting
 {
 	float lightDirX, lightDirY, lightDirZ; // 조명 방향
-	float pad1;                      // 16바이트 정렬용 패딩
-	float lightColorX, lightColorY, lightColorZ;    // 조명 색상
-	float pad2;                      // 16바이트 정렬용 패딩
-	float AmbientFactor;             // ambient 계수
+	float pad1; // 16바이트 정렬용 패딩
+	float lightColorX, lightColorY, lightColorZ; // 조명 색상
+	float pad2; // 16바이트 정렬용 패딩
+	float AmbientFactor; // ambient 계수
 	float pad3; // 16바이트 정렬 맞춤 추가 패딩
 	float pad4; // 16바이트 정렬 맞춤 추가 패딩
 	float pad5; // 16바이트 정렬 맞춤 추가 패딩
 };
 
-struct FMaterialConstants {
+struct FMaterialConstants
+{
     FVector DiffuseColor;
     float TransparencyScalar;
     FVector AmbientColor;
@@ -312,24 +324,44 @@ struct FMaterialConstants {
     float MaterialPad0;
 };
 
-struct FConstants {
-    FMatrix MVP;      // 모델
+struct FObjectConstants
+{
+    FMatrix ModelMatrix;      // 모델
     FMatrix ModelMatrixInverseTranspose; // normal 변환을 위한 행렬
     FVector4 UUIDColor;
     bool IsSelected;
     FVector pad;
 };
-struct FLitUnlitConstants {
+
+struct FViewConstants
+{
+    FMatrix ViewMatrix;
+    FVector ViewLocation;
+    float ViewPadding;
+};
+
+struct FProjectionConstants
+{
+    FMatrix ProjectionMatrix;
+    float NearClip;
+    float FarClip;
+    FVector2D ProjectionPadding;
+};
+
+struct FLitUnlitConstants
+{
     int isLit; // 1 = Lit, 0 = Unlit
     FVector pad;
 };
 
-struct FSubMeshConstants {
+struct FSubMeshConstants
+{
     float isSelectedSubMesh;
     FVector pad;
 };
 
-struct FTextureConstants {
+struct FTextureConstants
+{
     float UOffset;
     float VOffset;
     float pad0;

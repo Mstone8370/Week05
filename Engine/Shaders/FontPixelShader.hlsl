@@ -1,40 +1,30 @@
-Texture2D gTexture : register(t0);
-SamplerState gSampler : register(s0);
+#include "ShaderRegisters.hlsl"
 
-cbuffer SubUVConstant : register(b1)
+Texture2D Texture : register(t0);
+
+cbuffer SubUVConstant : register(b3)
 {
-    float indexU;
-    float indexV;
+    float IndexU;
+    float IndexV;
+    float2 SubUVPadding;
 }
 
-cbuffer UUIDConstant : register(b2)
+struct PS_Input
 {
-    float4 UUID;
-}
-
-struct PSInput {
     float4 position : SV_POSITION;
     float2 texCoord : TEXCOORD;
 };
 
-struct PSOutput
+float4 main(PS_Input input) : SV_TARGET
 {
-    float4 color : SV_Target0;
-    float4 uuid : SV_Target1;
-};
+    float2 UV = input.texCoord + float2(IndexU, IndexV);
+    float4 Color = Texture.Sample(Sampler, UV);
 
-float4 main(PSInput input) : SV_TARGET {
-    PSOutput output;
-    
-    float2 uv = input.texCoord + float2(indexU, indexV);
-    //float4 col = gTexture.Sample(gSampler, input.texCoord);
-    float4 col = gTexture.Sample(gSampler, uv);
-    float threshold = 0.05; // 필요한 경우 임계값을 조정
-    if (col.r < threshold && col.g < threshold && col.b < threshold)
+    float Threshold = 0.05; // 필요한 경우 임계값을 조정
+    if (Color.r < Threshold && Color.g < Threshold && Color.b < Threshold)
+    {
         clip(-1); // 픽셀 버리기
-    
-    output.color = col;
-    output.uuid = UUID;
-    
-    return col;
+    }
+
+    return Color;
 }

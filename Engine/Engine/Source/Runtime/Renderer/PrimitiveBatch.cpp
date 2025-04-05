@@ -41,9 +41,8 @@ void UPrimitiveBatch::RenderBatch(const FMatrix& View, const FMatrix& Projection
     InitializeVertexBuffer();
 
     FMatrix Model = FMatrix::Identity;
-    FMatrix MVP = Model * View * Projection;
     FMatrix NormalMatrix = FMatrix::Transpose(FMatrix::Inverse(Model));
-    FEngineLoop::Renderer.UpdateConstant(MVP, NormalMatrix, FVector4(0,0,0,0), false);
+    FEngineLoop::Renderer.UpdateObjectBuffer(Model, NormalMatrix, FVector4(0,0,0,0), false);
     FEngineLoop::Renderer.UpdateGridConstantBuffer(GridParam);
 
     UpdateBoundingBoxResources();
@@ -183,7 +182,7 @@ void UPrimitiveBatch::RenderOBB(const FBoundingBox& localAABB, const FVector& ce
         { localAABB.max.X, localAABB.max.Y, localAABB.max.Z }
     };
 
-    FOBB faceBB;
+    FOrientedBoundingBox faceBB;
     for (int32 i = 0; i < 8; ++i) {
         // 모델 매트릭스로 점을 변환 후, center를 더해준다.
         faceBB.corners[i] =  center + FMatrix::TransformVector(localVertices[i], modelMatrix);

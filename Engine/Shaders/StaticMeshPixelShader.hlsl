@@ -1,14 +1,12 @@
-Texture2D Textures : register(t0);
-SamplerState Sampler : register(s0);
+#include "ShaderRegisters.hlsl"
 
-cbuffer MatrixConstants : register(b0)
+Texture2D Textures : register(t0);
+
+cbuffer FlagConstants : register(b3)
 {
-    row_major float4x4 MVP;
-    row_major float4x4 MInverseTranspose;
-    float4 UUID;
-    bool isSelected;
-    float3 MatrixPad0;
-};
+    bool IsLit;
+    float3 FlagPadding;
+}
 
 struct FMaterial
 {
@@ -22,37 +20,33 @@ struct FMaterial
     float MaterialPad0;
 };
 
-cbuffer MaterialConstants : register(b1)
+cbuffer MaterialConstants : register(b4)
 {
     FMaterial Material;
 }
 
-cbuffer LightingConstants : register(b2)
+cbuffer LightingConstants : register(b5)
 {
     float3 LightDirection; // 조명 방향 (단위 벡터; 빛이 들어오는 방향의 반대 사용)
     float LightPad0; // 16바이트 정렬용 패딩
+
     float3 LightColor; // 조명 색상 (예: (1, 1, 1))
     float LightPad1; // 16바이트 정렬용 패딩
+
     float AmbientFactor; // ambient 계수 (예: 0.1)
     float3 LightPad2; // 16바이트 정렬 맞춤 추가 패딩
 };
 
-cbuffer FlagConstants : register(b3)
-{
-    bool IsLit;
-    float3 flagPad0;
-}
-
-cbuffer SubMeshConstants : register(b4)
+cbuffer SubMeshConstants : register(b6)
 {
     bool IsSelectedSubMesh;
-    float3 SubMeshPad0;
+    float3 SubMeshPadding;
 }
 
-cbuffer TextureConstants : register(b5)
+cbuffer TextureConstants : register(b7)
 {
     float2 UVOffset;
-    float2 TexturePad0;
+    float2 TexturePadding;
 }
 
 struct PS_INPUT
@@ -133,7 +127,7 @@ PS_OUTPUT mainPS(PS_INPUT input)
         color = texColor + Material.DiffuseColor;
     }
 
-    if (isSelected)
+    if (IsSelected)
     {
         color += float3(0.2f, 0.2f, 0.0f); // 노란색 틴트로 하이라이트
         if (IsSelectedSubMesh)

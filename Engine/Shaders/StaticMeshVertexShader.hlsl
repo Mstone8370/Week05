@@ -1,12 +1,4 @@
-// MatrixBuffer: 변환 행렬 관리
-cbuffer MatrixConstants : register(b0)
-{
-    row_major float4x4 MVP;
-    row_major float4x4 MInverseTranspose;
-    float4 UUID;
-    bool isSelected;
-    float3 MatrixPad0;
-};
+#include "ShaderRegisters.hlsl"
 
 struct VS_INPUT
 {
@@ -36,9 +28,12 @@ PS_INPUT mainVS(VS_INPUT input)
 
     // 위치 변환
     output.position = float4(input.position, 1.0);
-    output.position = mul(output.position, MVP);
+    output.position = mul(output.position, ModelMatrix);
+    output.position = mul(output.position, ViewMatrix);
+    output.position = mul(output.position, ProjectionMatrix);
     output.color = input.color;
-    if (isSelected)
+
+    if (IsSelected)
     {
         output.color *= 0.5;
     }
@@ -53,7 +48,7 @@ PS_INPUT mainVS(VS_INPUT input)
     else
     {
         //output.normal = normalize(input.normal);
-        output.normal = mul(input.normal, MInverseTranspose);
+        output.normal = normalize(mul(input.normal, InverseTranspose));
         output.normalFlag = 1.0;
     }
     output.texcoord = input.texcoord;

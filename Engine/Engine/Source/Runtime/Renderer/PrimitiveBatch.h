@@ -46,7 +46,7 @@ private:
     size_t allocatedConeCapacity;
     size_t allocatedOBBCapacity;
     TArray<FBoundingBox> BoundingBoxes;
-    TArray<FOBB> OrientedBoundingBoxes;
+    TArray<FOrientedBoundingBox> OrientedBoundingBoxes;
     TArray<FCone> Cones;
     FGridParameters GridParam;
     int ConeSegmentCount = 0;

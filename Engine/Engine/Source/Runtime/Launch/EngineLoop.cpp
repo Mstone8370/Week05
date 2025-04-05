@@ -142,14 +142,14 @@ void FEngineLoop::Render()
     GraphicDevice.Prepare();
     if (LevelEditor->IsMultiViewport())
     {
-        std::shared_ptr<FEditorViewportClient> viewportClient = GetLevelEditor()->GetActiveViewportClient();
+        std::shared_ptr<FEditorViewportClient> ViewportClient = GetLevelEditor()->GetActiveViewportClient();
         for (int i = 0; i < 4; ++i)
         {
             LevelEditor->SetViewportClient(i);
             Renderer.PrepareRender(GLevel);
             Renderer.Render(GetLevel(),LevelEditor->GetActiveViewportClient());
         }
-        GetLevelEditor()->SetViewportClient(viewportClient);
+        GetLevelEditor()->SetViewportClient(ViewportClient);
     }
     else
     {
