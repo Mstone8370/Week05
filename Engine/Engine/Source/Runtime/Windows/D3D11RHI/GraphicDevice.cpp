@@ -44,8 +44,6 @@ void FGraphicsDevice::CreateDeviceAndSwapChain(HWND hWindow)
     screenHeight = SwapchainDesc.BufferDesc.Height;
 }
 
-
-
 void FGraphicsDevice::CreateDepthStencilBuffer(HWND hWindow)
 {
     RECT clientRect;
@@ -80,7 +78,7 @@ void FGraphicsDevice::CreateDepthStencilBuffer(HWND hWindow)
     ZeroMemory(&descDSV, sizeof(descDSV));
     descDSV.Format = DXGI_FORMAT_D24_UNORM_S8_UINT; // 깊이 스텐실 포맷
     descDSV.ViewDimension = D3D11_DSV_DIMENSION_TEXTURE2D; // 뷰 타입 설정 (2D 텍스처)
-    descDSV.Texture2D.MipSlice = 0; // 사용할 미맵 슬라이스 설정
+    descDSV.Texture2D.MipSlice = 0; // 사용할 밉맵 슬라이스 설정
 
     hr = Device->CreateDepthStencilView(DepthStencilBuffer, // Depth stencil texture
         &descDSV, // Depth stencil desc

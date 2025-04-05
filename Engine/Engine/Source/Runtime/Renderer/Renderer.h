@@ -14,17 +14,15 @@ class ULightComponentBase;
 class ULevel;
 class FGraphicsDevice;
 class UMaterial;
-struct FStaticMaterial;
 class UObject;
 class FEditorViewportClient;
 class UBillboardComponent;
 class UStaticMeshComponent;
 class UGizmoBaseComponent;
-class FRenderer 
-{
+struct FStaticMaterial;
 
-private:
-    float litFlag = 0;
+class FRenderer
+{
 public:
     FGraphicsDevice* Graphics;
     ID3D11VertexShader* VertexShader = nullptr;
@@ -35,23 +33,19 @@ public:
     ID3D11Buffer* FlagBuffer = nullptr;
     ID3D11Buffer* MaterialConstantBuffer = nullptr;
     ID3D11Buffer* SubMeshConstantBuffer = nullptr;
-    ID3D11Buffer* TextureConstantBufer = nullptr;
+    ID3D11Buffer* TextureConstantBuffer = nullptr;
 
     FLighting lightingData;
 
-    uint32 Stride;
-    uint32 Stride2;
-
-public:
     void Initialize(FGraphicsDevice* graphics);
-   
+
     void PrepareShader() const;
-    
+
     //Render
     void RenderPrimitive(ID3D11Buffer* pBuffer, UINT numVertices) const;
     void RenderPrimitive(ID3D11Buffer* pVertexBuffer, UINT numVertices, ID3D11Buffer* pIndexBuffer, UINT numIndices) const;
     void RenderPrimitive(OBJ::FStaticMeshRenderData* renderData, TArray<FStaticMaterial*> materials, TArray<UMaterial*> overrideMaterial, int selectedSubMeshIndex) const;
-   
+
     void RenderTexturedModelPrimitive(ID3D11Buffer* pVertexBuffer, UINT numVertices, ID3D11Buffer* pIndexBuffer, UINT numIndices, ID3D11ShaderResourceView* InTextureSRV, ID3D11SamplerState* InSamplerState) const;
     //Release
     void Release();
@@ -65,9 +59,9 @@ public:
 
     void SetVertexShader(const FWString& filename, const FString& funcname, const FString& version);
     void SetPixelShader(const FWString& filename, const FString& funcname, const FString& version);
-    
+
     void ChangeViewMode(EViewModeIndex evi) const;
-    
+
     // CreateBuffer
     void CreateConstantBuffer();
     void CreateLightingBuffer();
@@ -85,7 +79,7 @@ public:
     void UpdateSubMeshConstant(bool isSelected) const;
     void UpdateTextureConstant(float UOffset, float VOffset);
 
-public://텍스쳐용 기능 추가
+    //텍스쳐용 기능 추가
     ID3D11VertexShader* TextureVertexShader = nullptr;
     ID3D11PixelShader* TexturePixelShader = nullptr;
     ID3D11InputLayout* TextureInputLayout = nullptr;
@@ -94,7 +88,6 @@ public://텍스쳐용 기능 추가
     ID3D11PixelShader* FontPixelShader = nullptr;
     ID3D11InputLayout* FontInputLayout = nullptr;
 
-    uint32 TextureStride;
     struct FSubUVConstant
     {
         float indexU;
@@ -102,15 +95,14 @@ public://텍스쳐용 기능 추가
     };
     ID3D11Buffer* SubUVConstantBuffer = nullptr;
 
-public:
     void CreateFontShader();
     void ReleaseFontShader();
 
     void PrepareFontShader() const;
-    
+
     void CreateTextureShader();
     void ReleaseTextureShader();
-    
+
     void PrepareTextureShader() const;
     ID3D11Buffer* CreateVertexTextureBuffer(FVertexTexture* vertices, UINT byteWidth) const;
     ID3D11Buffer* CreateIndexTextureBuffer(uint32* indices, UINT byteWidth) const;
@@ -126,8 +118,7 @@ public:
     void UpdateSubUVConstant(float _indexU, float _indexV) const;
     void PrepareSubUVConstant() const;
 
-
-public: // line shader
+    // line shader
     void PrepareLineShader() const;
     void CreateLineShader();
     void ReleaseLineShader() const;
@@ -155,13 +146,15 @@ public: // line shader
     void RenderLight(ULevel* Level, std::shared_ptr<FEditorViewportClient> ActiveViewport);
     void RenderBillboards(ULevel* Level,std::shared_ptr<FEditorViewportClient> ActiveViewport);
     void RenderTexts(ULevel* Level,std::shared_ptr<FEditorViewportClient> ActiveViewport);
-    
+
 private:
     TArray<UStaticMeshComponent*> StaticMeshObjs;
     TArray<UGizmoBaseComponent*> GizmoObjs;
     TArray<UPrimitiveComponent*> TextObjs;
     TArray<UBillboardComponent*> BillboardObjs;
     TArray<ULightComponentBase*> LightObjs;
+
+    float litFlag = 0;
 
 public:
     ID3D11VertexShader* VertexLineShader = nullptr;

@@ -451,9 +451,13 @@ void FEditorViewportClient::WriteIniFile(const FString& filePath, const TMap<FSt
 void FEditorViewportClient::SetCameraSpeedScalar(float value)
 {
     if (value < 0.198f)
+    {
         value = 0.198f;
+    }
     else if (value > 176.0f)
+    {
         value = 176.0f;
+    }
     CameraSpeedScalar = value;
 }
 
