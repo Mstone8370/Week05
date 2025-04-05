@@ -334,3 +334,9 @@ struct FTextureConstants {
     float pad0;
     float pad1;
 };
+
+struct alignas(16) FCameraConstants
+{
+    float NearPlane;
+    float FarPlane;
+};

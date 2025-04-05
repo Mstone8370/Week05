@@ -2,9 +2,10 @@
 
 enum EViewModeIndex
 {
-    VMI_Lit,
-    VMI_Unlit,
-    VMI_Wireframe,
+    VMI_Lit = 0,
+    VMI_Unlit = 1,
+    VMI_Wireframe = 2,
+    VMI_SceneDepth = 3,
 };
 
 

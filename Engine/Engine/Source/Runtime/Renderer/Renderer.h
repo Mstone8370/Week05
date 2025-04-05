@@ -24,7 +24,8 @@ class FRenderer
 {
 
 private:
-    float litFlag = 0;
+    uint16 ViewModeFlags = 0;
+
 public:
     FGraphicsDevice* Graphics;
     ID3D11VertexShader* VertexShader = nullptr;
@@ -33,6 +34,7 @@ public:
 
     ID3D11VertexShader* FinalVertexShader = nullptr;
     ID3D11PixelShader* FinalPixelShader = nullptr;
+    ID3D11PixelShader* DepthShader = nullptr;
     
     ID3D11Buffer* ConstantBuffer = nullptr;
     ID3D11Buffer* LightingBuffer = nullptr;
@@ -40,6 +42,7 @@ public:
     ID3D11Buffer* MaterialConstantBuffer = nullptr;
     ID3D11Buffer* SubMeshConstantBuffer = nullptr;
     ID3D11Buffer* TextureConstantBufer = nullptr;
+    ID3D11Buffer* CameraConstantBuffer = nullptr;
 
     ID3D11SamplerState* ScreenSamplerState = nullptr;
     
@@ -72,13 +75,16 @@ public:
     void CreateFinalShader();
     void ReleaseFinalShader();
 
+    void CreateDepthShader();
+    void ReleaseDepthShader();
+    
     void CreateScreenSamplerState();
     void ReleaseScreenSamplerState();
 
     void SetVertexShader(const FWString& filename, const FString& funcname, const FString& version);
     void SetPixelShader(const FWString& filename, const FString& funcname, const FString& version);
     
-    void ChangeViewMode(EViewModeIndex evi) const;
+    void ChangeViewMode(EViewModeIndex evi);
     
     // CreateBuffer
     void CreateConstantBuffer();
@@ -96,6 +102,7 @@ public:
     void UpdateLitUnlitConstant(int isLit) const;
     void UpdateSubMeshConstant(bool isSelected) const;
     void UpdateTextureConstant(float UOffset, float VOffset);
+    void UpdateCameraConstant(float NearPlane, float FarPlane);
 
 
 public://텍스쳐용 기능 추가
@@ -162,7 +169,7 @@ public: // line shader
 
     //Render Pass Demo
     void RenderScene(ULevel* Level, std::shared_ptr<FEditorViewportClient> ActiveViewport);
-    void RenderFullScreenQuad();
+    void RenderFullScreenQuad(std::shared_ptr<FEditorViewportClient> ActiveViewport);
 
 private:
     void ClearRenderArr();

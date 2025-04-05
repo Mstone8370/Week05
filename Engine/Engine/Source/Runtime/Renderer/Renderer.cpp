@@ -30,6 +30,7 @@ void FRenderer::Initialize(FGraphicsDevice* graphics)
     CreateShader();
     CreateFinalShader();
     CreateTextureShader();
+    CreateDepthShader();
     CreateFontShader();
     CreateLineShader();
     CreateConstantBuffer();
@@ -43,6 +44,7 @@ void FRenderer::Release()
 {
     ReleaseShader();
     ReleaseFinalShader();
+    ReleaseDepthShader();
     ReleaseTextureShader();
     ReleaseFontShader();
     ReleaseLineShader();
@@ -105,6 +107,25 @@ void FRenderer::ReleaseFinalShader()
     {
         FinalPixelShader->Release();
         FinalPixelShader = nullptr;
+    }
+}
+
+void FRenderer::CreateDepthShader()
+{
+    ID3DBlob* FinalPixelShaderCSO;
+    
+    D3DCompileFromFile(L"Shaders/FinalDepthShader.hlsl", nullptr, nullptr, "main", "ps_5_0", 0, 0, &FinalPixelShaderCSO, nullptr);
+    Graphics->Device->CreatePixelShader(FinalPixelShaderCSO->GetBufferPointer(), FinalPixelShaderCSO->GetBufferSize(), nullptr, &DepthShader);
+    
+    FinalPixelShaderCSO->Release();
+}
+
+void FRenderer::ReleaseDepthShader()
+{
+    if (DepthShader)
+    {
+        DepthShader->Release();
+        DepthShader = nullptr;
     }
 }
 
@@ -212,8 +233,9 @@ void FRenderer::SetPixelShader(const FWString& filename, const FString& funcname
     pixelshaderCSO->Release();
 }
 
-void FRenderer::ChangeViewMode(EViewModeIndex evi) const
+void FRenderer::ChangeViewMode(EViewModeIndex evi)
 {
+    ViewModeFlags = evi;
     switch (evi)
     {
     case EViewModeIndex::VMI_Lit:
@@ -222,6 +244,10 @@ void FRenderer::ChangeViewMode(EViewModeIndex evi) const
     case EViewModeIndex::VMI_Wireframe:
     case EViewModeIndex::VMI_Unlit:
         UpdateLitUnlitConstant(0);
+        break;
+    case EViewModeIndex::VMI_SceneDepth:
+        break;
+    default:
         break;
     }
 }
@@ -414,6 +440,9 @@ void FRenderer::CreateConstantBuffer()
 
     constantbufferdesc.ByteWidth = sizeof(FTextureConstants) + 0xf & 0xfffffff0;
     Graphics->Device->CreateBuffer(&constantbufferdesc, nullptr, &TextureConstantBufer);
+
+    constantbufferdesc.ByteWidth = sizeof(FCameraConstants) + 0xf & 0xfffffff0;
+    Graphics->Device->CreateBuffer(&constantbufferdesc, nullptr, &CameraConstantBuffer);
 }
 
 void FRenderer::CreateLightingBuffer()
@@ -472,6 +501,12 @@ void FRenderer::ReleaseConstantBuffer()
     {
         TextureConstantBufer->Release();
         TextureConstantBufer = nullptr;
+    }
+
+    if (CameraConstantBuffer)
+    {
+        CameraConstantBuffer->Release();
+        CameraConstantBuffer = nullptr;
     }
 }
 
@@ -585,6 +620,20 @@ void FRenderer::UpdateTextureConstant(float UOffset, float VOffset)
             constants->VOffset = VOffset;
         }
         Graphics->DeviceContext->Unmap(TextureConstantBufer, 0);
+    }
+}
+
+void FRenderer::UpdateCameraConstant(float NearPlane, float FarPlane)
+{
+    if (CameraConstantBuffer) {
+        D3D11_MAPPED_SUBRESOURCE constantbufferMSR; // GPU �� �޸� �ּ� ����
+        Graphics->DeviceContext->Map(CameraConstantBuffer, 0, D3D11_MAP_WRITE_DISCARD, 0, &constantbufferMSR);
+        FCameraConstants* constants = (FCameraConstants*)constantbufferMSR.pData; //GPU �޸� ���� ����
+        {
+            constants->FarPlane = FarPlane;
+            constants->NearPlane = NearPlane;
+        }
+        Graphics->DeviceContext->Unmap(CameraConstantBuffer, 0);
     }
 }
 
@@ -1156,30 +1205,48 @@ void FRenderer::RenderScene(ULevel* Level, std::shared_ptr<FEditorViewportClient
     Graphics->ChangeRasterizer(ActiveViewport->GetViewMode());
     ChangeViewMode(ActiveViewport->GetViewMode());
     UpdateLightBuffer();
-    UPrimitiveBatch::GetInstance().RenderBatch(ActiveViewport->GetViewMatrix(), ActiveViewport->GetProjectionMatrix());
 
     if (ActiveViewport->GetShowFlag() & static_cast<uint64>(EEngineShowFlags::SF_Primitives))
     {
-        RenderStaticMeshes(Level, ActiveViewport);
+        if (StaticMeshObjs.Num() > 0)
+            RenderStaticMeshes(Level, ActiveViewport);
     }
-    RenderGizmos(Level, ActiveViewport);
+    
+    UPrimitiveBatch::GetInstance().RenderBatch(ActiveViewport->GetViewMatrix(), ActiveViewport->GetProjectionMatrix());
+    if (GizmoObjs.Num() > 0)
+        RenderGizmos(Level, ActiveViewport);
     if (ActiveViewport->GetShowFlag() & static_cast<uint64>(EEngineShowFlags::SF_BillboardText))
     {
-        RenderBillboards(Level, ActiveViewport);
-        RenderTexts(Level, ActiveViewport);
+        if (BillboardObjs.Num() > 0)
+            RenderBillboards(Level, ActiveViewport);
+        if (TextObjs.Num() > 0)
+            RenderTexts(Level, ActiveViewport);
     }
-    RenderLight(Level, ActiveViewport);
+    if (LightObjs.Num() > 0)
+        RenderLight(Level, ActiveViewport);
     
     ClearRenderArr();
 }
 
-void FRenderer::RenderFullScreenQuad()
+void FRenderer::RenderFullScreenQuad(std::shared_ptr<FEditorViewportClient> ActiveViewport)
 {
-    Graphics->DeviceContext->PSSetShaderResources(0, 1, &Graphics->SceneSRV);
+    if (ViewModeFlags == EViewModeIndex::VMI_SceneDepth)
+    {
+        // TODO: Temp, 임시 코드
+        UpdateCameraConstant(ActiveViewport->nearPlane, ActiveViewport->farPlane);
+        Graphics->DeviceContext->PSSetConstantBuffers(0, 1, &CameraConstantBuffer);
+        Graphics->DeviceContext->PSSetShaderResources(0, 1, &Graphics->DepthStencilSRV);
+        Graphics->DeviceContext->PSSetShader(DepthShader, nullptr, 0);
+    }
+    else
+    {
+        Graphics->DeviceContext->PSSetShaderResources(0, 1, &Graphics->SceneSRV);    
+        Graphics->DeviceContext->PSSetShader(FinalPixelShader, nullptr, 0);
+    }
+    
     Graphics->DeviceContext->PSSetSamplers(0, 1, &ScreenSamplerState);
     
     Graphics->DeviceContext->VSSetShader(FinalVertexShader, nullptr, 0);
-    Graphics->DeviceContext->PSSetShader(FinalPixelShader, nullptr, 0);
 
     // (float3(), 0, 0), (float3(), 1, 0), (float3(), 0, 1), (float3(), 1, 0), (float3(), 1, 1), (float3(), 0, 1)) 
     Graphics->DeviceContext->IASetInputLayout(nullptr);  // 입력 레이아웃 필요 없음
