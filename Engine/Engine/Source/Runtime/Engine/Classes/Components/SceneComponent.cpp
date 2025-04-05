@@ -8,6 +8,8 @@
 #include "UObject/Casts.h"
 
 #include "TextRenderComponent.h"
+#include "GameFramework/Actor.h"
+
 USceneComponent::USceneComponent() :RelativeLocation(FVector(0.f, 0.f, 0.f)), RelativeRotation(FVector(0.f, 0.f, 0.f)), RelativeScale3D(FVector(1.f, 1.f, 1.f))
 {
 }
@@ -27,6 +29,36 @@ void USceneComponent::TickComponent(float DeltaTime)
 	Super::TickComponent(DeltaTime);
 }
 
+void USceneComponent::DestroyComponent()
+{
+    UActorComponent::DestroyComponent();
+
+    for (auto& Child : AttachChildren)
+    {
+        if (!Child)
+        {
+            continue;
+        }
+
+        if (AttachParent)
+        {
+            // 자식 컴포넌트들을 부모에 어태치
+            Child->SetupAttachment(AttachParent);
+        }
+        else if (GetOwner() && GetOwner()->GetRootComponent())
+        {
+            // 부모가 nullptr인 경우 Owner의 Root에라도 어태치
+            Child->SetupAttachment(GetOwner()->GetRootComponent());
+        }
+        else if (GetOwner())
+        {
+            // 루트 컴포넌트도 없는 경우, 아무거나 하나를 루트로 지정해줌
+            GetOwner()->SetRootComponent(Child);
+        }
+    }
+
+    AttachChildren.Empty();
+}
 
 int USceneComponent::CheckRayIntersection(FVector& rayOrigin, FVector& rayDirection, float& pfNearHitDistance)
 {

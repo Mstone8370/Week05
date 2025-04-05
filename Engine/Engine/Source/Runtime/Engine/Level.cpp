@@ -134,6 +134,7 @@ bool ULevel::DestroyActor(AActor* ThisActor)
         ThisActor->SetOwner(nullptr);
     }
 
+    // TODO: 루트 컴포넌트에 붙은 자식 컴포넌트들을 먼저 삭제한 후에 루트 제거. 그 후 액터컴포넌트 제거하는 방식이 좋음.
     TArray<UActorComponent*> Components = ThisActor->GetComponents();
     for (UActorComponent* Component : Components)
     {
