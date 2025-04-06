@@ -168,7 +168,10 @@ void FEngineLoop::Render()
         renderer.PrepareRender(GLevel);
         renderer.RenderScene(GetLevel(),LevelEditor->GetActiveViewportClient());
 
-        graphicDevice.PrepareFinal();
+        renderer.SampleAndProcessSRV(LevelEditor->GetActiveViewportClient());
+
+        renderer.PostProcess(LevelEditor->GetActiveViewportClient());
+        
         renderer.RenderFullScreenQuad(LevelEditor->GetActiveViewportClient());
     }
 }

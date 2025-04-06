@@ -124,7 +124,7 @@ public:
     float FOVAngle = 60.0f;
     float AspectRatio;
     float nearPlane = 1.f;
-    float farPlane = 200.0f;
+    float farPlane = 2000.0f;
     static FVector Pivot;
     static float orthoSize;
     ELevelViewportType ViewportType;
@@ -142,6 +142,17 @@ public: //Camera Movement
     void PivotMoveRight(float _Value);
     void PivotMoveUp(float _Value);
 
+    FVector GetWorldLocation()
+    {
+        if (IsPerspective())
+            return ViewTransformPerspective.GetLocation();
+
+        if (IsOrtho())
+            return ViewTransformOrthographic.GetLocation();
+
+        return FVector::ZeroVector;
+    }
+    
     FMatrix& GetViewMatrix() { return  View; }
     FMatrix& GetProjectionMatrix() { return Projection; }
     void UpdateViewMatrix();

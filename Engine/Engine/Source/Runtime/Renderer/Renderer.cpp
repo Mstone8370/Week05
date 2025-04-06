@@ -8,6 +8,7 @@
 #include "Components/LightComponent.h"
 #include "Components/StaticMeshComponent.h"
 #include "Components/BillboardComponent.h"
+#include "Components/ExponentialHeightFogComponent.h"
 #include "Components/ParticleSubUVComp.h"
 #include "Components/TextBillboardComponent.h"
 #include "Components/Material/Material.h"
@@ -31,6 +32,9 @@ void FRenderer::Initialize(FGraphicsDevice* graphics)
     CreateFinalShader();
     CreateTextureShader();
     CreateDepthShader();
+
+    CreateFogShader();
+    
     CreateFontShader();
     CreateLineShader();
     CreateConstantBuffer();
@@ -45,6 +49,9 @@ void FRenderer::Release()
     ReleaseShader();
     ReleaseFinalShader();
     ReleaseDepthShader();
+    
+    ReleaseFogShader();
+    
     ReleaseTextureShader();
     ReleaseFontShader();
     ReleaseLineShader();
@@ -114,7 +121,7 @@ void FRenderer::CreateDepthShader()
 {
     ID3DBlob* FinalPixelShaderCSO;
     
-    D3DCompileFromFile(L"Shaders/FinalDepthShader.hlsl", nullptr, nullptr, "main", "ps_5_0", 0, 0, &FinalPixelShaderCSO, nullptr);
+    D3DCompileFromFile(L"Shaders/NormalizeDepthShader.hlsl", nullptr, nullptr, "main", "ps_5_0", 0, 0, &FinalPixelShaderCSO, nullptr);
     Graphics->Device->CreatePixelShader(FinalPixelShaderCSO->GetBufferPointer(), FinalPixelShaderCSO->GetBufferSize(), nullptr, &DepthShader);
     
     FinalPixelShaderCSO->Release();
@@ -126,6 +133,25 @@ void FRenderer::ReleaseDepthShader()
     {
         DepthShader->Release();
         DepthShader = nullptr;
+    }
+}
+
+void FRenderer::CreateFogShader()
+{
+    ID3DBlob* FogPixelShaderCSO;
+    
+    D3DCompileFromFile(L"Shaders/ExponentialHeightFogShader.hlsl", nullptr, nullptr, "main", "ps_5_0", 0, 0, &FogPixelShaderCSO, nullptr);
+    Graphics->Device->CreatePixelShader(FogPixelShaderCSO->GetBufferPointer(), FogPixelShaderCSO->GetBufferSize(), nullptr, &FogShader);
+    
+    FogPixelShaderCSO->Release();
+}
+
+void FRenderer::ReleaseFogShader()
+{
+    if (FogShader)
+    {
+        FogShader->Release();
+        FogShader = nullptr;
     }
 }
 
@@ -443,6 +469,9 @@ void FRenderer::CreateConstantBuffer()
 
     constantbufferdesc.ByteWidth = sizeof(FCameraConstants) + 0xf & 0xfffffff0;
     Graphics->Device->CreateBuffer(&constantbufferdesc, nullptr, &CameraConstantBuffer);
+
+    constantbufferdesc.ByteWidth = sizeof(FExponentialHeightFogConstants) + 0xf & 0xfffffff0;
+    Graphics->Device->CreateBuffer(&constantbufferdesc, nullptr, &ExponentialConstantBuffer);
 }
 
 void FRenderer::CreateLightingBuffer()
@@ -508,6 +537,12 @@ void FRenderer::ReleaseConstantBuffer()
         CameraConstantBuffer->Release();
         CameraConstantBuffer = nullptr;
     }
+
+    if (ExponentialConstantBuffer)
+    {
+        ExponentialConstantBuffer->Release();
+        ExponentialConstantBuffer = nullptr;
+    }
 }
 
 void FRenderer::UpdateLightBuffer() const
@@ -528,7 +563,7 @@ void FRenderer::UpdateLightBuffer() const
     Graphics->DeviceContext->Unmap(LightingBuffer, 0);
 }
 
-void FRenderer::UpdateConstant(const FMatrix& MVP, const FMatrix& NormalMatrix, FVector4 UUIDColor, bool IsSelected) const
+void FRenderer::UpdateConstant(const FMatrix& MVP, const FMatrix& NormalMatrix, FVector4 UUIDColor, bool IsSelected, const FMatrix& M) const
 {
     if (ConstantBuffer)
     {
@@ -623,17 +658,36 @@ void FRenderer::UpdateTextureConstant(float UOffset, float VOffset)
     }
 }
 
-void FRenderer::UpdateCameraConstant(float NearPlane, float FarPlane)
+void FRenderer::UpdateCameraConstant(std::shared_ptr<FEditorViewportClient> ActiveViewport)
 {
     if (CameraConstantBuffer) {
         D3D11_MAPPED_SUBRESOURCE constantbufferMSR; // GPU �� �޸� �ּ� ����
         Graphics->DeviceContext->Map(CameraConstantBuffer, 0, D3D11_MAP_WRITE_DISCARD, 0, &constantbufferMSR);
         FCameraConstants* constants = (FCameraConstants*)constantbufferMSR.pData; //GPU �޸� ���� ����
         {
-            constants->FarPlane = FarPlane;
-            constants->NearPlane = NearPlane;
+            constants->FarPlane = ActiveViewport->farPlane;
+            constants->NearPlane = ActiveViewport->nearPlane;
+            constants->cameraPos = ActiveViewport->GetWorldLocation();
+            constants->invProjection = FMatrix::Inverse(ActiveViewport->GetProjectionMatrix());
+            constants->invView = FMatrix::Inverse(ActiveViewport->GetViewMatrix());
         }
         Graphics->DeviceContext->Unmap(CameraConstantBuffer, 0);
+    }
+}
+
+void FRenderer::UpdateExponentialHeightFogConstant(UExponentialHeightFogComponent* ExponentialHeightFogComp)
+{
+    if (ExponentialConstantBuffer) {
+        D3D11_MAPPED_SUBRESOURCE constantbufferMSR; // GPU �� �޸� �ּ� ����
+        Graphics->DeviceContext->Map(ExponentialConstantBuffer, 0, D3D11_MAP_WRITE_DISCARD, 0, &constantbufferMSR);
+        FExponentialHeightFogConstants* constants = (FExponentialHeightFogConstants*)constantbufferMSR.pData; //GPU �޸� ���� ����
+        {
+            constants->FogColor = ExponentialHeightFogComp->FogColor;
+            constants->FogDensity = ExponentialHeightFogComp->FogDensity;
+            constants->FogFalloff = ExponentialHeightFogComp->FogFalloff;
+            constants->FogHeight = ExponentialHeightFogComp->FogHeight;
+        }
+        Graphics->DeviceContext->Unmap(ExponentialConstantBuffer, 0);
     }
 }
 
@@ -911,6 +965,40 @@ void FRenderer::PrepareSubUVConstant() const
     {
         Graphics->DeviceContext->VSSetConstantBuffers(1, 1, &SubUVConstantBuffer);
         Graphics->DeviceContext->PSSetConstantBuffers(1, 1, &SubUVConstantBuffer);
+    }
+}
+
+void FRenderer::PreparePostProcess()
+{
+    Graphics->PreparePostProcess();
+
+    ExponentialHeightFogComponent = nullptr;
+    for (UExponentialHeightFogComponent* iter : TObjectRange<UExponentialHeightFogComponent>())
+    {
+        ExponentialHeightFogComponent = iter;
+    }
+}
+
+void FRenderer::PostProcess(std::shared_ptr<FEditorViewportClient> ActiveViewport)
+{
+    PreparePostProcess();
+    
+    // Draw Fog Quad
+    if (ExponentialHeightFogComponent != nullptr) {
+        // // TODO: Temp, 임시 코드
+        UpdateCameraConstant(ActiveViewport);
+        UpdateExponentialHeightFogConstant(ExponentialHeightFogComponent);
+        Graphics->DeviceContext->PSSetConstantBuffers(0, 1, &CameraConstantBuffer);
+        Graphics->DeviceContext->PSSetConstantBuffers(1, 1, &ExponentialConstantBuffer);
+
+        Graphics->DeviceContext->PSSetShaderResources(0, 1, &Graphics->DepthStencilSRV);
+        Graphics->DeviceContext->PSSetShaderResources(1, 1, &Graphics->WorldPosBufferSRV);
+
+        Graphics->DeviceContext->PSSetShader(FogShader, nullptr, 0);
+        Graphics->DeviceContext->PSSetSamplers(0, 1, &ScreenSamplerState);
+    
+
+        DrawFullScreenQuad();
     }
 }
 
@@ -1228,24 +1316,65 @@ void FRenderer::RenderScene(ULevel* Level, std::shared_ptr<FEditorViewportClient
     ClearRenderArr();
 }
 
+void FRenderer::SampleAndProcessSRV(std::shared_ptr<FEditorViewportClient> ActiveViewport)
+{
+    Graphics->PrepareDepthMap();
+    // Depth - Normalize
+    UpdateCameraConstant(ActiveViewport);
+    Graphics->DeviceContext->PSSetConstantBuffers(0, 1, &CameraConstantBuffer);
+
+    Graphics->DeviceContext->PSSetShaderResources(0, 1, &Graphics->DepthStencilSRV);
+
+    Graphics->DeviceContext->PSSetShader(DepthShader, nullptr, 0);
+    Graphics->DeviceContext->PSSetSamplers(0, 1, &ScreenSamplerState);
+
+    DrawFullScreenQuad();
+}
+
 void FRenderer::RenderFullScreenQuad(std::shared_ptr<FEditorViewportClient> ActiveViewport)
 {
+    Graphics->PrepareFinal();
+    
     if (ViewModeFlags == EViewModeIndex::VMI_SceneDepth)
     {
+        // TODO: 텍스처 슬롯 개수만큼 null -> 임시코드임
+        int n = 2;
+        for (int i = 0; i < n; i++)
+        {
+            ID3D11ShaderResourceView* nullSRV[1] = {nullptr};
+            Graphics->DeviceContext->PSSetShaderResources(i, 1, nullSRV);
+        }
+        
         // TODO: Temp, 임시 코드
-        UpdateCameraConstant(ActiveViewport->nearPlane, ActiveViewport->farPlane);
-        Graphics->DeviceContext->PSSetConstantBuffers(0, 1, &CameraConstantBuffer);
-        Graphics->DeviceContext->PSSetShaderResources(0, 1, &Graphics->DepthStencilSRV);
-        Graphics->DeviceContext->PSSetShader(DepthShader, nullptr, 0);
+        // UpdateCameraConstant(ActiveViewport);
+        // Graphics->DeviceContext->PSSetConstantBuffers(0, 1, &CameraConstantBuffer);
+        // Graphics->DeviceContext->PSSetShader(DepthShader, nullptr, 0);
+        Graphics->DeviceContext->PSSetShaderResources(0, 1, &Graphics->NormalizedDepthSRV);
     }
     else
     {
-        Graphics->DeviceContext->PSSetShaderResources(0, 1, &Graphics->SceneSRV);    
-        Graphics->DeviceContext->PSSetShader(FinalPixelShader, nullptr, 0);
+        Graphics->DeviceContext->PSSetShaderResources(0, 1, &Graphics->SceneSRV);
+
+        // TODO: Temp 코드
+        if (ExponentialHeightFogComponent)
+        {
+            Graphics->DeviceContext->PSSetShaderResources(1, 1, &Graphics->FogSRV);
+        }
+        else
+        {
+            ID3D11ShaderResourceView* nullSRV[1] = {nullptr};
+            Graphics->DeviceContext->PSSetShaderResources(1, 1, nullSRV);
+        }
     }
+    Graphics->DeviceContext->PSSetShader(FinalPixelShader, nullptr, 0);
     
     Graphics->DeviceContext->PSSetSamplers(0, 1, &ScreenSamplerState);
-    
+
+    DrawFullScreenQuad();
+}
+
+void FRenderer::DrawFullScreenQuad()
+{    
     Graphics->DeviceContext->VSSetShader(FinalVertexShader, nullptr, 0);
 
     // (float3(), 0, 0), (float3(), 1, 0), (float3(), 0, 1), (float3(), 1, 0), (float3(), 1, 1), (float3(), 0, 1)) 
@@ -1279,10 +1408,10 @@ void FRenderer::RenderStaticMeshes(ULevel* Level, std::shared_ptr<FEditorViewpor
         FVector4 UUIDColor = StaticMeshComp->EncodeUUID() / 255.0f;
         if (Level->GetSelectedActor() == StaticMeshComp->GetOwner())
         {
-            UpdateConstant(MVP, NormalMatrix, UUIDColor, true);
+            UpdateConstant(MVP, NormalMatrix, UUIDColor, true, Model);
         }
         else
-            UpdateConstant(MVP, NormalMatrix, UUIDColor, false);
+            UpdateConstant(MVP, NormalMatrix, UUIDColor, false, Model);
 
         if (USkySphereComponent* skysphere = Cast<USkySphereComponent>(StaticMeshComp))
         {
@@ -1355,9 +1484,9 @@ void FRenderer::RenderGizmos(const ULevel* Level, const std::shared_ptr<FEditorV
         FMatrix MVP = Model * ActiveViewport->GetViewMatrix() * ActiveViewport->GetProjectionMatrix();
 
         if (GizmoComp == Level->GetPickingGizmo())
-            UpdateConstant(MVP, NormalMatrix, UUIDColor, true);
+            UpdateConstant(MVP, NormalMatrix, UUIDColor, true, Model);
         else
-            UpdateConstant(MVP, NormalMatrix, UUIDColor, false);
+            UpdateConstant(MVP, NormalMatrix, UUIDColor, false, Model);
 
         if (!GizmoComp->GetStaticMesh()) continue;
 
@@ -1391,9 +1520,9 @@ void FRenderer::RenderBillboards(ULevel* Level, std::shared_ptr<FEditorViewportC
         FMatrix NormalMatrix = FMatrix::Transpose(FMatrix::Inverse(Model));
         FVector4 UUIDColor = BillboardComp->EncodeUUID() / 255.0f;
         if (BillboardComp == Level->GetPickingGizmo())
-            UpdateConstant(MVP, NormalMatrix, UUIDColor, true);
+            UpdateConstant(MVP, NormalMatrix, UUIDColor, true, Model);
         else
-            UpdateConstant(MVP, NormalMatrix, UUIDColor, false);
+            UpdateConstant(MVP, NormalMatrix, UUIDColor, false, Model);
 
         if (UParticleSubUVComp* SubUVParticle = Cast<UParticleSubUVComp>(BillboardComp))
         {
@@ -1431,9 +1560,9 @@ void FRenderer::RenderTexts(ULevel* Level, std::shared_ptr<FEditorViewportClient
             FMatrix NormalMatrix = FMatrix::Transpose(FMatrix::Inverse(Model));
             FVector4 UUIDColor = TextComps->EncodeUUID() / 255.0f;
             if (TextComps == Level->GetPickingGizmo())
-                UpdateConstant(MVP, NormalMatrix, UUIDColor, true);
+                UpdateConstant(MVP, NormalMatrix, UUIDColor, true, Model);
             else
-                UpdateConstant(MVP, NormalMatrix, UUIDColor, false);
+                UpdateConstant(MVP, NormalMatrix, UUIDColor, false, Model);
             
             FEngineLoop::renderer.RenderTextPrimitive(
                 Text->vertexTextBuffer, Text->numTextVertices,
@@ -1455,9 +1584,9 @@ void FRenderer::RenderTexts(ULevel* Level, std::shared_ptr<FEditorViewportClient
             FMatrix NormalMatrix = FMatrix::Transpose(FMatrix::Inverse(Model));
             FVector4 UUIDColor = TextComps->EncodeUUID() / 255.0f;
             if (TextComps == Level->GetPickingGizmo())
-                UpdateConstant(MVP, NormalMatrix, UUIDColor, true);
+                UpdateConstant(MVP, NormalMatrix, UUIDColor, true, Model);
             else
-                UpdateConstant(MVP, NormalMatrix, UUIDColor, false);
+                UpdateConstant(MVP, NormalMatrix, UUIDColor, false, Model);
             
             FEngineLoop::renderer.RenderTextPrimitive(
                 Text->vertexTextBuffer, Text->numTextVertices,

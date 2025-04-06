@@ -6,6 +6,7 @@ cbuffer MatrixConstants : register(b0)
     float4 UUID;
     bool isSelected;
     float3 MatrixPad0;
+    row_major float4x4 M;
 };
 
 struct VS_INPUT
@@ -25,6 +26,7 @@ struct PS_INPUT
     bool normalFlag : TEXCOORD0; // 노멀 유효성 플래그 (1.0: 유효, 0.0: 무효)
     float2 texcoord : TEXCOORD1;
     int materialIndex : MATERIAL_INDEX;
+    float3 worldPosition : POSITION;
 };
 
 PS_INPUT mainVS(VS_INPUT input)
@@ -53,6 +55,7 @@ PS_INPUT mainVS(VS_INPUT input)
         output.normalFlag = 1.0;
     }
     output.texcoord = input.texcoord;
+    output.worldPosition = mul(float4(input.position), M);
     
     return output;
 }

@@ -317,6 +317,7 @@ struct FConstants {
     FVector4 UUIDColor;
     bool IsSelected;
     FVector pad;
+    FMatrix M;
 };
 struct FLitUnlitConstants {
     int isLit; // 1 = Lit, 0 = Unlit 
@@ -339,4 +340,20 @@ struct alignas(16) FCameraConstants
 {
     float NearPlane;
     float FarPlane;
+    float padding3;
+    float padding2;
+    FVector cameraPos;
+    float padding1;
+    FMatrix invProjection;
+    FMatrix invView;
+};
+
+struct alignas(16) FExponentialHeightFogConstants
+{
+    FVector FogColor;
+    float FogDensity;
+    float FogFalloff;
+    float FogHeight;
+    float padding1;
+    float padding2;
 };

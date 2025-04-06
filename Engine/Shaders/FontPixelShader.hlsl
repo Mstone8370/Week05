@@ -15,15 +15,17 @@ cbuffer UUIDConstant : register(b2)
 struct PSInput {
     float4 position : SV_POSITION;
     float2 texCoord : TEXCOORD;
+    float3 worldPosition : POSITION;
 };
 
 struct PSOutput
 {
     float4 color : SV_Target0;
     float4 uuid : SV_Target1;
+    float4 worldPos : SV_Target2;
 };
 
-float4 main(PSInput input) : SV_TARGET {
+PSOutput main(PSInput input) : SV_TARGET {
     PSOutput output;
     
     float2 uv = input.texCoord + float2(indexU, indexV);
@@ -35,6 +37,6 @@ float4 main(PSInput input) : SV_TARGET {
     
     output.color = col;
     output.uuid = UUID;
-    
-    return col;
+    output.worldPos = float4(input.worldPosition, 1);
+    return output;
 }

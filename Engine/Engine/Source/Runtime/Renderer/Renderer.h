@@ -9,6 +9,7 @@
 #include "Define.h"
 #include "Container/Set.h"
 
+class UExponentialHeightFogComponent;
 class UPrimitiveComponent;
 class ULightComponentBase;
 class ULevel;
@@ -35,6 +36,8 @@ public:
     ID3D11VertexShader* FinalVertexShader = nullptr;
     ID3D11PixelShader* FinalPixelShader = nullptr;
     ID3D11PixelShader* DepthShader = nullptr;
+
+    ID3D11PixelShader* FogShader = nullptr;
     
     ID3D11Buffer* ConstantBuffer = nullptr;
     ID3D11Buffer* LightingBuffer = nullptr;
@@ -43,6 +46,7 @@ public:
     ID3D11Buffer* SubMeshConstantBuffer = nullptr;
     ID3D11Buffer* TextureConstantBufer = nullptr;
     ID3D11Buffer* CameraConstantBuffer = nullptr;
+    ID3D11Buffer* ExponentialConstantBuffer = nullptr;
 
     ID3D11SamplerState* ScreenSamplerState = nullptr;
     
@@ -77,6 +81,9 @@ public:
 
     void CreateDepthShader();
     void ReleaseDepthShader();
+
+    void CreateFogShader();
+    void ReleaseFogShader();
     
     void CreateScreenSamplerState();
     void ReleaseScreenSamplerState();
@@ -97,13 +104,13 @@ public:
 
     // update
     void UpdateLightBuffer() const;
-    void UpdateConstant(const FMatrix& MVP, const FMatrix& NormalMatrix, FVector4 UUIDColor, bool IsSelected) const;
+    void UpdateConstant(const FMatrix& MVP, const FMatrix& NormalMatrix, FVector4 UUIDColor, bool IsSelected, const FMatrix& M) const;
     void UpdateMaterial(const FObjMaterialInfo& MaterialInfo) const;
     void UpdateLitUnlitConstant(int isLit) const;
     void UpdateSubMeshConstant(bool isSelected) const;
     void UpdateTextureConstant(float UOffset, float VOffset);
-    void UpdateCameraConstant(float NearPlane, float FarPlane);
-
+    void UpdateCameraConstant(std::shared_ptr<FEditorViewportClient> ActiveViewport);
+    void UpdateExponentialHeightFogConstant(UExponentialHeightFogComponent* ExponentialHeightFogComp);
 
 public://텍스쳐용 기능 추가
     ID3D11VertexShader* TextureVertexShader = nullptr;
@@ -146,13 +153,24 @@ public:
     void UpdateSubUVConstant(float _indexU, float _indexV) const;
     void PrepareSubUVConstant() const;
 
+public:
+    void PrepareRender(ULevel* Level);
+    void RenderScene(ULevel* Level, std::shared_ptr<FEditorViewportClient> ActiveViewport);
+
+    void SampleAndProcessSRV(std::shared_ptr<FEditorViewportClient> ActiveViewport);
+    
+    void PreparePostProcess();
+    void PostProcess(std::shared_ptr<FEditorViewportClient> ActiveViewport);
+
+    void RenderFullScreenQuad(std::shared_ptr<FEditorViewportClient> ActiveViewport);
+    
+    void DrawFullScreenQuad();
 
 public: // line shader
     void PrepareLineShader() const;
     void CreateLineShader();
     void ReleaseLineShader() const;
     void RenderBatch(const FGridParameters& gridParam, ID3D11Buffer* pVertexBuffer, int boundingBoxCount, int coneCount, int coneSegmentCount, int obbCount) const;
-    void PrepareRender(ULevel* Level);
     void UpdateGridConstantBuffer(const FGridParameters& gridParams) const;
     void UpdateLinePrimitveCountBuffer(int numBoundingBoxes, int numCones) const;
     ID3D11Buffer* CreateStaticVerticesBuffer() const;
@@ -166,10 +184,6 @@ public: // line shader
     void UpdateBoundingBoxBuffer(ID3D11Buffer* pBoundingBoxBuffer, const TArray<FBoundingBox>& BoundingBoxes, int numBoundingBoxes) const;
     void UpdateOBBBuffer(ID3D11Buffer* pBoundingBoxBuffer, const TArray<FOBB>& BoundingBoxes, int numBoundingBoxes) const;
     void UpdateConesBuffer(ID3D11Buffer* pConeBuffer, const TArray<FCone>& Cones, int numCones) const;
-
-    //Render Pass Demo
-    void RenderScene(ULevel* Level, std::shared_ptr<FEditorViewportClient> ActiveViewport);
-    void RenderFullScreenQuad(std::shared_ptr<FEditorViewportClient> ActiveViewport);
 
 private:
     void ClearRenderArr();
@@ -185,6 +199,9 @@ private:
     TArray<UPrimitiveComponent*> TextObjs;
     TArray<UBillboardComponent*> BillboardObjs;
     TArray<ULightComponentBase*> LightObjs;
+
+    // TODO: Post Processing Target 따로 정리
+    UExponentialHeightFogComponent* ExponentialHeightFogComponent = nullptr;
 
 public:
     ID3D11VertexShader* VertexLineShader = nullptr;

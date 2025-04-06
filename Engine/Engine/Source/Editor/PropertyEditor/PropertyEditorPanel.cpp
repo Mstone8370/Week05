@@ -2,6 +2,7 @@
 
 #include "Level.h"
 #include "Actors/Player.h"
+#include "Components/ExponentialHeightFogComponent.h"
 #include "Components/LightComponent.h"
 #include "Components/StaticMeshComponent.h"
 #include "Components/TextBillboardComponent.h"
@@ -171,7 +172,11 @@ void PropertyEditorPanel::Render()
         {
             RenderForStaticMesh(StaticMeshComponent);
             RenderForMaterial(StaticMeshComponent);
-        }        
+        }
+        else if (UExponentialHeightFogComponent* ExponentialHeightFogComponent = Cast<UExponentialHeightFogComponent>(PickedActor->GetRootComponent()))
+        {
+            RenderForExponentialHeightFog(ExponentialHeightFogComponent);
+        }
     }
     
     ImGui::End();
@@ -442,6 +447,38 @@ void PropertyEditorPanel::RenderMaterialView(UMaterial* Material)
     }
      
     ImGui::End();
+}
+
+void PropertyEditorPanel::RenderForExponentialHeightFog(UExponentialHeightFogComponent* ExponentialHeightFogComponent)
+{    
+    ImGui::PushStyleColor(ImGuiCol_Header, ImVec4(0.1f, 0.1f, 0.1f, 1.0f));
+    //if (ImGui::TreeNodeEx("ExponentialHeightFog", ImGuiTreeNodeFlags_Framed | ImGuiTreeNodeFlags_DefaultOpen)) // 트리 노드 생성
+    {
+        static ImGuiSelectableFlags BaseFlag = ImGuiColorEditFlags_NoInputs | ImGuiColorEditFlags_NoLabel | ImGuiColorEditFlags_None | ImGuiColorEditFlags_NoAlpha;
+        FVector FogColor = ExponentialHeightFogComponent->FogColor;
+
+        float dr = FogColor.x;
+        float dg = FogColor.y;
+        float db = FogColor.z;
+        float da = 1.0f;
+        float DiffuseColorPick[4] = { dr, dg, db, da };
+
+        //ImGui::Text("Set Property");
+        //ImGui::Indent();
+
+        ImGui::Text("  Fog Color");
+        ImGui::SameLine();
+        if (ImGui::ColorEdit4("Fog##Color", (float*)&DiffuseColorPick, BaseFlag))
+        {
+            FVector NewColor = { DiffuseColorPick[0], DiffuseColorPick[1], DiffuseColorPick[2] };
+            ExponentialHeightFogComponent->FogColor = NewColor;
+        }
+        
+        ImGui::SliderFloat("FogDensity", &ExponentialHeightFogComponent->FogDensity, 0.001f, 5.0f);
+        ImGui::SliderFloat("FogFalloff", &ExponentialHeightFogComponent->FogFalloff, 0.01f, 1.0f);
+        ImGui::SliderFloat("FogHeight", &ExponentialHeightFogComponent->FogHeight, -100.f, 100.0f);
+    }
+    ImGui::PopStyleColor();
 }
 
 void PropertyEditorPanel::RenderCreateMaterialView()
