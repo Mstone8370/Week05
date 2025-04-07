@@ -30,23 +30,25 @@ void ShowFlags::Draw(std::shared_ptr<FEditorViewportClient> ActiveViewport)
 
 	if (ImGui::Begin("ShowFlags"))
 	{
-		const char* items[] = { "AABB", "Primitives", "BillBoardText", "UUID", "Fog" };
-        uint64 curFlag = ActiveViewport->GetShowFlag();
-		bool Selected[IM_ARRAYSIZE(items)] = {
-		    curFlag & static_cast<uint64>(EEngineShowFlags::SF_AABB),
-            curFlag & static_cast<uint64>(EEngineShowFlags::SF_Primitives),
-            curFlag & static_cast<uint64>(EEngineShowFlags::SF_BillboardText),
-            curFlag & static_cast<uint64>(EEngineShowFlags::SF_UUIDText),
-		    curFlag & static_cast<uint64>(EEngineShowFlags::SF_Fog),
-		};  // 각 항목의 체크 상태 저장
+		const char* items[] = { "AABB", "Primitives", "BillBoardText", "UUID", "Fog", "Gizmo" };
+        uint64 ActiveViewportFlags = ActiveViewport->GetShowFlag();
+	    bool Selected[IM_ARRAYSIZE(items)] =
+        {
+	        (ActiveViewportFlags & static_cast<uint64>(EEngineShowFlags::SF_AABB)) != 0,
+            (ActiveViewportFlags & static_cast<uint64>(EEngineShowFlags::SF_Primitives)) != 0,
+            (ActiveViewportFlags & static_cast<uint64>(EEngineShowFlags::SF_BillboardText)) != 0,
+            (ActiveViewportFlags & static_cast<uint64>(EEngineShowFlags::SF_UUIDText)) != 0,
+            (ActiveViewportFlags & static_cast<uint64>(EEngineShowFlags::SF_Fog)) != 0,
+            (ActiveViewportFlags & static_cast<uint64>(EEngineShowFlags::SF_Gizmo)) != 0,
+        };  // 각 항목의 체크 상태 저장
 
 		if (ImGui::BeginCombo("Show Flags", "Select Show Flags"))
 		{
 			for (int i = 0; i < IM_ARRAYSIZE(items); i++)
 			{
-				ImGui::Checkbox(items[i], &Selected[i]); 
+				ImGui::Checkbox(items[i], &Selected[i]);
 			}
-			ImGui::EndCombo(); 
+			ImGui::EndCombo();
 		}
 		ActiveViewport->SetShowFlag(ConvertSelectionToFlags(Selected));
 
@@ -76,6 +78,10 @@ uint64 ShowFlags::ConvertSelectionToFlags(const bool selected[])
     if (selected[4])
     {
         flags |= static_cast<uint64>(EEngineShowFlags::SF_Fog);
+    }
+    if (selected[5])
+    {
+        flags |= static_cast<uint64>(EEngineShowFlags::SF_Gizmo);
     }
 	return flags;
 }

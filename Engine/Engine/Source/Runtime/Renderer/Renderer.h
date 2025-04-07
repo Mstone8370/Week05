@@ -151,13 +151,13 @@ public:
 
     void UpdateSubUVConstant(float _indexU, float _indexV) const;
     void PrepareSubUVConstant() const;
-
+    void SetDefaultConstantBuffer() const;
     void PrepareRender(ULevel* Level);
     void RenderScene(ULevel* Level, std::shared_ptr<FEditorViewportClient> ActiveViewport);
 
     void SampleAndProcessSRV(std::shared_ptr<FEditorViewportClient> ActiveViewport);
 
-    void PreparePostProcess();
+    void PreparePostProcess(std::shared_ptr<FEditorViewportClient> ActiveViewport);
     void PostProcess(std::shared_ptr<FEditorViewportClient> ActiveViewport);
 
     void RenderFullScreenQuad(std::shared_ptr<FEditorViewportClient> ActiveViewport);

@@ -17,7 +17,7 @@ float FEditorViewportClient::OrthoSize = 10.0f;
 FEditorViewportClient::FEditorViewportClient()
     : Viewport(nullptr)
     , ViewportType(LVT_Perspective)
-    , ShowFlag(31)
+    , ShowFlag(UINT64_MAX)
     , ViewMode(VMI_Lit)
 {
 
@@ -402,7 +402,7 @@ void FEditorViewportClient::LoadConfig(const TMap<FString, FString>& config)
     ViewTransformPerspective.ViewRotation.X = GetValueFromConfig(config, "PerspectiveCameraRotX" + ViewportNum, 0.0f);
     ViewTransformPerspective.ViewRotation.Y = GetValueFromConfig(config, "PerspectiveCameraRotY" + ViewportNum, 0.0f);
     ViewTransformPerspective.ViewRotation.Z = GetValueFromConfig(config, "PerspectiveCameraRotZ" + ViewportNum, 0.0f);
-    ShowFlag = GetValueFromConfig(config, "ShowFlag" + ViewportNum, 31.0f);
+    ShowFlag = GetValueFromConfig(config, "ShowFlag" + ViewportNum, UINT64_MAX);
     ViewMode = static_cast<EViewModeIndex>(GetValueFromConfig(config, "ViewMode" + ViewportNum, 0));
     ViewportType = static_cast<ELevelViewportType>(GetValueFromConfig(config, "ViewportType" + ViewportNum, 3));
 }
