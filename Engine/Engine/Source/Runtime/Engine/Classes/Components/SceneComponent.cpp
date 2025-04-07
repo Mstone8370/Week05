@@ -172,7 +172,7 @@ void USceneComponent::SetupAttachment(USceneComponent* InParent)
     USceneComponent* PrevParent = AttachParent;
     if (PrevParent && PrevParent != InParent)
     {
-        PrevParent->DetachFromComponent(PrevParent);
+        DetachFromComponent(PrevParent);
     }
 
     AttachParent = InParent;

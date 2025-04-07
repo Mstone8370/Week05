@@ -216,7 +216,23 @@ void PropertyEditorPanel::RenderForComponents(USceneComponent* Component)
         {
             if (SelectedComponentForPopup)
             {
-                DisplayClassHierarchy(UActorComponent::StaticClass());
+                // TODO:
+                const char* items[] = { "StaticMesh Component", "Billboard Component", "Text Component" };
+                static int current_item = 0;
+
+                if (ImGui::Combo("Combo", &current_item, items, IM_ARRAYSIZE(items)))
+                {
+                    // 선택이 바뀌었을 때의 처리
+                }
+            }
+
+            if (ImGui::Button("Add"))
+            {
+                auto x = SelectedComponentForPopup->GetOwner()->AddComponent<UBillboardComponent>();
+                x->SetTexture(L"Assets/Texture/font.png");
+                x->SetupAttachment(SelectedComponentForPopup);
+
+                ImGui::CloseCurrentPopup();
             }
 
             if (ImGui::Button("Close"))
@@ -236,16 +252,6 @@ void PropertyEditorPanel::RenderForComponents(USceneComponent* Component)
         }
         ImGui::TreePop(); // 트리 닫기
     }
-}
-
-void PropertyEditorPanel::DisplayClassHierarchy(UClass* InClass)
-{
-    if (!InClass)
-    {
-        return;
-    }
-
-
 }
 
 void PropertyEditorPanel::RenderForStaticMesh(UStaticMeshComponent* StaticMeshComp)

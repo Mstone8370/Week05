@@ -26,8 +26,6 @@ private:
 
     bool bOpenAddComponentModel = false;
 
-    void DisplayClassHierarchy(UClass* InClass);
-
     /* Static Mesh Settings */
     void RenderForStaticMesh(UStaticMeshComponent* StaticMeshComp);
 
