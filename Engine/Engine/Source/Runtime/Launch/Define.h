@@ -377,6 +377,9 @@ struct alignas(16) FExponentialHeightFogConstants
     float FogDensity;
     float FogFalloff;
     float FogHeight;
-    float padding1;
-    float padding2;
+
+    float FogStartDistance;     // 안개 시작 거리
+    float FogEndDistance;       // 안개 끝 거리
+    float DistanceFogIntensity; // 거리 기반 안개 영향
+    FVector Padding123;
 };

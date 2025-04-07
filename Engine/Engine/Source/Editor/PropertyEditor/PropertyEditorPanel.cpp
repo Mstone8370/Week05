@@ -477,6 +477,9 @@ void PropertyEditorPanel::RenderForExponentialHeightFog(UExponentialHeightFogCom
         ImGui::SliderFloat("FogDensity", &ExponentialHeightFogComponent->FogDensity, 0.001f, 5.0f);
         ImGui::SliderFloat("FogFalloff", &ExponentialHeightFogComponent->FogFalloff, 0.01f, 1.0f);
         ImGui::SliderFloat("FogHeight", &ExponentialHeightFogComponent->FogHeight, -100.f, 100.0f);
+        ImGui::SliderFloat("FogStartDistance", &ExponentialHeightFogComponent->FogStartDistance, 0.1f, ExponentialHeightFogComponent->FogEndDistance);
+        ImGui::SliderFloat("FogEndDistance", &ExponentialHeightFogComponent->FogEndDistance, ExponentialHeightFogComponent->FogStartDistance, 2000.0f);
+        ImGui::SliderFloat("DistanceFogIntensity", &ExponentialHeightFogComponent->DistanceFogIntensity, 0.01f, 5.0f);
     }
     ImGui::PopStyleColor();
 }

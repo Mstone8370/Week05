@@ -13,6 +13,7 @@ namespace EEngineShowFlags
         SF_BillboardText = 1ULL << 2,
         SF_UUIDText = 1ULL << 3,
         SF_Fog = 1ULL << 4,
+        SF_Gizmo = 1ULL << 5,
     };
 }
 

@@ -205,15 +205,9 @@ void FRenderer::PrepareShader() const
     Graphics->DeviceContext->PSSetShader(PixelShader, nullptr, 0);
     Graphics->DeviceContext->IASetInputLayout(InputLayout);
 
+    // TODO: ObjectConstantBuffer가 없어도 다른 버퍼는 Set 되도록
     if (ObjectConstantBuffer)
     {
-        Graphics->DeviceContext->VSSetConstantBuffers(0, 1, &ObjectConstantBuffer);
-        Graphics->DeviceContext->VSSetConstantBuffers(1, 1, &ViewConstantBuffer);
-        Graphics->DeviceContext->VSSetConstantBuffers(2, 1, &ProjectionConstantBuffer);
-
-        Graphics->DeviceContext->PSSetConstantBuffers(0, 1, &ObjectConstantBuffer);
-        Graphics->DeviceContext->PSSetConstantBuffers(1, 1, &ViewConstantBuffer);
-        Graphics->DeviceContext->PSSetConstantBuffers(2, 1, &ProjectionConstantBuffer);
         Graphics->DeviceContext->PSSetConstantBuffers(3, 1, &FlagBuffer);
         Graphics->DeviceContext->PSSetConstantBuffers(4, 1, &MaterialConstantBuffer);
         Graphics->DeviceContext->PSSetConstantBuffers(5, 1, &LightingBuffer);
@@ -658,6 +652,9 @@ void FRenderer::UpdateExponentialHeightFogConstant(UExponentialHeightFogComponen
             constants->FogDensity = ExponentialHeightFogComp->FogDensity;
             constants->FogFalloff = ExponentialHeightFogComp->FogFalloff;
             constants->FogHeight = ExponentialHeightFogComp->FogHeight;
+            constants->FogStartDistance = ExponentialHeightFogComp->FogStartDistance;
+            constants->FogEndDistance = ExponentialHeightFogComp->FogEndDistance;
+            constants->DistanceFogIntensity = ExponentialHeightFogComp->DistanceFogIntensity;
         }
         Graphics->DeviceContext->Unmap(ExponentialConstantBuffer, 0);
     }
@@ -797,13 +794,6 @@ void FRenderer::PrepareTextureShader() const
     Graphics->DeviceContext->VSSetShader(TextureVertexShader, nullptr, 0);
     Graphics->DeviceContext->PSSetShader(TexturePixelShader, nullptr, 0);
     Graphics->DeviceContext->IASetInputLayout(TextureInputLayout);
-
-    if (ObjectConstantBuffer)
-    {
-        Graphics->DeviceContext->VSSetConstantBuffers(0, 1, &ObjectConstantBuffer);
-        Graphics->DeviceContext->VSSetConstantBuffers(1, 1, &ViewConstantBuffer);
-        Graphics->DeviceContext->VSSetConstantBuffers(2, 1, &ProjectionConstantBuffer);
-    }
 }
 
 ID3D11Buffer* FRenderer::CreateVertexTextureBuffer(FVertexTexture* vertices, UINT byteWidth) const
@@ -938,20 +928,43 @@ void FRenderer::PrepareSubUVConstant() const
     }
 }
 
-void FRenderer::PreparePostProcess()
+void FRenderer::SetDefaultConstantBuffer() const
+{
+    if (ObjectConstantBuffer)
+    {
+        Graphics->DeviceContext->VSSetConstantBuffers(0, 1, &ObjectConstantBuffer);
+        Graphics->DeviceContext->PSSetConstantBuffers(0, 1, &ObjectConstantBuffer);
+    }
+    if (ViewConstantBuffer)
+    {
+        Graphics->DeviceContext->VSSetConstantBuffers(1, 1, &ViewConstantBuffer);
+        Graphics->DeviceContext->PSSetConstantBuffers(1, 1, &ViewConstantBuffer);
+    }
+    if (ProjectionConstantBuffer)
+    {
+        Graphics->DeviceContext->VSSetConstantBuffers(2, 1, &ProjectionConstantBuffer);
+        Graphics->DeviceContext->PSSetConstantBuffers(2, 1, &ProjectionConstantBuffer);
+    }
+}
+
+void FRenderer::PreparePostProcess(std::shared_ptr<FEditorViewportClient> ActiveViewport)
 {
     Graphics->PreparePostProcess();
 
     ExponentialHeightFogComponent = nullptr;
-    for (UExponentialHeightFogComponent* iter : TObjectRange<UExponentialHeightFogComponent>())
+
+    if (ActiveViewport->GetShowFlag() & static_cast<uint64>(EEngineShowFlags::SF_Fog))
     {
-        ExponentialHeightFogComponent = iter;
+        for (UExponentialHeightFogComponent* iter : TObjectRange<UExponentialHeightFogComponent>())
+        {
+            ExponentialHeightFogComponent = iter;
+        }
     }
 }
 
 void FRenderer::PostProcess(std::shared_ptr<FEditorViewportClient> ActiveViewport)
 {
-    PreparePostProcess();
+    PreparePostProcess(ActiveViewport);
 
     // Draw Fog Quad
     if (ExponentialHeightFogComponent != nullptr) {
@@ -981,10 +994,6 @@ void FRenderer::PrepareLineShader() const
         Graphics->DeviceContext->VSSetShaderResources(2, 1, &pBBSRV);
         Graphics->DeviceContext->VSSetShaderResources(3, 1, &pConeSRV);
         Graphics->DeviceContext->VSSetShaderResources(4, 1, &pOBBSRV);
-
-        Graphics->DeviceContext->VSSetConstantBuffers(0, 1, &ObjectConstantBuffer);
-        Graphics->DeviceContext->VSSetConstantBuffers(1, 1, &ViewConstantBuffer);
-        Graphics->DeviceContext->VSSetConstantBuffers(2, 1, &ProjectionConstantBuffer);
 
         Graphics->DeviceContext->VSSetConstantBuffers(3, 1, &GridConstantBuffer);
         Graphics->DeviceContext->VSSetConstantBuffers(4, 1, &LinePrimitiveBuffer);
@@ -1254,6 +1263,8 @@ void FRenderer::PrepareRender(ULevel* Level)
         }
 
     }
+
+    SetDefaultConstantBuffer();
 }
 
 void FRenderer::RenderScene(ULevel* Level, std::shared_ptr<FEditorViewportClient> ActiveViewport)
@@ -1276,13 +1287,14 @@ void FRenderer::RenderScene(ULevel* Level, std::shared_ptr<FEditorViewportClient
         }
     }
 
-    RenderGizmos(Level, ActiveViewport);
-
-    UPrimitiveBatch::GetInstance().RenderBatch(ActiveViewport->GetViewMatrix(), ActiveViewport->GetProjectionMatrix());
-
-    if (GizmoObjs.Num() > 0)
+    if (ActiveViewport->GetShowFlag() & static_cast<uint64>(EEngineShowFlags::SF_Gizmo))
     {
-        RenderGizmos(Level, ActiveViewport);
+        if (GizmoObjs.Num() > 0)
+        {
+            RenderGizmos(Level, ActiveViewport);
+        }
+
+        UPrimitiveBatch::GetInstance().RenderBatch(ActiveViewport->GetViewMatrix(), ActiveViewport->GetProjectionMatrix());
     }
 
     if (ActiveViewport->GetShowFlag() & static_cast<uint64>(EEngineShowFlags::SF_BillboardText))
@@ -1417,6 +1429,8 @@ void FRenderer::RenderGizmos(const ULevel* Level, const std::shared_ptr<FEditorV
     {
         return;
     }
+
+    PrepareShader();
 
 #pragma region GizmoDepth
     ID3D11DepthStencilState* DepthStateDisable = Graphics->DepthStateDisable;
