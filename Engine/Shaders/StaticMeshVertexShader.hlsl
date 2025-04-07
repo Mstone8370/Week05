@@ -18,6 +18,8 @@ struct PS_INPUT
     bool normalFlag : TEXCOORD0; // 노멀 유효성 플래그 (1.0: 유효, 0.0: 무효)
     float2 texcoord : TEXCOORD1;
     int materialIndex : MATERIAL_INDEX;
+    float2 Velocity : TEXCOORD2;
+    float2 WorldPos : TEXCOORD3;
 };
 
 PS_INPUT mainVS(VS_INPUT input)
@@ -52,6 +54,21 @@ PS_INPUT mainVS(VS_INPUT input)
         output.normalFlag = 1.0;
     }
     output.texcoord = input.texcoord;
+
+    float4 PrevPosition = float4(input.position, 1.0);
+    PrevPosition = mul(PrevPosition, PrevModelMatrix);
+    PrevPosition = mul(PrevPosition, PrevViewMatrix);
+    PrevPosition = mul(PrevPosition, PrevProjectionMatrix);
+
+    float4 CurrClip = output.position;
+    float4 PrevClip = PrevPosition;
+
+    float2 CurrNDC = CurrClip.xy / CurrClip.w;
+    float2 PrevNDC = PrevClip.xy / PrevClip.w;
+
+    // 보간할 velocity
+    output.Velocity = CurrNDC - PrevNDC;
+    output.WorldPos = PrevNDC;
 
     return output;
 }

@@ -221,7 +221,7 @@ void FGraphicsDevice::CreateFrameBuffer()
     SceneSRVDEsc.Texture2D.MostDetailedMip = 0;
     SceneSRVDEsc.Texture2D.MipLevels = 1;
 
-    Device->CreateShaderResourceView(SceneBuffer, &SceneSRVDEsc, &SceneSRV);
+    Device->CreateShaderResourceView(SceneBuffer, &SceneSRVDEsc, &SceneBufferSRV);
 
     // 렌더 타겟 뷰 생성
     D3D11_RENDER_TARGET_VIEW_DESC SceneRTVDesc = {};
@@ -248,13 +248,14 @@ void FGraphicsDevice::CreateFrameBuffer()
 
     Device->CreateRenderTargetView(UUIDFrameBuffer, &UUIDFrameBufferRTVDesc, &UUIDFrameBufferRTV);
 
+    // WorldPos
     {
         D3D11_TEXTURE2D_DESC BufferDesc = {};
         BufferDesc.Width = screenWidth;
         BufferDesc.Height = screenHeight;
         BufferDesc.MipLevels = 1;
         BufferDesc.ArraySize = 1;
-        BufferDesc.Format = DXGI_FORMAT_R32G32B32A32_FLOAT;
+        BufferDesc.Format = DXGI_FORMAT_R16G16_FLOAT;
         BufferDesc.SampleDesc.Count = 1;
         BufferDesc.Usage = D3D11_USAGE_DEFAULT;
         BufferDesc.BindFlags = D3D11_BIND_RENDER_TARGET | D3D11_BIND_SHADER_RESOURCE;
@@ -279,72 +280,63 @@ void FGraphicsDevice::CreateFrameBuffer()
         hr = Device->CreateRenderTargetView(WorldPosBuffer, &RTVDesc, &WorldPosBufferRTV);
     }
 
+    // Velocity
+    {
+        D3D11_TEXTURE2D_DESC BufferDesc = {};
+        BufferDesc.Width = screenWidth;
+        BufferDesc.Height = screenHeight;
+        BufferDesc.MipLevels = 1;
+        BufferDesc.ArraySize = 1;
+        BufferDesc.Format = DXGI_FORMAT_R16G16_FLOAT;
+        BufferDesc.SampleDesc.Count = 1;
+        BufferDesc.Usage = D3D11_USAGE_DEFAULT;
+        BufferDesc.BindFlags = D3D11_BIND_RENDER_TARGET | D3D11_BIND_SHADER_RESOURCE;
+
+        auto hr = Device->CreateTexture2D(&BufferDesc, nullptr, &VelocityBuffer);
+
+        // TODO Check - Format을 이전꺼랑 동일하게 했어야 되는지 헷갈림, 일단 동일하게 함.
+
+        D3D11_SHADER_RESOURCE_VIEW_DESC SRVDesc = {};
+        SRVDesc.Format = BufferDesc.Format;
+        SRVDesc.ViewDimension = D3D11_SRV_DIMENSION_TEXTURE2D;
+        SRVDesc.Texture2D.MostDetailedMip = 0;
+        SRVDesc.Texture2D.MipLevels = 1;
+
+        hr = Device->CreateShaderResourceView(VelocityBuffer, &SRVDesc, &VelocityBufferSRV);
+
+        // 렌더 타겟 뷰 생성
+        D3D11_RENDER_TARGET_VIEW_DESC RTVDesc = {};
+        RTVDesc.Format = BufferDesc.Format; // 색상 포맷
+        RTVDesc.ViewDimension = D3D11_RTV_DIMENSION_TEXTURE2D; // 2D 텍스처
+
+        hr = Device->CreateRenderTargetView(VelocityBuffer, &RTVDesc, &VelocityBufferRTV);
+    }
+
     RTVs[0] = SceneBufferRTV;
     RTVs[1] = UUIDFrameBufferRTV;
     RTVs[2] = WorldPosBufferRTV;
+    RTVs[3] = VelocityBufferRTV;
 }
 
 void FGraphicsDevice::ReleaseFrameBuffer()
 {
-    if (FinalFrameBuffer)
-    {
-        FinalFrameBuffer->Release();
-        FinalFrameBuffer = nullptr;
-    }
+    ReleaseBuffer(FinalFrameBuffer);
+    ReleaseBufferRTV(FinalFrameBufferRTV);
 
-    if (FinalFrameBufferRTV)
-    {
-        FinalFrameBufferRTV->Release();
-        FinalFrameBufferRTV = nullptr;
-    }
+    ReleaseBuffer(SceneBuffer);
+    ReleaseBufferRTV(SceneBufferRTV);
+    ReleaseBufferSRV(SceneBufferSRV);
 
-    if (SceneBuffer)
-    {
-        SceneBuffer->Release();
-        SceneBuffer = nullptr;
-    }
+    ReleaseBuffer(UUIDFrameBuffer);
+    ReleaseBufferRTV(UUIDFrameBufferRTV);
 
-    if (SceneBufferRTV)
-    {
-        SceneBufferRTV->Release();
-        SceneBufferRTV = nullptr;
-    }
+    ReleaseBuffer(WorldPosBuffer);
+    ReleaseBufferRTV(WorldPosBufferRTV);
+    ReleaseBufferSRV(WorldPosBufferSRV);
 
-    if (SceneSRV)
-    {
-        SceneSRV->Release();
-        SceneSRV = nullptr;
-    }
-
-    if (UUIDFrameBuffer)
-    {
-        UUIDFrameBuffer->Release();
-        UUIDFrameBuffer = nullptr;
-    }
-
-    if (UUIDFrameBufferRTV)
-    {
-        UUIDFrameBufferRTV->Release();
-        UUIDFrameBufferRTV = nullptr;
-    }
-
-    if (WorldPosBuffer)
-    {
-        WorldPosBuffer->Release();
-        WorldPosBuffer = nullptr;
-    }
-
-    if (WorldPosBufferRTV)
-    {
-        WorldPosBufferRTV->Release();
-        WorldPosBufferRTV = nullptr;
-    }
-
-    if (WorldPosBufferSRV)
-    {
-        WorldPosBufferSRV->Release();
-        WorldPosBufferSRV = nullptr;
-    }
+    ReleaseBuffer(VelocityBuffer);
+    ReleaseBufferRTV(VelocityBufferRTV);
+    ReleaseBufferSRV(VelocityBufferSRV);
 }
 
 void FGraphicsDevice::CreateProcessSceneBuffer()
@@ -541,7 +533,7 @@ void FGraphicsDevice::Prepare()
 
     DeviceContext->OMSetDepthStencilState(DepthStencilState, 0);
 
-    DeviceContext->OMSetRenderTargets(3, RTVs, DepthStencilView); // 렌더 타겟 설정(백버퍼를 가르킴)
+    DeviceContext->OMSetRenderTargets(std::size(RTVs), RTVs, DepthStencilView); // 렌더 타겟 설정(백버퍼를 가르킴)
     DeviceContext->OMSetBlendState(nullptr, nullptr, 0xffffffff); // 블렌뎅 상태 설정, 기본블렌딩 상태임
 }
 
@@ -734,4 +726,31 @@ uint32 FGraphicsDevice::DecodeUUIDColor(FVector4 UUIDColor) {
     uint32_t X = static_cast<uint32_t>(UUIDColor.x);
 
     return W | Z | Y | X;
+}
+
+void FGraphicsDevice::ReleaseBuffer(ID3D11Texture2D* Buffer)
+{
+    if (Buffer)
+    {
+        Buffer->Release();
+        Buffer = nullptr;
+    }
+}
+
+void FGraphicsDevice::ReleaseBufferRTV(ID3D11RenderTargetView* BufferRTV)
+{
+    if (BufferRTV)
+    {
+        BufferRTV->Release();
+        BufferRTV = nullptr;
+    }
+}
+
+void FGraphicsDevice::ReleaseBufferSRV(ID3D11ShaderResourceView* BufferSRV)
+{
+    if (BufferSRV)
+    {
+        BufferSRV->Release();
+        BufferSRV = nullptr;
+    }
 }

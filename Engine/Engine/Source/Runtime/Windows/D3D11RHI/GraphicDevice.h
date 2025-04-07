@@ -17,14 +17,14 @@ public:
     ID3D11DeviceContext* DeviceContext = nullptr;
     IDXGISwapChain* SwapChain = nullptr;
 
-    ID3D11RenderTargetView* RTVs[3];
+    ID3D11RenderTargetView* RTVs[4];
 
     ID3D11Texture2D* FinalFrameBuffer = nullptr;
     ID3D11RenderTargetView* FinalFrameBufferRTV = nullptr;
 
     // Scene
     ID3D11Texture2D* SceneBuffer = nullptr;
-    ID3D11ShaderResourceView* SceneSRV = nullptr;
+    ID3D11ShaderResourceView* SceneBufferSRV = nullptr;
     ID3D11RenderTargetView* SceneBufferRTV = nullptr;
 
     ID3D11Texture2D* UUIDFrameBuffer = nullptr;
@@ -33,6 +33,10 @@ public:
     ID3D11Texture2D* WorldPosBuffer = nullptr;
     ID3D11ShaderResourceView* WorldPosBufferSRV = nullptr;
     ID3D11RenderTargetView* WorldPosBufferRTV = nullptr;
+
+    ID3D11Texture2D* VelocityBuffer = nullptr;
+    ID3D11ShaderResourceView* VelocityBufferSRV = nullptr;
+    ID3D11RenderTargetView* VelocityBufferRTV = nullptr;
 
     // Process Scene (Scene 가공)
     ID3D11Texture2D* DepthBuffer = nullptr;
@@ -48,7 +52,7 @@ public:
     ID3D11RasterizerState* RasterizerStateWIREFRAME = nullptr;
     DXGI_SWAP_CHAIN_DESC SwapchainDesc;
 
-    
+
     UINT screenWidth = 0;
     UINT screenHeight = 0;
     // Depth-Stencil 관련 변수
@@ -71,10 +75,10 @@ public:
 
     void CreateProcessSceneBuffer();
     void ReleaseProcessSceneBuffer();
-    
+
     void CreatePostProcessBuffer();
     void ReleasePostProcessBuffer();
-    
+
     void ReleaseRasterizerState();
     void ReleaseDepthStencilBuffer();
     void ReleaseDepthStencilResources();
@@ -92,6 +96,11 @@ public:
 
     uint32 GetPixelUUID(POINT pt);
     uint32 DecodeUUIDColor(FVector4 UUIDColor);
+
+private:
+    void ReleaseBuffer(ID3D11Texture2D* Buffer);
+    void ReleaseBufferRTV(ID3D11RenderTargetView* BufferRTV);
+    void ReleaseBufferSRV(ID3D11ShaderResourceView* BufferSRV);
 
 private:
     ID3D11RasterizerState* CurrentRasterizer = nullptr;

@@ -57,12 +57,16 @@ struct PS_INPUT
     bool normalFlag : TEXCOORD0; // 노멀 유효성 플래그 (1.0: 유효, 0.0: 무효)
     float2 texcoord : TEXCOORD1;
     int materialIndex : MATERIAL_INDEX;
+    float2 Velocity : TEXCOORD2;
+    float2 WorldPos : TEXCOORD3;
 };
 
 struct PS_OUTPUT
 {
     float4 color : SV_Target0;
     float4 UUID : SV_Target1;
+    float4 WorldPos : SV_Target2;
+    float4 Velocity : SV_Target3;
 };
 
 float noise(float3 p)
@@ -116,7 +120,11 @@ PS_OUTPUT mainPS(PS_INPUT input)
 {
     PS_OUTPUT output;
 
+    //output.Velocity = float4(input.Velocity, 0, 0);
     output.UUID = UUID;
+    output.Velocity = float4(input.Velocity * 0.5 + 0.5, 0, 1);
+    output.WorldPos = float4(input.WorldPos * 0.5 + 0.5, 0, 1);
+    //output.WorldPos = float4(1, 0, 1, 1);
 
     float3 texColor = Textures.Sample(Sampler, input.texcoord + UVOffset);
     float3 color;

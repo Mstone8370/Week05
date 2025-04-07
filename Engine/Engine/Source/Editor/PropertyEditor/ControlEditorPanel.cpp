@@ -393,7 +393,7 @@ void ControlEditorPanel::CreateFlagButton() const
 
     ImGui::SameLine();
 
-    const char* ViewModeNames[] = { "Lit", "Unlit", "Wireframe", "Scene Depth" };
+    const char* ViewModeNames[] = { "Lit", "Unlit", "Wireframe", "Scene Depth", "Velocity" };
     FString SelectLightControl = ViewModeNames[(int)ActiveViewport->GetViewMode()];
     ImVec2 LightTextSize = ImGui::CalcTextSize(GetData(SelectLightControl));
 

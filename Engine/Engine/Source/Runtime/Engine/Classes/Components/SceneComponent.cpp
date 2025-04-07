@@ -106,11 +106,48 @@ void USceneComponent::AddScale(FVector _added)
 
 }
 
+void USceneComponent::UpdatePrevTransform()
+{
+    PrevRelativeLocation = RelativeLocation;
+    PrevRelativeScale3D = RelativeScale3D;
+    PrevQuatRotation = QuatRotation;
+}
+
+FVector USceneComponent::GetPrevWorldLocation()
+{
+    if (AttachParent)
+    {
+        return FVector(AttachParent->GetPrevWorldLocation() + GetPrevLocalLocation());
+    }
+    else
+        return GetPrevLocalLocation();
+}
+
+FVector USceneComponent::GetPrevWorldRotation()
+{
+    if (AttachParent)
+    {
+        return FVector(AttachParent->GetPrevWorldRotation() + GetPrevLocalRotation());
+    }
+    else
+        return GetPrevLocalRotation();
+}
+
+FVector USceneComponent::GetPrevWorldScale()
+{
+    if (AttachParent && dynamic_cast<USkySphereComponent*>(this))
+    {
+        return FVector(AttachParent->GetPrevWorldScale() + GetPrevLocalScale());
+    }
+    else
+        return GetPrevLocalScale();
+}
+
 FVector USceneComponent::GetWorldRotation()
 {
 	if (AttachParent)
 	{
-		return FVector(AttachParent->GetLocalRotation() + GetLocalRotation());
+		return FVector(AttachParent->GetWorldRotation() + GetLocalRotation());
 	}
 	else
 		return GetLocalRotation();
@@ -139,6 +176,11 @@ FVector USceneComponent::GetWorldLocation()
 FVector USceneComponent::GetLocalRotation()
 {
 	return JungleMath::QuaternionToEuler(QuatRotation);
+}
+
+FVector USceneComponent::GetPrevLocalRotation()
+{
+    return JungleMath::QuaternionToEuler(PrevQuatRotation);
 }
 
 void USceneComponent::SetRotation(FVector _newRot)

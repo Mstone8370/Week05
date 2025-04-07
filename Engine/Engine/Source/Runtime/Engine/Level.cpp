@@ -48,6 +48,8 @@ void ULevel::ReleaseBaseObject()
 
 void ULevel::Tick(float DeltaTime)
 {
+
+
 	if (EditorPlayer) EditorPlayer->Tick(DeltaTime);
 	if (LocalGizmo) LocalGizmo->Tick(DeltaTime);
 

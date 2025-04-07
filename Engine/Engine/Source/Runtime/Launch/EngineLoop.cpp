@@ -148,6 +148,9 @@ void FEngineLoop::Render()
             LevelEditor->SetViewportClient(i);
             Renderer.PrepareRender(GLevel);
             Renderer.RenderScene(GetLevel(),LevelEditor->GetActiveViewportClient());
+
+            LevelEditor->GetActiveViewportClient()->UpdatePrevMatrix();
+            Renderer.OnEndRender();
         }
         GetLevelEditor()->SetViewportClient(ViewportClient);
     }
@@ -161,6 +164,9 @@ void FEngineLoop::Render()
         Renderer.PostProcess(LevelEditor->GetActiveViewportClient());
 
         Renderer.RenderFullScreenQuad(LevelEditor->GetActiveViewportClient());
+
+        LevelEditor->GetActiveViewportClient()->UpdatePrevMatrix();
+        Renderer.OnEndRender();
     }
 }
 

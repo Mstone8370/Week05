@@ -328,6 +328,7 @@ struct FObjectConstants
 {
     FMatrix ModelMatrix;      // 모델
     FMatrix ModelMatrixInverseTranspose; // normal 변환을 위한 행렬
+    FMatrix PrevModelMatrix;
     FVector4 UUIDColor;
     bool IsSelected;
     FVector pad;
@@ -338,6 +339,7 @@ struct FViewConstants
 {
     FMatrix ViewMatrix;
     FMatrix InvViewMatrix;
+    FMatrix PrevViewMatrix;
     FVector ViewLocation;
     float ViewPadding;
 };
@@ -346,6 +348,7 @@ struct FProjectionConstants
 {
     FMatrix ProjectionMatrix;
     FMatrix InvProjectionMatrix;
+    FMatrix PrevProjectionMatrix;
     float NearClip;
     float FarClip;
     FVector2D ProjectionPadding;

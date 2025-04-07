@@ -102,9 +102,10 @@ public:
     ID3D11Buffer* CreateIndexBuffer(const TArray<uint32>& Indices, UINT ByteWidth) const;
 
     // update
-    void UpdateObjectBuffer(const FMatrix& ModelMatrix, const FMatrix& InverseTransposedNormal, FVector4 UUIDColor, bool IsSelected) const;
-    void UpdateViewBuffer(const FMatrix& ViewMatrix, const FVector& ViewLocation) const;
-    void UpdateProjectionBuffer(const FMatrix& ProjectionMatrix, float NearClip, float FarClip) const;
+    void UpdateObjectBuffer(const FMatrix& PrevModelMatrix, const FMatrix& ModelMatrix, const FMatrix& InverseTransposedNormal, FVector4 UUIDColor, bool
+                            IsSelected) const;
+    void UpdateViewBuffer(const FMatrix& PrevViewMatrix, const FMatrix& ViewMatrix, const FVector& ViewLocation) const;
+    void UpdateProjectionBuffer(const FMatrix& PrevProjectionMatrix, const FMatrix& ProjectionMatrix, float NearClip, float FarClip) const;
 
     void UpdateLightBuffer() const;
     void UpdateMaterial(const FObjMaterialInfo& MaterialInfo) const;
@@ -183,6 +184,7 @@ public:
     void UpdateOBBBuffer(ID3D11Buffer* pBoundingBoxBuffer, const TArray<FOrientedBoundingBox>& BoundingBoxes, int numBoundingBoxes) const;
     void UpdateConesBuffer(ID3D11Buffer* pConeBuffer, const TArray<FCone>& Cones, int numCones) const;
 
+    void OnEndRender();
 private:
     void ClearRenderArr();
     void RenderStaticMeshes(ULevel* Level, std::shared_ptr<FEditorViewportClient> ActiveViewport);

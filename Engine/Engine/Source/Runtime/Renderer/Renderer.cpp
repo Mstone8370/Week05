@@ -239,6 +239,7 @@ void FRenderer::ChangeViewMode(EViewModeIndex InViewModeIndex)
     case EViewModeIndex::VMI_Wireframe:
     case EViewModeIndex::VMI_Unlit:
     case EViewModeIndex::VMI_SceneDepth:
+    case EViewModeIndex::VMI_Velocity:
         UpdateLitUnlitConstant(0);
         break;
     default:
@@ -491,7 +492,7 @@ void FRenderer::ReleaseConstantBuffer()
     ReleaseBuffer(ExponentialConstantBuffer);
 }
 
-void FRenderer::UpdateObjectBuffer(const FMatrix& ModelMatrix, const FMatrix& InverseTransposedNormal, FVector4 UUIDColor, bool IsSelected) const
+void FRenderer::UpdateObjectBuffer(const FMatrix& PrevModelMatrix, const FMatrix& ModelMatrix, const FMatrix& InverseTransposedNormal, FVector4 UUIDColor, bool IsSelected) const
 {
     if (ObjectConstantBuffer)
     {
@@ -501,6 +502,7 @@ void FRenderer::UpdateObjectBuffer(const FMatrix& ModelMatrix, const FMatrix& In
         if (FObjectConstants* constants = static_cast<FObjectConstants*>(ConstantBufferMSR.pData))
         {
             constants->ModelMatrix = ModelMatrix;
+            constants->PrevModelMatrix = PrevModelMatrix;
             constants->ModelMatrixInverseTranspose = InverseTransposedNormal;
             constants->UUIDColor = UUIDColor;
             constants->IsSelected = IsSelected;
@@ -509,7 +511,7 @@ void FRenderer::UpdateObjectBuffer(const FMatrix& ModelMatrix, const FMatrix& In
     }
 }
 
-void FRenderer::UpdateViewBuffer(const FMatrix& ViewMatrix, const FVector& ViewLocation) const
+void FRenderer::UpdateViewBuffer(const FMatrix& PrevViewMatrix, const FMatrix& ViewMatrix, const FVector& ViewLocation) const
 {
     if (ViewConstantBuffer)
     {
@@ -520,13 +522,14 @@ void FRenderer::UpdateViewBuffer(const FMatrix& ViewMatrix, const FVector& ViewL
         {
             constants->ViewMatrix = ViewMatrix;
             constants->InvViewMatrix = FMatrix::Inverse(ViewMatrix);
+            constants->PrevViewMatrix = PrevViewMatrix;
             constants->ViewLocation = ViewLocation;
         }
         Graphics->DeviceContext->Unmap(ViewConstantBuffer, 0);
     }
 }
 
-void FRenderer::UpdateProjectionBuffer(const FMatrix& ProjectionMatrix, float NearClip, float FarClip) const
+void FRenderer::UpdateProjectionBuffer(const FMatrix& PrevProjectionMatrix, const FMatrix& ProjectionMatrix, float NearClip, float FarClip) const
 {
     if (ProjectionConstantBuffer)
     {
@@ -537,6 +540,7 @@ void FRenderer::UpdateProjectionBuffer(const FMatrix& ProjectionMatrix, float Ne
         {
             constants->ProjectionMatrix = ProjectionMatrix;
             constants->InvProjectionMatrix = FMatrix::Inverse(ProjectionMatrix);
+            constants->PrevProjectionMatrix = PrevProjectionMatrix;
             constants->NearClip = NearClip;
             constants->FarClip = FarClip;
         }
@@ -1172,6 +1176,15 @@ void FRenderer::UpdateConesBuffer(ID3D11Buffer* pConeBuffer, const TArray<FCone>
     Graphics->DeviceContext->Unmap(pConeBuffer, 0);
 }
 
+void FRenderer::OnEndRender()
+{
+    for (const auto& Obj : StaticMeshObjs)
+    {
+        Obj->UpdatePrevTransform();
+    }
+    ClearRenderArr();
+}
+
 void FRenderer::UpdateGridConstantBuffer(const FGridParameters& gridParams) const
 {
     D3D11_MAPPED_SUBRESOURCE mappedResource;
@@ -1274,8 +1287,8 @@ void FRenderer::RenderScene(ULevel* Level, std::shared_ptr<FEditorViewportClient
     ChangeViewMode(ActiveViewport->GetViewMode());
 
     // TODO: 임시로 여기에서 View 상수 버퍼와 Projection 상수 버퍼 업데이트
-    UpdateViewBuffer(ActiveViewport->GetViewMatrix(), ActiveViewport->ViewTransformPerspective.GetLocation());
-    UpdateProjectionBuffer(ActiveViewport->GetProjectionMatrix(), ActiveViewport->nearPlane, ActiveViewport->farPlane);
+    UpdateViewBuffer(ActiveViewport->GetPrevViewMatrix(), ActiveViewport->GetViewMatrix(), ActiveViewport->ViewTransformPerspective.GetLocation());
+    UpdateProjectionBuffer(ActiveViewport->GetPrevProjectionMatrix(), ActiveViewport->GetProjectionMatrix(), ActiveViewport->nearPlane, ActiveViewport->farPlane);
 
     UpdateLightBuffer();
 
@@ -1313,8 +1326,6 @@ void FRenderer::RenderScene(ULevel* Level, std::shared_ptr<FEditorViewportClient
     {
         RenderLight(Level, ActiveViewport);
     }
-
-    ClearRenderArr();
 }
 
 void FRenderer::SampleAndProcessSRV(std::shared_ptr<FEditorViewportClient> ActiveViewport)
@@ -1347,9 +1358,22 @@ void FRenderer::RenderFullScreenQuad(std::shared_ptr<FEditorViewportClient> Acti
         // TODO: Temp, 임시 코드
         Graphics->DeviceContext->PSSetShaderResources(0, 1, &Graphics->NormalizedDepthSRV);
     }
+    else if (ViewModeFlags == EViewModeIndex::VMI_Velocity)
+    {
+        // TODO: 텍스처 슬롯 개수만큼 null -> 임시코드임
+        int n = 2;
+        for (int i = 0; i < n; i++)
+        {
+            ID3D11ShaderResourceView* nullSRV[1] = {nullptr};
+            Graphics->DeviceContext->PSSetShaderResources(i, 1, nullSRV);
+        }
+
+        // TODO: Temp, 임시 코드
+        Graphics->DeviceContext->PSSetShaderResources(0, 1, &Graphics->VelocityBufferSRV);
+    }
     else
     {
-        Graphics->DeviceContext->PSSetShaderResources(0, 1, &Graphics->SceneSRV);
+        Graphics->DeviceContext->PSSetShaderResources(0, 1, &Graphics->SceneBufferSRV);
 
         // TODO: Temp 코드
         if (ExponentialHeightFogComponent)
@@ -1392,6 +1416,12 @@ void FRenderer::RenderStaticMeshes(ULevel* Level, std::shared_ptr<FEditorViewpor
     PrepareShader();
     for (UStaticMeshComponent* StaticMeshComp : StaticMeshObjs)
     {
+        FMatrix PrevModel = JungleMath::CreateModelMatrix(
+            StaticMeshComp->GetPrevWorldLocation(),
+            StaticMeshComp->GetPrevWorldRotation(),
+            StaticMeshComp->GetPrevWorldScale()
+        );
+
         FMatrix Model = JungleMath::CreateModelMatrix(
             StaticMeshComp->GetWorldLocation(),
             StaticMeshComp->GetWorldRotation(),
@@ -1401,7 +1431,7 @@ void FRenderer::RenderStaticMeshes(ULevel* Level, std::shared_ptr<FEditorViewpor
         FMatrix NormalMatrix = FMatrix::Transpose(FMatrix::Inverse(Model));
         FVector4 UUIDColor = StaticMeshComp->EncodeUUID() / 255.0f;
 
-        UpdateObjectBuffer(Model, NormalMatrix, UUIDColor, Level->GetSelectedActor() == StaticMeshComp->GetOwner());
+        UpdateObjectBuffer(PrevModel, Model, NormalMatrix, UUIDColor, Level->GetSelectedActor() == StaticMeshComp->GetOwner());
 
         UpdateTextureConstant(0, 0);
 
@@ -1464,7 +1494,7 @@ void FRenderer::RenderGizmos(const ULevel* Level, const std::shared_ptr<FEditorV
         FMatrix NormalMatrix = FMatrix::Transpose(FMatrix::Inverse(Model));
         FVector4 UUIDColor = GizmoComp->EncodeUUID() / 255.0f;
 
-        UpdateObjectBuffer(Model, NormalMatrix, UUIDColor, GizmoComp == Level->GetPickingGizmo());
+        UpdateObjectBuffer(Model, Model, NormalMatrix, UUIDColor, GizmoComp == Level->GetPickingGizmo());
 
         if (!GizmoComp->GetStaticMesh())
         {
@@ -1501,7 +1531,7 @@ void FRenderer::RenderBillboards(ULevel* Level, std::shared_ptr<FEditorViewportC
         FMatrix NormalMatrix = FMatrix::Transpose(FMatrix::Inverse(Model));
         FVector4 UUIDColor = BillboardComp->EncodeUUID() / 255.0f;
 
-        UpdateObjectBuffer(Model, NormalMatrix, UUIDColor, BillboardComp == Level->GetPickingGizmo());
+        UpdateObjectBuffer(Model, Model, NormalMatrix, UUIDColor, BillboardComp == Level->GetPickingGizmo());
 
         if (UParticleSubUVComp* SubUVParticle = Cast<UParticleSubUVComp>(BillboardComp))
         {
@@ -1536,7 +1566,7 @@ void FRenderer::RenderTexts(ULevel* Level, std::shared_ptr<FEditorViewportClient
             FMatrix NormalMatrix = FMatrix::Transpose(FMatrix::Inverse(Model));
             FVector4 UUIDColor = TextComps->EncodeUUID() / 255.0f;
 
-            UpdateObjectBuffer(Model, NormalMatrix, UUIDColor, TextComps == Level->GetPickingGizmo());
+            UpdateObjectBuffer(Model, Model, NormalMatrix, UUIDColor, TextComps == Level->GetPickingGizmo());
 
             FEngineLoop::Renderer.RenderTextPrimitive(
                 Text->vertexTextBuffer, Text->numTextVertices,
@@ -1554,7 +1584,7 @@ void FRenderer::RenderTexts(ULevel* Level, std::shared_ptr<FEditorViewportClient
             );
             FMatrix NormalMatrix = FMatrix::Transpose(FMatrix::Inverse(Model));
             FVector4 UUIDColor = TextComps->EncodeUUID() / 255.0f;
-            UpdateObjectBuffer(Model, NormalMatrix, UUIDColor, TextComps == Level->GetPickingGizmo());
+            UpdateObjectBuffer(Model, Model, NormalMatrix, UUIDColor, TextComps == Level->GetPickingGizmo());
 
             FEngineLoop::Renderer.RenderTextPrimitive(
                 Text->vertexTextBuffer, Text->numTextVertices,

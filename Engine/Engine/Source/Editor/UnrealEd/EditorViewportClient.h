@@ -84,7 +84,7 @@ public:
     ~FEditorViewportClient();
 
     virtual void Draw(FViewport* Viewport) override;
-    virtual ULevel* GetLevel() const { return NULL; };
+    virtual ULevel* GetLevel() const { return NULL; }
 
     void Initialize(int32 viewportIndex);
     void Tick(float DeltaTime);
@@ -130,6 +130,9 @@ public:
     FMatrix View;
     FMatrix Projection;
 
+    FMatrix PrevView;
+    FMatrix PrevProjection;
+
     //Camera Movement
     void CameraMoveForward(float Value);
     void CameraMoveRight(float Value);
@@ -150,10 +153,15 @@ public:
         return FVector::ZeroVector;
     }
 
+    FMatrix& GetPrevViewMatrix() { return PrevView; }
+    FMatrix& GetPrevProjectionMatrix() { return PrevProjection; }
+
     FMatrix& GetViewMatrix() { return  View; }
     FMatrix& GetProjectionMatrix() { return Projection; }
     void UpdateViewMatrix();
     void UpdateProjectionMatrix();
+
+    void UpdatePrevMatrix();
 
     bool IsOrtho() const;
     bool IsPerspective() const;

@@ -50,7 +50,7 @@ private:
     SLevelEditor* LevelEditor;
     UnrealEd* UnrealEditor;
     bool bIsExit = false;
-    const int32 targetFPS = 60;
+    const int32 targetFPS = 10;
     bool bTestInput = false;
     int curWorldContextIndex = 0;
 

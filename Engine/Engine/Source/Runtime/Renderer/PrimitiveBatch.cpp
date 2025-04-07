@@ -42,7 +42,7 @@ void UPrimitiveBatch::RenderBatch(const FMatrix& View, const FMatrix& Projection
 
     FMatrix Model = FMatrix::Identity;
     FMatrix NormalMatrix = FMatrix::Transpose(FMatrix::Inverse(Model));
-    FEngineLoop::Renderer.UpdateObjectBuffer(Model, NormalMatrix, FVector4(0,0,0,0), false);
+    FEngineLoop::Renderer.UpdateObjectBuffer(Model, Model, NormalMatrix, FVector4(0,0,0,0), false);
     FEngineLoop::Renderer.UpdateGridConstantBuffer(GridParam);
 
     UpdateBoundingBoxResources();
