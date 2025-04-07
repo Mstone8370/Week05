@@ -44,7 +44,7 @@ void UTextBillboardComponent::ClearText()
 {
     vertexTextureArr.Empty();
 }
-void UTextBillboardComponent::SetRowColumnCount(int32 InRowCount, int32 InColumnCount) 
+void UTextBillboardComponent::SetRowColumnCount(int32 InRowCount, int32 InColumnCount)
 {
     RowCount = InRowCount;
     ColumnCount = InColumnCount;
@@ -139,7 +139,7 @@ void UTextBillboardComponent::SetText(FWString _text)
 	quad.Add(FVector(lastX,1.0f,0.0f));
 	quad.Add(FVector(lastX,-1.0f,0.0f));
 
-	CreateTextTextureVertexBuffer(vertexTextureArr,byteWidth);
+	CreateTextTextureVertexBuffer(vertexTextureArr, byteWidth);
 }
 void UTextBillboardComponent::setStartUV(wchar_t hangul, float& outStartU, float& outStartV)
 {
@@ -237,21 +237,17 @@ void UTextBillboardComponent::CreateTextTextureVertexBuffer(const TArray<FVertex
 	// 2. Create a vertex buffer
 	D3D11_BUFFER_DESC vertexbufferdesc = {};
 	vertexbufferdesc.ByteWidth = byteWidth;
-	vertexbufferdesc.Usage = D3D11_USAGE_IMMUTABLE; // will never be updated 
+	vertexbufferdesc.Usage = D3D11_USAGE_IMMUTABLE; // will never be updated
 	vertexbufferdesc.BindFlags = D3D11_BIND_VERTEX_BUFFER;
 
 	D3D11_SUBRESOURCE_DATA vertexbufferSRD = { _vertex.GetData()};
 
 	ID3D11Buffer* vertexBuffer;
-	
-	HRESULT hr = FEngineLoop::graphicDevice.Device->CreateBuffer(&vertexbufferdesc, &vertexbufferSRD, &vertexBuffer);
+
+	HRESULT hr = FEngineLoop::GraphicDevice.Device->CreateBuffer(&vertexbufferdesc, &vertexbufferSRD, &vertexBuffer);
 	if (FAILED(hr))
 	{
 		UE_LOG(LogLevel::Warning, "VertexBuffer Creation faild");
 	}
 	vertexTextBuffer = vertexBuffer;
-
-	//FEngineLoop::resourceMgr.RegisterMesh(&FEngineLoop::renderer, "JungleText", _vertex, _vertex.Num() * sizeof(FVertexTexture),
-	//	nullptr, 0);
-
 }

@@ -1,12 +1,8 @@
-#pragma once
 #include "UnrealClient.h"
-//#include "UnrealEd/EditorViewportClient.h"
 
 FViewport::FViewport()
 {
 }
-
-
 
 FViewport::~FViewport()
 {
@@ -16,83 +12,85 @@ void FViewport::Initialize()
 {
 }
 
-void FViewport::ResizeViewport(const DXGI_SWAP_CHAIN_DESC& swapchaindesc)
+void FViewport::ResizeViewport(const DXGI_SWAP_CHAIN_DESC& SwapChainDesc)
 {
-    float width = (float)swapchaindesc.BufferDesc.Width;
-    float height = (float)swapchaindesc.BufferDesc.Height;
-    float halfWidth = width * 0.5f;
-    float halfHeight = height * 0.5f;
-    switch (viewLocation)
+    float Width = static_cast<float>(SwapChainDesc.BufferDesc.Width);
+    float Height = static_cast<float>(SwapChainDesc.BufferDesc.Height);
+    float HalfWidth = Width * 0.5f;
+    float HalfHeight = Height * 0.5f;
+
+    switch (ViewLocation)
     {
     case EViewScreenLocation::TopLeft:
-        viewport.TopLeftX = 0.0f;
-        viewport.TopLeftY = 0.0f;
-        viewport.Width = halfWidth;
-        viewport.Height = halfHeight;
+        Viewport.TopLeftX = 0.0f;
+        Viewport.TopLeftY = 0.0f;
+        Viewport.Width = HalfWidth;
+        Viewport.Height = HalfHeight;
         break;
     case EViewScreenLocation::TopRight:
-        viewport.TopLeftX = halfWidth;
-        viewport.TopLeftY = 0.0f;
-        viewport.Width = halfWidth;
-        viewport.Height = halfHeight;
+        Viewport.TopLeftX = HalfWidth;
+        Viewport.TopLeftY = 0.0f;
+        Viewport.Width = HalfWidth;
+        Viewport.Height = HalfHeight;
         break;
     case EViewScreenLocation::BottomLeft:
-        viewport.TopLeftX = 0.0f;
-        viewport.TopLeftY = halfHeight;
-        viewport.Width = halfWidth;
-        viewport.Height = halfHeight;
+        Viewport.TopLeftX = 0.0f;
+        Viewport.TopLeftY = HalfHeight;
+        Viewport.Width = HalfWidth;
+        Viewport.Height = HalfHeight;
         break;
     case EViewScreenLocation::BottomRight:
-        viewport.TopLeftX = halfWidth;
-        viewport.TopLeftY = halfHeight;
-        viewport.Width = halfWidth;
-        viewport.Height = halfHeight;
+        Viewport.TopLeftX = HalfWidth;
+        Viewport.TopLeftY = HalfHeight;
+        Viewport.Width = HalfWidth;
+        Viewport.Height = HalfHeight;
         break;
     default:
         break;
     }
-    viewport.MinDepth = 0.0f;
-    viewport.MaxDepth = 1.0f;
+
+    Viewport.MinDepth = 0.0f;
+    Viewport.MaxDepth = 1.0f;
 }
 
-void FViewport::ResizeViewport(FRect Top, FRect Bottom, FRect Left, FRect Right)
+void FViewport::ResizeViewport(const FRect& Top, const FRect& Bottom, const FRect& Left, const FRect& Right)
 {
-    switch (viewLocation)
+    switch (ViewLocation)
     {
     case EViewScreenLocation::TopLeft:
-        viewport.TopLeftX = Left.leftTopX;
-        viewport.TopLeftY = Top.leftTopY;
-        viewport.Width = Left.width;
-        viewport.Height = Top.height;
+        Viewport.TopLeftX = Left.leftTopX;
+        Viewport.TopLeftY = Top.leftTopY;
+        Viewport.Width = Left.width;
+        Viewport.Height = Top.height;
         break;
     case EViewScreenLocation::TopRight:
-        viewport.TopLeftX = Right.leftTopX;
-        viewport.TopLeftY = Top.leftTopY;
-        viewport.Width = Right.width;
-        viewport.Height = Top.height;
+        Viewport.TopLeftX = Right.leftTopX;
+        Viewport.TopLeftY = Top.leftTopY;
+        Viewport.Width = Right.width;
+        Viewport.Height = Top.height;
         break;
     case EViewScreenLocation::BottomLeft:
-        viewport.TopLeftX = Left.leftTopX;
-        viewport.TopLeftY = Bottom.leftTopY;
-        viewport.Width = Left.width;
-        viewport.Height = Bottom.height;
+        Viewport.TopLeftX = Left.leftTopX;
+        Viewport.TopLeftY = Bottom.leftTopY;
+        Viewport.Width = Left.width;
+        Viewport.Height = Bottom.height;
         break;
     case EViewScreenLocation::BottomRight:
-        viewport.TopLeftX = Right.leftTopX;
-        viewport.TopLeftY = Bottom.leftTopY;
-        viewport.Width = Right.width;
-        viewport.Height = Bottom.height;
+        Viewport.TopLeftX = Right.leftTopX;
+        Viewport.TopLeftY = Bottom.leftTopY;
+        Viewport.Width = Right.width;
+        Viewport.Height = Bottom.height;
         break;
     default:
         break;
     }
 }
 
-void FViewport::ResizeViewport(FRect newRect)
+void FViewport::ResizeViewport(const FRect& NewRect)
 {
-    viewport.TopLeftX = newRect.leftTopX;
-    viewport.TopLeftY = newRect.leftTopY;
-    viewport.Width = newRect.width;
-    viewport.Height = newRect.height;
+    Viewport.TopLeftX = NewRect.leftTopX;
+    Viewport.TopLeftY = NewRect.leftTopY;
+    Viewport.Width = NewRect.width;
+    Viewport.Height = NewRect.height;
 }
 

@@ -8,6 +8,8 @@
 #include "UObject/Casts.h"
 
 #include "TextRenderComponent.h"
+#include "GameFramework/Actor.h"
+
 USceneComponent::USceneComponent() :RelativeLocation(FVector(0.f, 0.f, 0.f)), RelativeRotation(FVector(0.f, 0.f, 0.f)), RelativeScale3D(FVector(1.f, 1.f, 1.f))
 {
 }
@@ -27,6 +29,36 @@ void USceneComponent::TickComponent(float DeltaTime)
 	Super::TickComponent(DeltaTime);
 }
 
+void USceneComponent::DestroyComponent()
+{
+    UActorComponent::DestroyComponent();
+
+    for (auto& Child : AttachChildren)
+    {
+        if (!Child)
+        {
+            continue;
+        }
+
+        if (AttachParent)
+        {
+            // 자식 컴포넌트들을 부모에 어태치
+            Child->SetupAttachment(AttachParent);
+        }
+        else if (GetOwner() && GetOwner()->GetRootComponent())
+        {
+            // 부모가 nullptr인 경우 Owner의 Root에라도 어태치
+            Child->SetupAttachment(GetOwner()->GetRootComponent());
+        }
+        else if (GetOwner())
+        {
+            // 루트 컴포넌트도 없는 경우, 아무거나 하나를 루트로 지정해줌
+            GetOwner()->SetRootComponent(Child);
+        }
+    }
+
+    AttachChildren.Empty();
+}
 
 int USceneComponent::CheckRayIntersection(FVector& rayOrigin, FVector& rayDirection, float& pfNearHitDistance)
 {
@@ -117,22 +149,40 @@ void USceneComponent::SetRotation(FVector _newRot)
 
 void USceneComponent::SetupAttachment(USceneComponent* InParent)
 {
-    // if (InParent != AttachParent                                    // 설정하려는 Parent가 기존의 Parent와 다르거나
-    //     && InParent != this                                         // InParent가 본인이 아니고
-    //     && InParent != nullptr                                      // InParent가 유효한 포인터 이며
-    //     && (AttachParent == nullptr                                 // AttachParent도 유효하며
-    //         || !AttachParent->AttachChildren.Contains(this)))  // 이미 AttachParent의 자식이 아닌 경우
+    // TODO: Attachment Rule 필요
+
+    if (!InParent)
     {
-        AttachParent = InParent;
-        InParent->AttachChildren.AddUnique(this);
+        return;
     }
+
+    USceneComponent* PrevParent = AttachParent;
+    if (PrevParent && PrevParent != InParent)
+    {
+        PrevParent->DetachFromComponent(PrevParent);
+    }
+
+    AttachParent = InParent;
+    InParent->AttachChildren.AddUnique(this);
+}
+
+void USceneComponent::DetachFromComponent(USceneComponent* Target)
+{
+    // TODO: Detachment Rule 필요
+
+    if (!Target || !Target->AttachChildren.Contains(this))
+    {
+        return;
+    }
+
+    Target->AttachChildren.Remove(this);
 }
 
 void USceneComponent::DuplicateSubObjects()
 {
     TArray<USceneComponent*> NewChildren = AttachChildren;
     AttachChildren.Empty();
-    for (const auto& Child : NewChildren) 
+    for (const auto& Child : NewChildren)
     {
         USceneComponent* NewChild = Cast<USceneComponent>(Child->Duplicate());
         NewChild->SetupAttachment(this);
@@ -157,11 +207,14 @@ const TArray<USceneComponent*>& USceneComponent::GetAttachChildren() const
 void USceneComponent::GetChildrenComponents(TArray<USceneComponent*>& Children) const
 {
     Children.Empty();
-    for (auto& child : Children)
+
+    for (auto& Child : AttachChildren)
     {
-        TArray<USceneComponent*> childComponents;
-        child->GetChildrenComponents(childComponents);
-        Children + childComponents;
+        Children.Add(Child);
+
+        TArray<USceneComponent*> ChildrenComp;
+        Child->GetChildrenComponents(ChildrenComp);
+        Children + ChildrenComp;
     }
 }
 

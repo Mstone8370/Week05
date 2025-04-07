@@ -21,8 +21,8 @@ public:
     int32 Init(HINSTANCE hInstance);
     void Render();
     void Tick();
-    void EditorTick(double elapsedTime);
-    void PIETick(double elapsedTime);
+    void EditorTick(double DeltaTime);
+    void PIETick(double DeltaTime);
     void Exit();
     float GetAspectRatio(IDXGISwapChain* swapChain) const;
     void Input();
@@ -33,13 +33,13 @@ private:
     void TogglePIE();
 
 public:
-    static FGraphicsDevice graphicDevice;
-    static FRenderer renderer;
-    static FResourceMgr resourceMgr;
+    static FGraphicsDevice GraphicDevice;
+    static FRenderer Renderer;
+    static FResourceMgr ResourceManager;
     static uint32 TotalAllocationBytes;
     static uint32 TotalAllocationCount;
-    bool bTestInput2 = false;
-    
+    bool bShouldChangeWorldType = false;
+
     HWND hWnd;
 
 private:

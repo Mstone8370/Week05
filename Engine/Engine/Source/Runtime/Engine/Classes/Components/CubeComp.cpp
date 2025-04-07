@@ -1,7 +1,7 @@
 #include "CubeComp.h"
 #include "Math/JungleMath.h"
 #include "Level.h"
-#include "UnrealEd/PrimitiveBatch.h"
+#include "PrimitiveBatch.h"
 #include "UObject/ObjectFactory.h"
 #include "PropertyEditor/ShowFlags.h"
 

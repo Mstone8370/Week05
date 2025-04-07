@@ -1,8 +1,8 @@
 #pragma once
 
-
 class FViewport;
 class ULevel;
+
 class FViewportClient
 {
 public:
@@ -14,4 +14,3 @@ public:
     virtual ULevel* GetLevel() const { return NULL; }
     // FViewport에 대한 참조 (혹은 소유)
 };
-    

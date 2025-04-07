@@ -12,7 +12,7 @@ AActor::AActor()
 void AActor::BeginPlay()
 {
     InitUUIDBillboard();
-    
+
     // TODO: 나중에 삭제를 Pending으로 하던가 해서 복사비용 줄이기
     const auto CopyComponents = OwnedComponents;
     for (UActorComponent* Comp : CopyComponents)
@@ -34,7 +34,6 @@ void AActor::InitUUIDBillboard()
         UUIDComponent->SetupAttachment(RootComponent);
     }
 }
-
 
 void AActor::Tick(float DeltaTime)
 {
@@ -82,9 +81,7 @@ bool AActor::Destroy()
 
 void AActor::RemoveOwnedComponent(UActorComponent* Component)
 {
-    OwnedComponents.Empty();
-    return;
-    if (OwnedComponents.Contains(Component))
+    if (Component && OwnedComponents.Contains(Component))
     {
         OwnedComponents.Remove(Component);
     }
@@ -121,18 +118,21 @@ void AActor::UninitializeComponents()
 
 bool AActor::SetRootComponent(USceneComponent* NewRootComponent)
 {
-    if (NewRootComponent == nullptr || NewRootComponent->GetOwner() == this)
+    if (!NewRootComponent || NewRootComponent->GetOwner() == this)
     {
-        if (RootComponent != NewRootComponent)
-        {
-            USceneComponent* OldRootComponent = RootComponent;
-            RootComponent = NewRootComponent;
+        return false;
+    }
 
+    if (RootComponent != NewRootComponent)
+    {
+        RootComponent = NewRootComponent;
+
+        if (USceneComponent* OldRootComponent = RootComponent)
+        {
             OldRootComponent->SetupAttachment(RootComponent);
         }
-        return true;
     }
-    return false;
+    return true;
 }
 
 bool AActor::SetActorLocation(const FVector& NewLocation)
@@ -176,7 +176,7 @@ void AActor::DuplicateSubObjects()
         //OwnedComponents.Remove(RootComponent);
 
     }
-    
+
     RootComponent = Cast<USceneComponent>(RootComponent->Duplicate());
     // RootComponent 아래있는 모든 scenecomponent가 생성됨
     // tree구조 완성되었지만

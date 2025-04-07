@@ -30,7 +30,7 @@ public:
     void SetType(const FString& _Type)
     {
         m_Type = _Type;
-        //staticMesh = FEngineLoop::resourceMgr.GetMesh(m_Type);
+        //staticMesh = FEngineLoop::ResourceManager.GetMesh(m_Type);
     }
     FBoundingBox GetBoundingBox() { return AABB; }
 };

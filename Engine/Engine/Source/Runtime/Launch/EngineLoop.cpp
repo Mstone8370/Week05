@@ -29,9 +29,9 @@ static LRESULT CALLBACK WndProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM l
         if (wParam != SIZE_MINIMIZED)
         {
             //UGraphicsDevice 객체의 OnResize 함수 호출
-            if (FEngineLoop::graphicDevice.SwapChain)
+            if (FEngineLoop::GraphicDevice.SwapChain)
             {
-                FEngineLoop::graphicDevice.OnResize(hWnd);
+                FEngineLoop::GraphicDevice.OnResize(hWnd);
             }
             for (int i = 0; i < 4; i++)
             {
@@ -39,7 +39,7 @@ static LRESULT CALLBACK WndProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM l
                 {
                     if (GEngineLoop.GetLevelEditor()->GetViewports()[i])
                     {
-                        GEngineLoop.GetLevelEditor()->GetViewports()[i]->ResizeViewport(FEngineLoop::graphicDevice.SwapchainDesc);
+                        GEngineLoop.GetLevelEditor()->GetViewports()[i]->ResizeViewport(FEngineLoop::GraphicDevice.SwapchainDesc);
                     }
                 }
             }
@@ -88,9 +88,9 @@ static LRESULT CALLBACK WndProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM l
     return 0;
 }
 
-FGraphicsDevice FEngineLoop::graphicDevice;
-FRenderer FEngineLoop::renderer;
-FResourceMgr FEngineLoop::resourceMgr;
+FGraphicsDevice FEngineLoop::GraphicDevice;
+FRenderer FEngineLoop::Renderer;
+FResourceMgr FEngineLoop::ResourceManager;
 uint32 FEngineLoop::TotalAllocationBytes = 0;
 uint32 FEngineLoop::TotalAllocationCount = 0;
 
@@ -115,13 +115,13 @@ int32 FEngineLoop::Init(HINSTANCE hInstance)
     UnrealEditor->Initialize();
 
     WindowInit(hInstance);
-    graphicDevice.Initialize(hWnd);
-    renderer.Initialize(&graphicDevice);
+    GraphicDevice.Initialize(hWnd);
+    Renderer.Initialize(&GraphicDevice);
 
     UIMgr = new UImGuiManager;
-    UIMgr->Initialize(hWnd, graphicDevice.Device, graphicDevice.DeviceContext);
+    UIMgr->Initialize(hWnd, GraphicDevice.Device, GraphicDevice.DeviceContext);
 
-    resourceMgr.Initialize(&renderer, &graphicDevice);
+    ResourceManager.Initialize(&Renderer, &GraphicDevice);
     LevelEditor = new SLevelEditor();
     LevelEditor->Initialize();
 
@@ -139,50 +139,44 @@ int32 FEngineLoop::Init(HINSTANCE hInstance)
 
 void FEngineLoop::Render()
 {
-    graphicDevice.Prepare();
+    GraphicDevice.Prepare();
     if (LevelEditor->IsMultiViewport())
     {
-        std::shared_ptr<FEditorViewportClient> viewportClient = GetLevelEditor()->GetActiveViewportClient();
+        std::shared_ptr<FEditorViewportClient> ViewportClient = GetLevelEditor()->GetActiveViewportClient();
         for (int i = 0; i < 4; ++i)
         {
             LevelEditor->SetViewportClient(i);
-            // graphicDevice.DeviceContext->RSSetViewports(1, &LevelEditor->GetViewports()[i]->GetD3DViewport());
-            // graphicDevice.ChangeRasterizer(LevelEditor->GetActiveViewportClient()->GetViewMode());
-            // renderer.ChangeViewMode(LevelEditor->GetActiveViewportClient()->GetViewMode());
-            // renderer.PrepareShader();
-            // renderer.UpdateLightBuffer();
-            // RenderWorld();
-            renderer.PrepareRender(GLevel);
-            renderer.Render(GetLevel(),LevelEditor->GetActiveViewportClient());
+            Renderer.PrepareRender(GLevel);
+            Renderer.RenderScene(GetLevel(),LevelEditor->GetActiveViewportClient());
         }
-        GetLevelEditor()->SetViewportClient(viewportClient);
+        GetLevelEditor()->SetViewportClient(ViewportClient);
     }
     else
     {
-        // graphicDevice.DeviceContext->RSSetViewports(1, &LevelEditor->GetActiveViewportClient()->GetD3DViewport());
-        // graphicDevice.ChangeRasterizer(LevelEditor->GetActiveViewportClient()->GetViewMode());
-        // renderer.ChangeViewMode(LevelEditor->GetActiveViewportClient()->GetViewMode());
-        // renderer.PrepareShader();
-        // renderer.UpdateLightBuffer();
-        // RenderWorld();
-        renderer.PrepareRender(GLevel);
-        renderer.Render(GetLevel(),LevelEditor->GetActiveViewportClient());
+        Renderer.PrepareRender(GLevel);
+        Renderer.RenderScene(GetLevel(),LevelEditor->GetActiveViewportClient());
+
+        Renderer.SampleAndProcessSRV(LevelEditor->GetActiveViewportClient());
+
+        Renderer.PostProcess(LevelEditor->GetActiveViewportClient());
+
+        Renderer.RenderFullScreenQuad(LevelEditor->GetActiveViewportClient());
     }
 }
 
 void FEngineLoop::Tick()
 {
-    LARGE_INTEGER frequency;
-    const double targetFrameTime = 1000.0 / targetFPS; // 한 프레임의 목표 시간 (밀리초 단위)
+    LARGE_INTEGER Frequency;
+    const double TargetFrameTime = 1000.0 / targetFPS; // 한 프레임의 목표 시간 (밀리초 단위)
 
-    QueryPerformanceFrequency(&frequency);
+    QueryPerformanceFrequency(&Frequency);
 
-    LARGE_INTEGER startTime, endTime;
-    double elapsedTime = 1.0;
+    LARGE_INTEGER StartTime, EndTime;
+    double ElapsedTime = 1.0;
 
     while (bIsExit == false)
     {
-        QueryPerformanceCounter(&startTime);
+        QueryPerformanceCounter(&StartTime);
 
         MSG msg;
         while (PeekMessage(&msg, nullptr, 0, 0, PM_REMOVE))
@@ -200,34 +194,35 @@ void FEngineLoop::Tick()
         switch (WorldContexts[curWorldContextIndex].worldType)
         {
         case EWorldType::Editor:
-            EditorTick(elapsedTime);
+            EditorTick(ElapsedTime);
             break;
         case EWorldType::PIE:
-            PIETick(elapsedTime);
+            PIETick(ElapsedTime);
             break;
         }
 
-        if (bTestInput2 == true)
+        if (bShouldChangeWorldType == true)
         {
             TogglePIE();
-            bTestInput2 = false;
+            bShouldChangeWorldType = false;
         }
 
         do
         {
             Sleep(0);
-            QueryPerformanceCounter(&endTime);
-            elapsedTime = (endTime.QuadPart - startTime.QuadPart) * 1000.0 / frequency.QuadPart;
+            QueryPerformanceCounter(&EndTime);
+            ElapsedTime = (EndTime.QuadPart - StartTime.QuadPart) * 1000.0 / Frequency.QuadPart;
         }
-        while (elapsedTime < targetFrameTime);
+        while (ElapsedTime < TargetFrameTime);
     }
 }
 
-void FEngineLoop::EditorTick(double elapsedTime)
+void FEngineLoop::EditorTick(double DeltaTime)
 {
     Input();
-    GLevel->Tick(elapsedTime);
-    LevelEditor->Tick(elapsedTime);
+    GLevel->Tick(DeltaTime);
+    LevelEditor->Tick(DeltaTime);
+
     Render();
     UIMgr->BeginFrame();
     UnrealEditor->Render();
@@ -239,13 +234,13 @@ void FEngineLoop::EditorTick(double elapsedTime)
     // Pending 처리된 오브젝트 제거
     GUObjectArray.ProcessPendingDestroyObjects();
 
-    graphicDevice.SwapBuffer();
+    GraphicDevice.SwapBuffer();
 }
 
-void FEngineLoop::PIETick(double elapsedTime)
+void FEngineLoop::PIETick(double DeltaTime)
 {
     Input();
-    GLevel->Tick(elapsedTime);
+    GLevel->Tick(DeltaTime);
     for (auto& actor : GLevel->GetActors())
     {
         actor->SetActorRotation(actor->GetActorRotation() + FVector(0.1,0.1,0.1));
@@ -260,7 +255,7 @@ void FEngineLoop::PIETick(double elapsedTime)
     // Pending 처리된 오브젝트 제거
     GUObjectArray.ProcessPendingDestroyObjects();
 
-    graphicDevice.SwapBuffer();
+    GraphicDevice.SwapBuffer();
 }
 
 void FEngineLoop::TogglePIE()
@@ -313,13 +308,16 @@ void FEngineLoop::Input()
 void FEngineLoop::Exit()
 {
     LevelEditor->Release();
+
     GLevel->Release();
     delete GLevel;
+
     UIMgr->Shutdown();
     delete UIMgr;
-    resourceMgr.Release(&renderer);
-    renderer.Release();
-    graphicDevice.Release();
+
+    ResourceManager.Release(&Renderer);
+    Renderer.Release();
+    GraphicDevice.Release();
 }
 
 

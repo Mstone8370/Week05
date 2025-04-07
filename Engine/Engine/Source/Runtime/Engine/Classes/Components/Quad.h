@@ -1,6 +1,6 @@
 #pragma once
 #include "Define.h"
-FVertexSimple quadVertices[] =
+FStaticMeshVertex quadVertices[] =
 {
     {-1.0f,1.0f,0.0f,0.0f,1.0f,0.0f,1.0f},
     { 1.0f,1.0f,0.0f,0.0f,1.0f,1.0f,1.0f},

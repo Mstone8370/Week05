@@ -20,12 +20,13 @@
 
 class UWorld;
 
-struct FVertexSimple
+struct FStaticMeshVertex
 {
-    float x, y, z;    // Position
-    float r, g, b, a; // Color
-    float nx, ny, nz;
-    float u=0, v=0;
+    float X, Y, Z;    // Position
+    float NormalX, NormalY, NormalZ;
+    float TangentX, TangentY, TangentZ;
+    float U = 0, V = 0;
+    float R, G, B, A; // Color
     uint32 MaterialIndex;
 };
 
@@ -52,37 +53,37 @@ struct FObjInfo
     FWString PathName; // OBJ File Paths
     FString DisplayName; // Display Name
     FString MatName; // OBJ MTL File Name
-    
+
     // Group
     uint32 NumOfGroup = 0; // token 'g' or 'o'
     TArray<FString> GroupName;
-    
+
     // Vertex, UV, Normal List
     TArray<FVector> Vertices;
     TArray<FVector> Normals;
     TArray<FVector2D> UVs;
-    
+
     // Faces
     TArray<int32> Faces;
 
     // Index
     TArray<uint32> VertexIndices;
     TArray<uint32> NormalIndices;
-    TArray<uint32> TextureIndices;
-    
+    TArray<uint32> UVIndices;
+
     // Material
     TArray<FMaterialSubset> MaterialSubsets;
 };
 
 struct FObjMaterialInfo
 {
-    FString MTLName;  // newmtl : Material Name.
+    FString MaterialName;  // newmtl : Material Name.
 
     bool bHasTexture = false;  // Has Texture?
     bool bTransparent = false; // Has alpha channel?
 
     FVector Diffuse;  // Kd : Diffuse (Vector4)
-    FVector Specular;  // Ks : Specular (Vector) 
+    FVector Specular;  // Ks : Specular (Vector)
     FVector Ambient;   // Ka : Ambient (Vector)
     FVector Emissive;  // Ke : Emissive (Vector)
 
@@ -95,19 +96,20 @@ struct FObjMaterialInfo
     /* Texture */
     FString DiffuseTextureName;  // map_Kd : Diffuse texture
     FWString DiffuseTexturePath;
-    
+
     FString AmbientTextureName;  // map_Ka : Ambient texture
     FWString AmbientTexturePath;
-    
+
     FString SpecularTextureName; // map_Ks : Specular texture
     FWString SpecularTexturePath;
-    
+
     FString BumpTextureName;     // map_Bump : Bump texture
     FWString BumpTexturePath;
-    
+
     FString AlphaTextureName;    // map_d : Alpha texture
     FWString AlphaTexturePath;
 };
+
 enum class EWorldType
 {
     Editor,
@@ -120,10 +122,8 @@ struct FWorldContext
 {
     UWorld* World;
     EWorldType worldType;
-    
+
 };
-
-
 
 // Cooked Data
 namespace OBJ
@@ -133,13 +133,13 @@ namespace OBJ
         FWString ObjectName;
         FWString PathName;
         FString DisplayName;
-        
-        TArray<FVertexSimple> Vertices;
+
+        TArray<FStaticMeshVertex> Vertices;
         TArray<UINT> Indices;
 
         ID3D11Buffer* VertexBuffer;
         ID3D11Buffer* IndexBuffer;
-        
+
         TArray<FObjMaterialInfo> Materials;
         TArray<FMaterialSubset> MaterialSubsets;
 
@@ -153,6 +153,7 @@ struct FVertexTexture
 	float x, y, z;    // Position
 	float u, v; // Texture
 };
+
 struct FGridParameters
 {
 	float gridSpacing;
@@ -160,20 +161,25 @@ struct FGridParameters
 	FVector gridOrigin;
 	float pad;
 };
+
 struct FSimpleVertex
 {
 	float dummy; // 내용은 사용되지 않음
     float padding[11];
 };
-struct FOBB {
+
+struct FOrientedBoundingBox
+{
     FVector corners[8];
 };
+
 struct FRect
 {
     FRect() : leftTopX(0), leftTopY(0), width(0), height(0) {}
     FRect(float x, float y, float w, float h) : leftTopX(x), leftTopY(y), width(w), height(h) {}
     float leftTopX, leftTopY, width, height;
 };
+
 struct FPoint
 {
     FPoint() : x(0), y(0) {}
@@ -183,14 +189,17 @@ struct FPoint
 
     float x, y;
 };
+
 struct FBoundingBox
 {
-    FBoundingBox(){}
+    FBoundingBox() {}
     FBoundingBox(FVector _min, FVector _max) : min(_min), max(_max) {}
+
 	FVector min; // Minimum extents
 	float pad;
 	FVector max; // Maximum extents
 	float pad1;
+
     bool Intersect(const FVector& rayOrigin, const FVector& rayDir, float& outDistance)
     {
         float tmin = -FLT_MAX;
@@ -198,17 +207,17 @@ struct FBoundingBox
         const float epsilon = 1e-6f;
 
         // X축 처리
-        if (fabs(rayDir.x) < epsilon)
+        if (fabs(rayDir.X) < epsilon)
         {
             // 레이가 X축 방향으로 거의 평행한 경우,
             // 원점의 x가 박스 [min.x, max.x] 범위 밖이면 교차 없음
-            if (rayOrigin.x < min.x || rayOrigin.x > max.x)
+            if (rayOrigin.X < min.X || rayOrigin.X > max.X)
                 return false;
         }
         else
         {
-            float t1 = (min.x - rayOrigin.x) / rayDir.x;
-            float t2 = (max.x - rayOrigin.x) / rayDir.x;
+            float t1 = (min.X - rayOrigin.X) / rayDir.X;
+            float t2 = (max.X - rayOrigin.X) / rayDir.X;
             if (t1 > t2)  std::swap(t1, t2);
 
             // tmin은 "현재까지의 교차 구간 중 가장 큰 min"
@@ -220,15 +229,15 @@ struct FBoundingBox
         }
 
         // Y축 처리
-        if (fabs(rayDir.y) < epsilon)
+        if (fabs(rayDir.Y) < epsilon)
         {
-            if (rayOrigin.y < min.y || rayOrigin.y > max.y)
+            if (rayOrigin.Y < min.Y || rayOrigin.Y > max.Y)
                 return false;
         }
         else
         {
-            float t1 = (min.y - rayOrigin.y) / rayDir.y;
-            float t2 = (max.y - rayOrigin.y) / rayDir.y;
+            float t1 = (min.Y - rayOrigin.Y) / rayDir.Y;
+            float t2 = (max.Y - rayOrigin.Y) / rayDir.Y;
             if (t1 > t2)  std::swap(t1, t2);
 
             tmin = (t1 > tmin) ? t1 : tmin;
@@ -238,15 +247,15 @@ struct FBoundingBox
         }
 
         // Z축 처리
-        if (fabs(rayDir.z) < epsilon)
+        if (fabs(rayDir.Z) < epsilon)
         {
-            if (rayOrigin.z < min.z || rayOrigin.z > max.z)
+            if (rayOrigin.Z < min.Z || rayOrigin.Z > max.Z)
                 return false;
         }
         else
         {
-            float t1 = (min.z - rayOrigin.z) / rayDir.z;
-            float t2 = (max.z - rayOrigin.z) / rayDir.z;
+            float t1 = (min.Z - rayOrigin.Z) / rayDir.Z;
+            float t2 = (max.Z - rayOrigin.Z) / rayDir.Z;
             if (t1 > t2)  std::swap(t1, t2);
 
             tmin = (t1 > tmin) ? t1 : tmin;
@@ -268,6 +277,7 @@ struct FBoundingBox
     }
 
 };
+
 struct FCone
 {
     FVector ConeApex; // 원뿔의 꼭짓점
@@ -281,26 +291,29 @@ struct FCone
     float pad[3];
 
 };
-struct FPrimitiveCounts 
+
+struct FPrimitiveCounts
 {
 	int BoundingBoxCount;
+	int ConeCount;
 	int pad;
-	int ConeCount; 
 	int pad1;
 };
+
 struct FLighting
 {
 	float lightDirX, lightDirY, lightDirZ; // 조명 방향
-	float pad1;                      // 16바이트 정렬용 패딩
-	float lightColorX, lightColorY, lightColorZ;    // 조명 색상
-	float pad2;                      // 16바이트 정렬용 패딩
-	float AmbientFactor;             // ambient 계수
+	float pad1; // 16바이트 정렬용 패딩
+	float lightColorX, lightColorY, lightColorZ; // 조명 색상
+	float pad2; // 16바이트 정렬용 패딩
+	float AmbientFactor; // ambient 계수
 	float pad3; // 16바이트 정렬 맞춤 추가 패딩
 	float pad4; // 16바이트 정렬 맞춤 추가 패딩
 	float pad5; // 16바이트 정렬 맞춤 추가 패딩
 };
 
-struct FMaterialConstants {
+struct FMaterialConstants
+{
     FVector DiffuseColor;
     float TransparencyScalar;
     FVector AmbientColor;
@@ -311,26 +324,69 @@ struct FMaterialConstants {
     float MaterialPad0;
 };
 
-struct FConstants {
-    FMatrix MVP;      // 모델
+struct FObjectConstants
+{
+    FMatrix ModelMatrix;      // 모델
     FMatrix ModelMatrixInverseTranspose; // normal 변환을 위한 행렬
     FVector4 UUIDColor;
     bool IsSelected;
     FVector pad;
+    FMatrix M;
 };
-struct FLitUnlitConstants {
-    int isLit; // 1 = Lit, 0 = Unlit 
+
+struct FViewConstants
+{
+    FMatrix ViewMatrix;
+    FVector ViewLocation;
+    float ViewPadding;
+};
+
+struct FProjectionConstants
+{
+    FMatrix ProjectionMatrix;
+    float NearClip;
+    float FarClip;
+    FVector2D ProjectionPadding;
+};
+
+struct FLitUnlitConstants
+{
+    int isLit; // 1 = Lit, 0 = Unlit
     FVector pad;
 };
 
-struct FSubMeshConstants {
+struct FSubMeshConstants
+{
     float isSelectedSubMesh;
     FVector pad;
 };
 
-struct FTextureConstants {
+struct FTextureConstants
+{
     float UOffset;
     float VOffset;
     float pad0;
     float pad1;
+};
+
+struct alignas(16) FCameraConstants
+{
+    float NearPlane;
+    float FarPlane;
+    float padding3;
+    float padding2;
+    FVector cameraPos;
+    float padding1;
+    FMatrix invProjection;
+    FMatrix invView;
+};
+
+struct alignas(16) FExponentialHeightFogConstants
+{
+    FVector FogColor;
+    float FogDensity;
+    float FogFalloff;
+    float FogHeight;
+    float padding1;
+    float padding2;
 };

@@ -73,7 +73,7 @@ int UPrimitiveComponent::CheckRayIntersection(FVector& rayOrigin, FVector& rayDi
     //        }
     //        nIntersections++;
     //    }
-    //   
+    //
     //}
     return nIntersections;
 }
@@ -102,8 +102,8 @@ bool UPrimitiveComponent::IntersectRayTriangle(const FVector& rayOrigin, const F
         return false;
 
     float t = f * edge2.Dot(q);
-    if (t > epsilon) {
-
+    if (t > epsilon)
+    {
         hitDistance = t;
         return true;
     }

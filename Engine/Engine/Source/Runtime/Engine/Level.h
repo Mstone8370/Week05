@@ -32,7 +32,7 @@ public:
     /**
      * World에 Actor를 Spawn합니다.
      * @tparam T AActor를 상속받은 클래스
-     * @return Spawn된 Actor의 포인터cenec
+     * @return Spawn된 Actor의 포인터
      */
     template <typename T>
         requires std::derived_from<T, AActor>
@@ -56,8 +56,6 @@ private:
     AEditorPlayer* EditorPlayer = nullptr;
 
 public:
-    UObject* worldGizmo = nullptr;
-
     const TArray<AActor*>& GetActors() const { return ActorsArray; }
     void AddActor(AActor* NewActor);
 
@@ -72,7 +70,6 @@ public:
         SelectedActor = InActor;
     }
 
-    UObject* GetWorldGizmo() const { return worldGizmo; }
     USceneComponent* GetPickingGizmo() const { return pickingGizmo; }
     void SetPickingGizmo(UObject* Object);
 };

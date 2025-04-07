@@ -8,6 +8,7 @@
 #include "Components/LightComponent.h"
 #include "Components/StaticMeshComponent.h"
 #include "Components/BillboardComponent.h"
+#include "Components/ExponentialHeightFogComponent.h"
 #include "Components/ParticleSubUVComp.h"
 #include "Components/TextBillboardComponent.h"
 #include "Components/Material/Material.h"
@@ -15,7 +16,7 @@
 #include "Launch/EngineLoop.h"
 #include "Math/JungleMath.h"
 #include "UnrealEd/EditorViewportClient.h"
-#include "UnrealEd/PrimitiveBatch.h"
+#include "PrimitiveBatch.h"
 #include "UObject/Casts.h"
 #include "UObject/Object.h"
 #include "PropertyEditor/ShowFlags.h"
@@ -28,22 +29,34 @@ void FRenderer::Initialize(FGraphicsDevice* graphics)
 {
     Graphics = graphics;
     CreateShader();
+    CreateFinalShader();
     CreateTextureShader();
+    CreateDepthShader();
+
+    CreateFogShader();
+
     CreateFontShader();
     CreateLineShader();
     CreateConstantBuffer();
     CreateLightingBuffer();
     CreateLitUnlitBuffer();
+    CreateScreenSamplerState();
     UpdateLitUnlitConstant(1);
 }
 
 void FRenderer::Release()
 {
     ReleaseShader();
+    ReleaseFinalShader();
+    ReleaseDepthShader();
+
+    ReleaseFogShader();
+
     ReleaseTextureShader();
     ReleaseFontShader();
     ReleaseLineShader();
     ReleaseConstantBuffer();
+    ReleaseScreenSamplerState();
 }
 
 void FRenderer::CreateShader()
@@ -51,27 +64,118 @@ void FRenderer::CreateShader()
     ID3DBlob* VertexShaderCSO;
     ID3DBlob* PixelShaderCSO;
 
-    D3DCompileFromFile(L"Shaders/StaticMeshVertexShader.hlsl", nullptr, nullptr, "mainVS", "vs_5_0", 0, 0, &VertexShaderCSO, nullptr);
+    D3DCompileFromFile(L"Shaders/StaticMeshVertexShader.hlsl", nullptr, D3D_COMPILE_STANDARD_FILE_INCLUDE, "mainVS", "vs_5_0", 0, 0, &VertexShaderCSO, nullptr);
     Graphics->Device->CreateVertexShader(VertexShaderCSO->GetBufferPointer(), VertexShaderCSO->GetBufferSize(), nullptr, &VertexShader);
 
-    D3DCompileFromFile(L"Shaders/StaticMeshPixelShader.hlsl", nullptr, nullptr, "mainPS", "ps_5_0", 0, 0, &PixelShaderCSO, nullptr);
+    D3DCompileFromFile(L"Shaders/StaticMeshPixelShader.hlsl", nullptr, D3D_COMPILE_STANDARD_FILE_INCLUDE, "mainPS", "ps_5_0", 0, 0, &PixelShaderCSO, nullptr);
     Graphics->Device->CreatePixelShader(PixelShaderCSO->GetBufferPointer(), PixelShaderCSO->GetBufferSize(), nullptr, &PixelShader);
 
     D3D11_INPUT_ELEMENT_DESC layout[] = {
         {"POSITION", 0, DXGI_FORMAT_R32G32B32_FLOAT, 0, 0, D3D11_INPUT_PER_VERTEX_DATA, 0},
-        {"COLOR", 0, DXGI_FORMAT_R32G32B32A32_FLOAT, 0, 12, D3D11_INPUT_PER_VERTEX_DATA, 0},
-        {"NORMAL", 0, DXGI_FORMAT_R32G32B32_FLOAT, 0, 28, D3D11_INPUT_PER_VERTEX_DATA, 0},
-        {"TEXCOORD", 0, DXGI_FORMAT_R32G32_FLOAT, 0, 40, D3D11_INPUT_PER_VERTEX_DATA, 0},
-        {"MATERIAL_INDEX", 0, DXGI_FORMAT_R32_UINT, 0, 48, D3D11_INPUT_PER_VERTEX_DATA, 0}
+        {"NORMAL", 0, DXGI_FORMAT_R32G32B32_FLOAT, 0, D3D11_APPEND_ALIGNED_ELEMENT, D3D11_INPUT_PER_VERTEX_DATA, 0},
+        {"TANGENT", 0, DXGI_FORMAT_R32G32B32_FLOAT, 0, D3D11_APPEND_ALIGNED_ELEMENT, D3D11_INPUT_PER_VERTEX_DATA, 0},
+        {"TEXCOORD", 0, DXGI_FORMAT_R32G32_FLOAT, 0, D3D11_APPEND_ALIGNED_ELEMENT, D3D11_INPUT_PER_VERTEX_DATA, 0},
+        {"COLOR", 0, DXGI_FORMAT_R32G32B32A32_FLOAT, 0, D3D11_APPEND_ALIGNED_ELEMENT, D3D11_INPUT_PER_VERTEX_DATA, 0},
+        {"MATERIAL_INDEX", 0, DXGI_FORMAT_R32_UINT, 0, D3D11_APPEND_ALIGNED_ELEMENT, D3D11_INPUT_PER_VERTEX_DATA, 0},
     };
 
     Graphics->Device->CreateInputLayout(
         layout, ARRAYSIZE(layout), VertexShaderCSO->GetBufferPointer(), VertexShaderCSO->GetBufferSize(), &InputLayout
     );
 
-    Stride = sizeof(FVertexSimple);
     VertexShaderCSO->Release();
     PixelShaderCSO->Release();
+}
+
+void FRenderer::CreateFinalShader()
+{
+    ID3DBlob* FinalVertexShaderCSO;
+    ID3DBlob* FinalPixelShaderCSO;
+
+    D3DCompileFromFile(L"Shaders/FinalVertexShader.hlsl", nullptr, nullptr, "main", "vs_5_0", 0, 0, &FinalVertexShaderCSO, nullptr);
+    Graphics->Device->CreateVertexShader(FinalVertexShaderCSO->GetBufferPointer(), FinalVertexShaderCSO->GetBufferSize(), nullptr, &FinalVertexShader);
+
+    D3DCompileFromFile(L"Shaders/FinalPixelShader.hlsl", nullptr, nullptr, "main", "ps_5_0", 0, 0, &FinalPixelShaderCSO, nullptr);
+    Graphics->Device->CreatePixelShader(FinalPixelShaderCSO->GetBufferPointer(), FinalPixelShaderCSO->GetBufferSize(), nullptr, &FinalPixelShader);
+
+    FinalVertexShaderCSO->Release();
+    FinalPixelShaderCSO->Release();
+}
+
+void FRenderer::ReleaseFinalShader()
+{
+    if (FinalVertexShader)
+    {
+        FinalVertexShader->Release();
+        FinalVertexShader = nullptr;
+    }
+
+    if (FinalPixelShader)
+    {
+        FinalPixelShader->Release();
+        FinalPixelShader = nullptr;
+    }
+}
+
+void FRenderer::CreateDepthShader()
+{
+    ID3DBlob* FinalPixelShaderCSO;
+
+    D3DCompileFromFile(L"Shaders/NormalizeDepthShader.hlsl", nullptr, nullptr, "main", "ps_5_0", 0, 0, &FinalPixelShaderCSO, nullptr);
+    Graphics->Device->CreatePixelShader(FinalPixelShaderCSO->GetBufferPointer(), FinalPixelShaderCSO->GetBufferSize(), nullptr, &DepthShader);
+
+    FinalPixelShaderCSO->Release();
+}
+
+void FRenderer::ReleaseDepthShader()
+{
+    if (DepthShader)
+    {
+        DepthShader->Release();
+        DepthShader = nullptr;
+    }
+}
+
+void FRenderer::CreateFogShader()
+{
+    ID3DBlob* FogPixelShaderCSO;
+
+    D3DCompileFromFile(L"Shaders/ExponentialHeightFogShader.hlsl", nullptr, nullptr, "main", "ps_5_0", 0, 0, &FogPixelShaderCSO, nullptr);
+    Graphics->Device->CreatePixelShader(FogPixelShaderCSO->GetBufferPointer(), FogPixelShaderCSO->GetBufferSize(), nullptr, &FogShader);
+
+    FogPixelShaderCSO->Release();
+}
+
+void FRenderer::ReleaseFogShader()
+{
+    if (FogShader)
+    {
+        FogShader->Release();
+        FogShader = nullptr;
+    }
+}
+
+void FRenderer::CreateScreenSamplerState()
+{
+    D3D11_SAMPLER_DESC samplerDesc = {};
+    samplerDesc.Filter = D3D11_FILTER_MIN_MAG_MIP_POINT;
+    samplerDesc.AddressU = D3D11_TEXTURE_ADDRESS_CLAMP;
+    samplerDesc.AddressV = D3D11_TEXTURE_ADDRESS_CLAMP;
+    samplerDesc.AddressW = D3D11_TEXTURE_ADDRESS_CLAMP;
+    samplerDesc.ComparisonFunc = D3D11_COMPARISON_NEVER;
+    samplerDesc.MinLOD = 0;
+    samplerDesc.MaxLOD = D3D11_FLOAT32_MAX;
+
+    Graphics->Device->CreateSamplerState(&samplerDesc, &ScreenSamplerState);
+}
+
+void FRenderer::ReleaseScreenSamplerState()
+{
+    if (ScreenSamplerState)
+    {
+        ScreenSamplerState->Release();
+        ScreenSamplerState = nullptr;
+    }
 }
 
 void FRenderer::ReleaseShader()
@@ -101,15 +205,18 @@ void FRenderer::PrepareShader() const
     Graphics->DeviceContext->PSSetShader(PixelShader, nullptr, 0);
     Graphics->DeviceContext->IASetInputLayout(InputLayout);
 
-    if (ConstantBuffer)
+    if (ObjectConstantBuffer)
     {
-        Graphics->DeviceContext->VSSetConstantBuffers(0, 1, &ConstantBuffer);
-        Graphics->DeviceContext->PSSetConstantBuffers(0, 1, &ConstantBuffer);
-        Graphics->DeviceContext->PSSetConstantBuffers(1, 1, &MaterialConstantBuffer);
-        Graphics->DeviceContext->PSSetConstantBuffers(2, 1, &LightingBuffer);
+        Graphics->DeviceContext->VSSetConstantBuffers(0, 1, &ObjectConstantBuffer);
+        Graphics->DeviceContext->VSSetConstantBuffers(1, 1, &ViewConstantBuffer);
+        Graphics->DeviceContext->VSSetConstantBuffers(2, 1, &ProjectionConstantBuffer);
+
+        Graphics->DeviceContext->PSSetConstantBuffers(0, 1, &ObjectConstantBuffer);
         Graphics->DeviceContext->PSSetConstantBuffers(3, 1, &FlagBuffer);
-        Graphics->DeviceContext->PSSetConstantBuffers(4, 1, &SubMeshConstantBuffer);
-        Graphics->DeviceContext->PSSetConstantBuffers(5, 1, &TextureConstantBufer);
+        Graphics->DeviceContext->PSSetConstantBuffers(4, 1, &MaterialConstantBuffer);
+        Graphics->DeviceContext->PSSetConstantBuffers(5, 1, &LightingBuffer);
+        Graphics->DeviceContext->PSSetConstantBuffers(6, 1, &SubMeshConstantBuffer);
+        Graphics->DeviceContext->PSSetConstantBuffers(7, 1, &TextureConstantBuffer);
     }
 }
 
@@ -125,101 +232,86 @@ void FRenderer::ResetPixelShader() const
     PixelShader->Release();
 }
 
-void FRenderer::SetVertexShader(const FWString& filename, const FString& funcname, const FString& version)
+void FRenderer::ChangeViewMode(EViewModeIndex InViewModeIndex)
 {
-    // ���� �߻��� ���ɼ��� ����
-    if (Graphics == nullptr)
-        assert(0);
-    if (VertexShader != nullptr)
-        ResetVertexShader();
-    if (InputLayout != nullptr)
-        InputLayout->Release();
-    ID3DBlob* vertexshaderCSO;
-
-    D3DCompileFromFile(filename.c_str(), nullptr, nullptr, *funcname, *version, 0, 0, &vertexshaderCSO, nullptr);
-    Graphics->Device->CreateVertexShader(vertexshaderCSO->GetBufferPointer(), vertexshaderCSO->GetBufferSize(), nullptr, &VertexShader);
-    vertexshaderCSO->Release();
-}
-
-void FRenderer::SetPixelShader(const FWString& filename, const FString& funcname, const FString& version)
-{
-    // ���� �߻��� ���ɼ��� ����
-    if (Graphics == nullptr)
-        assert(0);
-    if (VertexShader != nullptr)
-        ResetVertexShader();
-    ID3DBlob* pixelshaderCSO;
-    D3DCompileFromFile(filename.c_str(), nullptr, nullptr, *funcname, *version, 0, 0, &pixelshaderCSO, nullptr);
-    Graphics->Device->CreatePixelShader(pixelshaderCSO->GetBufferPointer(), pixelshaderCSO->GetBufferSize(), nullptr, &PixelShader);
-
-    pixelshaderCSO->Release();
-}
-
-void FRenderer::ChangeViewMode(EViewModeIndex evi) const
-{
-    switch (evi)
+    ViewModeFlags = InViewModeIndex;
+    switch (InViewModeIndex)
     {
     case EViewModeIndex::VMI_Lit:
         UpdateLitUnlitConstant(1);
         break;
     case EViewModeIndex::VMI_Wireframe:
     case EViewModeIndex::VMI_Unlit:
+    case EViewModeIndex::VMI_SceneDepth:
         UpdateLitUnlitConstant(0);
+        break;
+    default:
         break;
     }
 }
 
 void FRenderer::RenderPrimitive(ID3D11Buffer* pBuffer, UINT numVertices) const
 {
-    UINT offset = 0;
-    Graphics->DeviceContext->IASetVertexBuffers(0, 1, &pBuffer, &Stride, &offset);
+    uint32 Stride = sizeof(FStaticMeshVertex);
+    uint32 Offset = 0;
+    Graphics->DeviceContext->IASetVertexBuffers(0, 1, &pBuffer, &Stride, &Offset);
     Graphics->DeviceContext->Draw(numVertices, 0);
 }
 
-void FRenderer::RenderPrimitive(ID3D11Buffer* pVertexBuffer, UINT numVertices, ID3D11Buffer* pIndexBuffer, UINT numIndices) const
+void FRenderer::RenderPrimitive(ID3D11Buffer* pVertexBuffer, ID3D11Buffer* pIndexBuffer, UINT numIndices) const
 {
-    UINT offset = 0;
-    Graphics->DeviceContext->IASetVertexBuffers(0, 1, &pVertexBuffer, &Stride, &offset);
+    uint32 Stride = sizeof(FStaticMeshVertex);
+    uint32 Offset = 0;
+    Graphics->DeviceContext->IASetVertexBuffers(0, 1, &pVertexBuffer, &Stride, &Offset);
     Graphics->DeviceContext->IASetIndexBuffer(pIndexBuffer, DXGI_FORMAT_R32_UINT, 0);
 
     Graphics->DeviceContext->DrawIndexed(numIndices, 0, 0);
 }
 
-void FRenderer::RenderPrimitive(OBJ::FStaticMeshRenderData* renderData, TArray<FStaticMaterial*> materials, TArray<UMaterial*> overrideMaterial, int selectedSubMeshIndex = -1) const
+void FRenderer::RenderPrimitive(OBJ::FStaticMeshRenderData* RenderData, TArray<FStaticMaterial*> Materials, TArray<UMaterial*> OverrideMaterial, int SelectedSubMeshIndex = -1) const
 {
-    UINT offset = 0;
-    Graphics->DeviceContext->IASetVertexBuffers(0, 1, &renderData->VertexBuffer, &Stride, &offset);
+    uint32 Stride = sizeof(FStaticMeshVertex);
+    uint32 Offset = 0;
+    Graphics->DeviceContext->IASetVertexBuffers(0, 1, &RenderData->VertexBuffer, &Stride, &Offset);
 
-    if (renderData->IndexBuffer)
-        Graphics->DeviceContext->IASetIndexBuffer(renderData->IndexBuffer, DXGI_FORMAT_R32_UINT, 0);
-
-    if (renderData->MaterialSubsets.Num() == 0)
+    if (RenderData->IndexBuffer)
     {
-        // no submesh
-        Graphics->DeviceContext->DrawIndexed(renderData->Indices.Num(), 0, 0);
+        Graphics->DeviceContext->IASetIndexBuffer(RenderData->IndexBuffer, DXGI_FORMAT_R32_UINT, 0);
     }
 
-    for (int subMeshIndex = 0; subMeshIndex < renderData->MaterialSubsets.Num(); subMeshIndex++)
+    if (RenderData->MaterialSubsets.Num() == 0)
     {
-        int materialIndex = renderData->MaterialSubsets[subMeshIndex].MaterialIndex;
+        // no submesh
+        Graphics->DeviceContext->DrawIndexed(RenderData->Indices.Num(), 0, 0);
+    }
 
-        subMeshIndex == selectedSubMeshIndex ? UpdateSubMeshConstant(true) : UpdateSubMeshConstant(false);
+    for (int subMeshIndex = 0; subMeshIndex < RenderData->MaterialSubsets.Num(); subMeshIndex++)
+    {
+        int materialIndex = RenderData->MaterialSubsets[subMeshIndex].MaterialIndex;
 
-        overrideMaterial[materialIndex] != nullptr ? 
-            UpdateMaterial(overrideMaterial[materialIndex]->GetMaterialInfo()) : UpdateMaterial(materials[materialIndex]->Material->GetMaterialInfo());
+        subMeshIndex == SelectedSubMeshIndex ? UpdateSubMeshConstant(true) : UpdateSubMeshConstant(false);
 
-        if (renderData->IndexBuffer)
+        if (OverrideMaterial[materialIndex])
+        {
+            UpdateMaterial(OverrideMaterial[materialIndex]->GetMaterialInfo());
+        }
+        else
+        {
+            UpdateMaterial(Materials[materialIndex]->Material->GetMaterialInfo());
+        }
+
+        if (RenderData->IndexBuffer)
         {
             // index draw
-            uint64 startIndex = renderData->MaterialSubsets[subMeshIndex].IndexStart;
-            uint64 indexCount = renderData->MaterialSubsets[subMeshIndex].IndexCount;
+            uint64 startIndex = RenderData->MaterialSubsets[subMeshIndex].IndexStart;
+            uint64 indexCount = RenderData->MaterialSubsets[subMeshIndex].IndexCount;
             Graphics->DeviceContext->DrawIndexed(indexCount, startIndex, 0);
         }
     }
 }
 
 void FRenderer::RenderTexturedModelPrimitive(
-    ID3D11Buffer* pVertexBuffer, UINT numVertices, ID3D11Buffer* pIndexBuffer, UINT numIndices, ID3D11ShaderResourceView* InTextureSRV,
+    ID3D11Buffer* pVertexBuffer, ID3D11Buffer* pIndexBuffer, UINT numIndices, ID3D11ShaderResourceView* InTextureSRV,
     ID3D11SamplerState* InSamplerState
 ) const
 {
@@ -231,23 +323,24 @@ void FRenderer::RenderTexturedModelPrimitive(
     {
         Console::GetInstance().AddLog(LogLevel::Warning, "numIndices Error");
     }
-    UINT offset = 0;
-    Graphics->DeviceContext->IASetVertexBuffers(0, 1, &pVertexBuffer, &Stride, &offset);
+
+    uint32 Stride = sizeof(FStaticMeshVertex);
+    uint32 Offset = 0;
+    Graphics->DeviceContext->IASetVertexBuffers(0, 1, &pVertexBuffer, &Stride, &Offset);
     Graphics->DeviceContext->IASetIndexBuffer(pIndexBuffer, DXGI_FORMAT_R32_UINT, 0);
 
-    //Graphics->DeviceContext->IASetPrimitiveTopology(D3D11_PRIMITIVE_TOPOLOGY_TRIANGLELIST);
     Graphics->DeviceContext->PSSetShaderResources(0, 1, &InTextureSRV);
     Graphics->DeviceContext->PSSetSamplers(0, 1, &InSamplerState);
 
     Graphics->DeviceContext->DrawIndexed(numIndices, 0, 0);
 }
 
-ID3D11Buffer* FRenderer::CreateVertexBuffer(FVertexSimple* vertices, UINT byteWidth) const
+ID3D11Buffer* FRenderer::CreateVertexBuffer(FStaticMeshVertex* vertices, UINT byteWidth) const
 {
     // 2. Create a vertex buffer
     D3D11_BUFFER_DESC vertexbufferdesc = {};
     vertexbufferdesc.ByteWidth = byteWidth;
-    vertexbufferdesc.Usage = D3D11_USAGE_IMMUTABLE; // will never be updated 
+    vertexbufferdesc.Usage = D3D11_USAGE_IMMUTABLE; // will never be updated
     vertexbufferdesc.BindFlags = D3D11_BIND_VERTEX_BUFFER;
 
     D3D11_SUBRESOURCE_DATA vertexbufferSRD = {vertices};
@@ -262,11 +355,11 @@ ID3D11Buffer* FRenderer::CreateVertexBuffer(FVertexSimple* vertices, UINT byteWi
     return vertexBuffer;
 }
 
-ID3D11Buffer* FRenderer::CreateVertexBuffer(const TArray<FVertexSimple>& vertices, UINT byteWidth) const
+ID3D11Buffer* FRenderer::CreateVertexBuffer(const TArray<FStaticMeshVertex>& vertices, UINT byteWidth) const
 {
     D3D11_BUFFER_DESC vertexbufferdesc = {};
     vertexbufferdesc.ByteWidth = byteWidth;
-    vertexbufferdesc.Usage = D3D11_USAGE_IMMUTABLE; // will never be updated 
+    vertexbufferdesc.Usage = D3D11_USAGE_IMMUTABLE; // will never be updated
     vertexbufferdesc.BindFlags = D3D11_BIND_VERTEX_BUFFER;
 
     D3D11_SUBRESOURCE_DATA vertexbufferSRD;
@@ -282,41 +375,42 @@ ID3D11Buffer* FRenderer::CreateVertexBuffer(const TArray<FVertexSimple>& vertice
     return vertexBuffer;
 }
 
-ID3D11Buffer* FRenderer::CreateIndexBuffer(uint32* indices, UINT byteWidth) const
+ID3D11Buffer* FRenderer::CreateIndexBuffer(uint32* Indices, UINT ByteWidth) const
 {
-    D3D11_BUFFER_DESC indexbufferdesc = {};              // buffer�� ����, �뵵 ���� ����
-    indexbufferdesc.Usage = D3D11_USAGE_IMMUTABLE;       // immutable: gpu�� �б� �������� ������ �� �ִ�.
-    indexbufferdesc.BindFlags = D3D11_BIND_INDEX_BUFFER; // index buffer�� ����ϰڴ�.
-    indexbufferdesc.ByteWidth = byteWidth;               // buffer ũ�� ����
+    D3D11_BUFFER_DESC IndexBufferDesc = {};
+    IndexBufferDesc.Usage = D3D11_USAGE_IMMUTABLE;
+    IndexBufferDesc.BindFlags = D3D11_BIND_INDEX_BUFFER;
+    IndexBufferDesc.ByteWidth = ByteWidth;
 
-    D3D11_SUBRESOURCE_DATA indexbufferSRD = {indices};
+    D3D11_SUBRESOURCE_DATA IndexBufferData = {};
+    IndexBufferData.pSysMem = Indices;
 
     ID3D11Buffer* indexBuffer;
 
-    HRESULT hr = Graphics->Device->CreateBuffer(&indexbufferdesc, &indexbufferSRD, &indexBuffer);
+    HRESULT hr = Graphics->Device->CreateBuffer(&IndexBufferDesc, &IndexBufferData, &indexBuffer);
     if (FAILED(hr))
     {
-        UE_LOG(LogLevel::Warning, "IndexBuffer Creation faild");
+        UE_LOG(LogLevel::Warning, "IndexBuffer Creation failed");
     }
     return indexBuffer;
 }
 
-ID3D11Buffer* FRenderer::CreateIndexBuffer(const TArray<uint32>& indices, UINT byteWidth) const
+ID3D11Buffer* FRenderer::CreateIndexBuffer(const TArray<uint32>& Indices, UINT ByteWidth) const
 {
-    D3D11_BUFFER_DESC indexbufferdesc = {};              // buffer�� ����, �뵵 ���� ����
-    indexbufferdesc.Usage = D3D11_USAGE_IMMUTABLE;       // immutable: gpu�� �б� �������� ������ �� �ִ�.
-    indexbufferdesc.BindFlags = D3D11_BIND_INDEX_BUFFER; // index buffer�� ����ϰڴ�.
-    indexbufferdesc.ByteWidth = byteWidth;               // buffer ũ�� ����
+    D3D11_BUFFER_DESC IndexBufferDesc = {};
+    IndexBufferDesc.Usage = D3D11_USAGE_IMMUTABLE;
+    IndexBufferDesc.BindFlags = D3D11_BIND_INDEX_BUFFER;
+    IndexBufferDesc.ByteWidth = ByteWidth;
 
-    D3D11_SUBRESOURCE_DATA indexbufferSRD;
-    indexbufferSRD.pSysMem = indices.GetData();
+    D3D11_SUBRESOURCE_DATA IndexBufferData = {};
+    IndexBufferData.pSysMem = Indices.GetData();
 
     ID3D11Buffer* indexBuffer;
 
-    HRESULT hr = Graphics->Device->CreateBuffer(&indexbufferdesc, &indexbufferSRD, &indexBuffer);
+    HRESULT hr = Graphics->Device->CreateBuffer(&IndexBufferDesc, &IndexBufferData, &indexBuffer);
     if (FAILED(hr))
     {
-        UE_LOG(LogLevel::Warning, "IndexBuffer Creation faild");
+        UE_LOG(LogLevel::Warning, "IndexBuffer Creation failed");
     }
     return indexBuffer;
 }
@@ -332,89 +426,127 @@ void FRenderer::ReleaseBuffer(ID3D11Buffer*& Buffer) const
 
 void FRenderer::CreateConstantBuffer()
 {
-    D3D11_BUFFER_DESC constantbufferdesc = {};
-    constantbufferdesc.ByteWidth = sizeof(FConstants) + 0xf & 0xfffffff0;
-    constantbufferdesc.Usage = D3D11_USAGE_DYNAMIC;
-    constantbufferdesc.CPUAccessFlags = D3D11_CPU_ACCESS_WRITE;
-    constantbufferdesc.BindFlags = D3D11_BIND_CONSTANT_BUFFER;
+    D3D11_BUFFER_DESC ConstantBufferDesc = {};
+    ConstantBufferDesc.Usage = D3D11_USAGE_DYNAMIC;
+    ConstantBufferDesc.CPUAccessFlags = D3D11_CPU_ACCESS_WRITE;
+    ConstantBufferDesc.BindFlags = D3D11_BIND_CONSTANT_BUFFER;
 
-    Graphics->Device->CreateBuffer(&constantbufferdesc, nullptr, &ConstantBuffer);
+    ConstantBufferDesc.ByteWidth = sizeof(FObjectConstants) + 0xf & 0xfffffff0;
+    Graphics->Device->CreateBuffer(&ConstantBufferDesc, nullptr, &ObjectConstantBuffer);
 
-    constantbufferdesc.ByteWidth = sizeof(FSubUVConstant) + 0xf & 0xfffffff0;
-    Graphics->Device->CreateBuffer(&constantbufferdesc, nullptr, &SubUVConstantBuffer);
+    ConstantBufferDesc.ByteWidth = sizeof(FViewConstants) + 0xf & 0xfffffff0;
+    Graphics->Device->CreateBuffer(&ConstantBufferDesc, nullptr, &ViewConstantBuffer);
 
-    constantbufferdesc.ByteWidth = sizeof(FGridParameters) + 0xf & 0xfffffff0;
-    Graphics->Device->CreateBuffer(&constantbufferdesc, nullptr, &GridConstantBuffer);
+    ConstantBufferDesc.ByteWidth = sizeof(FProjectionConstants) + 0xf & 0xfffffff0;
+    Graphics->Device->CreateBuffer(&ConstantBufferDesc, nullptr, &ProjectionConstantBuffer);
 
-    constantbufferdesc.ByteWidth = sizeof(FPrimitiveCounts) + 0xf & 0xfffffff0;
-    Graphics->Device->CreateBuffer(&constantbufferdesc, nullptr, &LinePrimitiveBuffer);
+    ConstantBufferDesc.ByteWidth = sizeof(FGridParameters) + 0xf & 0xfffffff0;
+    Graphics->Device->CreateBuffer(&ConstantBufferDesc, nullptr, &GridConstantBuffer);
 
-    constantbufferdesc.ByteWidth = sizeof(FMaterialConstants) + 0xf & 0xfffffff0;
-    Graphics->Device->CreateBuffer(&constantbufferdesc, nullptr, &MaterialConstantBuffer);
-    
-    constantbufferdesc.ByteWidth = sizeof(FSubMeshConstants) + 0xf & 0xfffffff0;
-    Graphics->Device->CreateBuffer(&constantbufferdesc, nullptr, &SubMeshConstantBuffer);
+    ConstantBufferDesc.ByteWidth = sizeof(FGridParameters) + 0xf & 0xfffffff0;
+    Graphics->Device->CreateBuffer(&ConstantBufferDesc, nullptr, &GridConstantBuffer);
 
-    constantbufferdesc.ByteWidth = sizeof(FTextureConstants) + 0xf & 0xfffffff0;
-    Graphics->Device->CreateBuffer(&constantbufferdesc, nullptr, &TextureConstantBufer);
+    ConstantBufferDesc.ByteWidth = sizeof(FPrimitiveCounts) + 0xf & 0xfffffff0;
+    Graphics->Device->CreateBuffer(&ConstantBufferDesc, nullptr, &LinePrimitiveBuffer);
+
+    ConstantBufferDesc.ByteWidth = sizeof(FMaterialConstants) + 0xf & 0xfffffff0;
+    Graphics->Device->CreateBuffer(&ConstantBufferDesc, nullptr, &MaterialConstantBuffer);
+
+    ConstantBufferDesc.ByteWidth = sizeof(FSubMeshConstants) + 0xf & 0xfffffff0;
+    Graphics->Device->CreateBuffer(&ConstantBufferDesc, nullptr, &SubMeshConstantBuffer);
+
+    ConstantBufferDesc.ByteWidth = sizeof(FTextureConstants) + 0xf & 0xfffffff0;
+    Graphics->Device->CreateBuffer(&ConstantBufferDesc, nullptr, &TextureConstantBuffer);
+
+    ConstantBufferDesc.ByteWidth = sizeof(FCameraConstants) + 0xf & 0xfffffff0;
+    Graphics->Device->CreateBuffer(&ConstantBufferDesc, nullptr, &CameraConstantBuffer);
+
+    ConstantBufferDesc.ByteWidth = sizeof(FExponentialHeightFogConstants) + 0xf & 0xfffffff0;
+    Graphics->Device->CreateBuffer(&ConstantBufferDesc, nullptr, &ExponentialConstantBuffer);
 }
 
 void FRenderer::CreateLightingBuffer()
 {
-    D3D11_BUFFER_DESC constantbufferdesc = {};
-    constantbufferdesc.ByteWidth = sizeof(FLighting);
-    constantbufferdesc.Usage = D3D11_USAGE_DYNAMIC;
-    constantbufferdesc.CPUAccessFlags = D3D11_CPU_ACCESS_WRITE;
-    constantbufferdesc.BindFlags = D3D11_BIND_CONSTANT_BUFFER;
-    Graphics->Device->CreateBuffer(&constantbufferdesc, nullptr, &LightingBuffer);
+    D3D11_BUFFER_DESC ConstantBufferDesc = {};
+    ConstantBufferDesc.ByteWidth = sizeof(FLighting);
+    ConstantBufferDesc.Usage = D3D11_USAGE_DYNAMIC;
+    ConstantBufferDesc.CPUAccessFlags = D3D11_CPU_ACCESS_WRITE;
+    ConstantBufferDesc.BindFlags = D3D11_BIND_CONSTANT_BUFFER;
+    Graphics->Device->CreateBuffer(&ConstantBufferDesc, nullptr, &LightingBuffer);
 }
 
 void FRenderer::CreateLitUnlitBuffer()
 {
-    D3D11_BUFFER_DESC constantbufferdesc = {};
-    constantbufferdesc.ByteWidth = sizeof(FLitUnlitConstants);
-    constantbufferdesc.Usage = D3D11_USAGE_DYNAMIC;
-    constantbufferdesc.CPUAccessFlags = D3D11_CPU_ACCESS_WRITE;
-    constantbufferdesc.BindFlags = D3D11_BIND_CONSTANT_BUFFER;
-    Graphics->Device->CreateBuffer(&constantbufferdesc, nullptr, &FlagBuffer);
+    D3D11_BUFFER_DESC ConstantBufferDesc = {};
+    ConstantBufferDesc.ByteWidth = sizeof(FLitUnlitConstants);
+    ConstantBufferDesc.Usage = D3D11_USAGE_DYNAMIC;
+    ConstantBufferDesc.CPUAccessFlags = D3D11_CPU_ACCESS_WRITE;
+    ConstantBufferDesc.BindFlags = D3D11_BIND_CONSTANT_BUFFER;
+    Graphics->Device->CreateBuffer(&ConstantBufferDesc, nullptr, &FlagBuffer);
 }
 
 void FRenderer::ReleaseConstantBuffer()
 {
-    if (ConstantBuffer)
-    {
-        ConstantBuffer->Release();
-        ConstantBuffer = nullptr;
-    }
+    ReleaseBuffer(ObjectConstantBuffer);
+    ReleaseBuffer(ViewConstantBuffer);
+    ReleaseBuffer(ProjectionConstantBuffer);
+    ReleaseBuffer(LightingBuffer);
+    ReleaseBuffer(FlagBuffer);
+    ReleaseBuffer(MaterialConstantBuffer);
+    ReleaseBuffer(SubMeshConstantBuffer);
+    ReleaseBuffer(TextureConstantBuffer);
+    ReleaseBuffer(CameraConstantBuffer);
+    ReleaseBuffer(ExponentialConstantBuffer);
+}
 
-    if (LightingBuffer)
+void FRenderer::UpdateObjectBuffer(const FMatrix& ModelMatrix, const FMatrix& InverseTransposedNormal, FVector4 UUIDColor, bool IsSelected) const
+{
+    if (ObjectConstantBuffer)
     {
-        LightingBuffer->Release();
-        LightingBuffer = nullptr;
-    }
+        D3D11_MAPPED_SUBRESOURCE ConstantBufferMSR;
 
-    if (FlagBuffer)
-    {
-        FlagBuffer->Release();
-        FlagBuffer = nullptr;
+        Graphics->DeviceContext->Map(ObjectConstantBuffer, 0, D3D11_MAP_WRITE_DISCARD, 0, &ConstantBufferMSR);
+        if (FObjectConstants* constants = static_cast<FObjectConstants*>(ConstantBufferMSR.pData))
+        {
+            constants->ModelMatrix = ModelMatrix;
+            constants->ModelMatrixInverseTranspose = InverseTransposedNormal;
+            constants->UUIDColor = UUIDColor;
+            constants->IsSelected = IsSelected;
+        }
+        Graphics->DeviceContext->Unmap(ObjectConstantBuffer, 0);
     }
+}
 
-    if (MaterialConstantBuffer)
+void FRenderer::UpdateViewBuffer(const FMatrix& ViewMatrix, const FVector& ViewLocation) const
+{
+    if (ViewConstantBuffer)
     {
-        MaterialConstantBuffer->Release();
-        MaterialConstantBuffer = nullptr;
+        D3D11_MAPPED_SUBRESOURCE ConstantBufferMSR;
+
+        Graphics->DeviceContext->Map(ViewConstantBuffer, 0, D3D11_MAP_WRITE_DISCARD, 0, &ConstantBufferMSR);
+        if (FViewConstants* constants = static_cast<FViewConstants*>(ConstantBufferMSR.pData))
+        {
+            constants->ViewMatrix = ViewMatrix;
+            constants->ViewLocation = ViewLocation;
+        }
+        Graphics->DeviceContext->Unmap(ViewConstantBuffer, 0);
     }
+}
 
-    if (SubMeshConstantBuffer)
+void FRenderer::UpdateProjectionBuffer(const FMatrix& ProjectionMatrix, float NearClip, float FarClip) const
+{
+    if (ProjectionConstantBuffer)
     {
-        SubMeshConstantBuffer->Release();
-        SubMeshConstantBuffer = nullptr;
-    }
+        D3D11_MAPPED_SUBRESOURCE ConstantBufferMSR;
 
-    if (TextureConstantBufer)
-    {
-        TextureConstantBufer->Release();
-        TextureConstantBufer = nullptr;
+        Graphics->DeviceContext->Map(ProjectionConstantBuffer, 0, D3D11_MAP_WRITE_DISCARD, 0, &ConstantBufferMSR);
+        if (FProjectionConstants* constants = static_cast<FProjectionConstants*>(ConstantBufferMSR.pData))
+        {
+            constants->ProjectionMatrix = ProjectionMatrix;
+            constants->NearClip = NearClip;
+            constants->FarClip = FarClip;
+        }
+        Graphics->DeviceContext->Unmap(ProjectionConstantBuffer, 0);
     }
 }
 
@@ -423,11 +555,11 @@ void FRenderer::UpdateLightBuffer() const
     if (!LightingBuffer) return;
     D3D11_MAPPED_SUBRESOURCE mappedResource;
     Graphics->DeviceContext->Map(LightingBuffer, 0, D3D11_MAP_WRITE_DISCARD, 0, &mappedResource);
+    if (FLighting* constants = static_cast<FLighting*>(mappedResource.pData))
     {
-        FLighting* constants = static_cast<FLighting*>(mappedResource.pData);
-        constants->lightDirX = 1.0f; // ��: ���� ������ �Ʒ��� �������� ���
-        constants->lightDirY = 1.0f; // ��: ���� ������ �Ʒ��� �������� ���
-        constants->lightDirZ = 1.0f; // ��: ���� ������ �Ʒ��� �������� ���
+        constants->lightDirX = 1.0f;
+        constants->lightDirY = 1.0f;
+        constants->lightDirZ = 1.0f;
         constants->lightColorX = 1.0f;
         constants->lightColorY = 1.0f;
         constants->lightColorZ = 1.0f;
@@ -436,33 +568,15 @@ void FRenderer::UpdateLightBuffer() const
     Graphics->DeviceContext->Unmap(LightingBuffer, 0);
 }
 
-void FRenderer::UpdateConstant(const FMatrix& MVP, const FMatrix& NormalMatrix, FVector4 UUIDColor, bool IsSelected) const
-{
-    if (ConstantBuffer)
-    {
-        D3D11_MAPPED_SUBRESOURCE ConstantBufferMSR; // GPU�� �޸� �ּ� ����
-
-        Graphics->DeviceContext->Map(ConstantBuffer, 0, D3D11_MAP_WRITE_DISCARD, 0, &ConstantBufferMSR); // update constant buffer every frame
-        {
-            FConstants* constants = static_cast<FConstants*>(ConstantBufferMSR.pData);
-            constants->MVP = MVP;
-            constants->ModelMatrixInverseTranspose = NormalMatrix;
-            constants->UUIDColor = UUIDColor;
-            constants->IsSelected = IsSelected;
-        }
-        Graphics->DeviceContext->Unmap(ConstantBuffer, 0); // GPU�� �ٽ� ��밡���ϰ� �����
-    }
-}
-
 void FRenderer::UpdateMaterial(const FObjMaterialInfo& MaterialInfo) const
 {
     if (MaterialConstantBuffer)
     {
-        D3D11_MAPPED_SUBRESOURCE ConstantBufferMSR; // GPU�� �޸� �ּ� ����
+        D3D11_MAPPED_SUBRESOURCE ConstantBufferMSR;
 
         Graphics->DeviceContext->Map(MaterialConstantBuffer, 0, D3D11_MAP_WRITE_DISCARD, 0, &ConstantBufferMSR); // update constant buffer every frame
+        if (FMaterialConstants* constants = static_cast<FMaterialConstants*>(ConstantBufferMSR.pData))
         {
-            FMaterialConstants* constants = static_cast<FMaterialConstants*>(ConstantBufferMSR.pData);
             constants->DiffuseColor = MaterialInfo.Diffuse;
             constants->TransparencyScalar = MaterialInfo.TransparencyScalar;
             constants->AmbientColor = MaterialInfo.Ambient;
@@ -471,12 +585,12 @@ void FRenderer::UpdateMaterial(const FObjMaterialInfo& MaterialInfo) const
             constants->SpecularScalar = MaterialInfo.SpecularScalar;
             constants->EmmisiveColor = MaterialInfo.Emissive;
         }
-        Graphics->DeviceContext->Unmap(MaterialConstantBuffer, 0); // GPU�� �ٽ� ��밡���ϰ� �����
+        Graphics->DeviceContext->Unmap(MaterialConstantBuffer, 0);
     }
 
     if (MaterialInfo.bHasTexture == true)
     {
-        std::shared_ptr<FTexture> texture = FEngineLoop::resourceMgr.GetTexture(MaterialInfo.DiffuseTexturePath);
+        std::shared_ptr<FTexture> texture = FEngineLoop::ResourceManager.GetTexture(MaterialInfo.DiffuseTexturePath);
         Graphics->DeviceContext->PSSetShaderResources(0, 1, &texture->TextureSRV);
         Graphics->DeviceContext->PSSetSamplers(0, 1, &texture->SamplerState);
     }
@@ -494,9 +608,9 @@ void FRenderer::UpdateLitUnlitConstant(int isLit) const
 {
     if (FlagBuffer)
     {
-        D3D11_MAPPED_SUBRESOURCE constantbufferMSR; // GPU �� �޸� �ּ� ����
+        D3D11_MAPPED_SUBRESOURCE constantbufferMSR;
         Graphics->DeviceContext->Map(FlagBuffer, 0, D3D11_MAP_WRITE_DISCARD, 0, &constantbufferMSR);
-        auto constants = static_cast<FLitUnlitConstants*>(constantbufferMSR.pData); //GPU �޸� ���� ����
+        if (FLitUnlitConstants* constants = static_cast<FLitUnlitConstants*>(constantbufferMSR.pData))
         {
             constants->isLit = isLit;
         }
@@ -506,10 +620,11 @@ void FRenderer::UpdateLitUnlitConstant(int isLit) const
 
 void FRenderer::UpdateSubMeshConstant(bool isSelected) const
 {
-    if (SubMeshConstantBuffer) {
-        D3D11_MAPPED_SUBRESOURCE constantbufferMSR; // GPU �� �޸� �ּ� ����
+    if (SubMeshConstantBuffer)
+    {
+        D3D11_MAPPED_SUBRESOURCE constantbufferMSR;
         Graphics->DeviceContext->Map(SubMeshConstantBuffer, 0, D3D11_MAP_WRITE_DISCARD, 0, &constantbufferMSR);
-        FSubMeshConstants* constants = (FSubMeshConstants*)constantbufferMSR.pData; //GPU �޸� ���� ����
+        if (FSubMeshConstants* constants = static_cast<FSubMeshConstants*>(constantbufferMSR.pData))
         {
             constants->isSelectedSubMesh = isSelected;
         }
@@ -519,15 +634,49 @@ void FRenderer::UpdateSubMeshConstant(bool isSelected) const
 
 void FRenderer::UpdateTextureConstant(float UOffset, float VOffset)
 {
-    if (TextureConstantBufer) {
-        D3D11_MAPPED_SUBRESOURCE constantbufferMSR; // GPU �� �޸� �ּ� ����
-        Graphics->DeviceContext->Map(TextureConstantBufer, 0, D3D11_MAP_WRITE_DISCARD, 0, &constantbufferMSR);
-        FTextureConstants* constants = (FTextureConstants*)constantbufferMSR.pData; //GPU �޸� ���� ����
+    if (TextureConstantBuffer)
+    {
+        D3D11_MAPPED_SUBRESOURCE MappedSubresource;
+        Graphics->DeviceContext->Map(TextureConstantBuffer, 0, D3D11_MAP_WRITE_DISCARD, 0, &MappedSubresource);
+        if (FTextureConstants* constants = static_cast<FTextureConstants*>(MappedSubresource.pData))
         {
             constants->UOffset = UOffset;
             constants->VOffset = VOffset;
         }
-        Graphics->DeviceContext->Unmap(TextureConstantBufer, 0);
+        Graphics->DeviceContext->Unmap(TextureConstantBuffer, 0);
+    }
+}
+
+void FRenderer::UpdateCameraConstant(std::shared_ptr<FEditorViewportClient> ActiveViewport)
+{
+    if (CameraConstantBuffer) {
+        D3D11_MAPPED_SUBRESOURCE constantbufferMSR; // GPU �� �޸� �ּ� ����
+        Graphics->DeviceContext->Map(CameraConstantBuffer, 0, D3D11_MAP_WRITE_DISCARD, 0, &constantbufferMSR);
+        FCameraConstants* constants = (FCameraConstants*)constantbufferMSR.pData; //GPU �޸� ���� ����
+        {
+            constants->FarPlane = ActiveViewport->farPlane;
+            constants->NearPlane = ActiveViewport->nearPlane;
+            constants->cameraPos = ActiveViewport->GetWorldLocation();
+            constants->invProjection = FMatrix::Inverse(ActiveViewport->GetProjectionMatrix());
+            constants->invView = FMatrix::Inverse(ActiveViewport->GetViewMatrix());
+        }
+        Graphics->DeviceContext->Unmap(CameraConstantBuffer, 0);
+    }
+}
+
+void FRenderer::UpdateExponentialHeightFogConstant(UExponentialHeightFogComponent* ExponentialHeightFogComp)
+{
+    if (ExponentialConstantBuffer) {
+        D3D11_MAPPED_SUBRESOURCE constantbufferMSR; // GPU �� �޸� �ּ� ����
+        Graphics->DeviceContext->Map(ExponentialConstantBuffer, 0, D3D11_MAP_WRITE_DISCARD, 0, &constantbufferMSR);
+        FExponentialHeightFogConstants* constants = (FExponentialHeightFogConstants*)constantbufferMSR.pData; //GPU �޸� ���� ����
+        {
+            constants->FogColor = ExponentialHeightFogComp->FogColor;
+            constants->FogDensity = ExponentialHeightFogComp->FogDensity;
+            constants->FogFalloff = ExponentialHeightFogComp->FogFalloff;
+            constants->FogHeight = ExponentialHeightFogComp->FogHeight;
+        }
+        Graphics->DeviceContext->Unmap(ExponentialConstantBuffer, 0);
     }
 }
 
@@ -537,7 +686,7 @@ void FRenderer::CreateFontShader()
     ID3DBlob* PixelShaderCSO;
 
     HRESULT hr;
-    hr = D3DCompileFromFile(L"Shaders/FontVertexShader.hlsl", nullptr, nullptr, "main", "vs_5_0", 0, 0, &VertexShaderCSO, nullptr);
+    hr = D3DCompileFromFile(L"Shaders/FontVertexShader.hlsl", nullptr, D3D_COMPILE_STANDARD_FILE_INCLUDE, "main", "vs_5_0", 0, 0, &VertexShaderCSO, nullptr);
     if (FAILED(hr))
     {
         Console::GetInstance().AddLog(LogLevel::Warning, "VertexShader Error");
@@ -546,7 +695,7 @@ void FRenderer::CreateFontShader()
         VertexShaderCSO->GetBufferPointer(), VertexShaderCSO->GetBufferSize(), nullptr, &FontVertexShader
     );
 
-    hr = D3DCompileFromFile(L"Shaders/FontPixelShader.hlsl", nullptr, nullptr, "main", "ps_5_0", 0, 0, &PixelShaderCSO, nullptr);
+    hr = D3DCompileFromFile(L"Shaders/FontPixelShader.hlsl", nullptr, D3D_COMPILE_STANDARD_FILE_INCLUDE, "main", "ps_5_0", 0, 0, &PixelShaderCSO, nullptr);
     if (FAILED(hr))
     {
         Console::GetInstance().AddLog(LogLevel::Warning, "PixelShader Error");
@@ -563,7 +712,6 @@ void FRenderer::CreateFontShader()
         layout, ARRAYSIZE(layout), VertexShaderCSO->GetBufferPointer(), VertexShaderCSO->GetBufferSize(), &FontInputLayout
     );
 
-    TextureStride = sizeof(FVertexTexture);
     VertexShaderCSO->Release();
     PixelShaderCSO->Release();
 }
@@ -600,7 +748,7 @@ void FRenderer::CreateTextureShader()
     ID3DBlob* PixelShaderCSO;
 
     HRESULT hr;
-    hr = D3DCompileFromFile(L"Shaders/TextureVertexShader.hlsl", nullptr, nullptr, "main", "vs_5_0", 0, 0, &VertexShaderCSO, nullptr);
+    hr = D3DCompileFromFile(L"Shaders/TextureVertexShader.hlsl", nullptr, D3D_COMPILE_STANDARD_FILE_INCLUDE, "main", "vs_5_0", 0, 0, &VertexShaderCSO, nullptr);
     if (FAILED(hr))
     {
         Console::GetInstance().AddLog(LogLevel::Warning, "VertexShader Error");
@@ -609,7 +757,7 @@ void FRenderer::CreateTextureShader()
         VertexShaderCSO->GetBufferPointer(), VertexShaderCSO->GetBufferSize(), nullptr, &TextureVertexShader
     );
 
-    hr = D3DCompileFromFile(L"Shaders/TexturePixelShader.hlsl", nullptr, nullptr, "main", "ps_5_0", 0, 0, &PixelShaderCSO, nullptr);
+    hr = D3DCompileFromFile(L"Shaders/TexturePixelShader.hlsl", nullptr, D3D_COMPILE_STANDARD_FILE_INCLUDE, "main", "ps_5_0", 0, 0, &PixelShaderCSO, nullptr);
     if (FAILED(hr))
     {
         Console::GetInstance().AddLog(LogLevel::Warning, "PixelShader Error");
@@ -626,8 +774,6 @@ void FRenderer::CreateTextureShader()
         layout, ARRAYSIZE(layout), VertexShaderCSO->GetBufferPointer(), VertexShaderCSO->GetBufferSize(), &TextureInputLayout
     );
 
-    //�ڷᱸ�� ���� �ʿ�
-    TextureStride = sizeof(FVertexTexture);
     VertexShaderCSO->Release();
     PixelShaderCSO->Release();
 }
@@ -656,10 +802,10 @@ void FRenderer::ReleaseTextureShader()
         SubUVConstantBuffer->Release();
         SubUVConstantBuffer = nullptr;
     }
-    if (ConstantBuffer)
+    if (ObjectConstantBuffer)
     {
-        ConstantBuffer->Release();
-        ConstantBuffer = nullptr;
+        ObjectConstantBuffer->Release();
+        ObjectConstantBuffer = nullptr;
     }
 }
 
@@ -669,9 +815,11 @@ void FRenderer::PrepareTextureShader() const
     Graphics->DeviceContext->PSSetShader(TexturePixelShader, nullptr, 0);
     Graphics->DeviceContext->IASetInputLayout(TextureInputLayout);
 
-    if (ConstantBuffer)
+    if (ObjectConstantBuffer)
     {
-        Graphics->DeviceContext->VSSetConstantBuffers(0, 1, &ConstantBuffer);
+        Graphics->DeviceContext->VSSetConstantBuffers(0, 1, &ObjectConstantBuffer);
+        Graphics->DeviceContext->VSSetConstantBuffers(1, 1, &ViewConstantBuffer);
+        Graphics->DeviceContext->VSSetConstantBuffers(2, 1, &ProjectionConstantBuffer);
     }
 }
 
@@ -680,11 +828,9 @@ ID3D11Buffer* FRenderer::CreateVertexTextureBuffer(FVertexTexture* vertices, UIN
     // 2. Create a vertex buffer
     D3D11_BUFFER_DESC vertexbufferdesc = {};
     vertexbufferdesc.ByteWidth = byteWidth;
-    vertexbufferdesc.Usage = D3D11_USAGE_DYNAMIC; // will never be updated 
+    vertexbufferdesc.Usage = D3D11_USAGE_DYNAMIC; // will never be updated
     vertexbufferdesc.BindFlags = D3D11_BIND_VERTEX_BUFFER;
     vertexbufferdesc.CPUAccessFlags = D3D11_CPU_ACCESS_WRITE;
-
-    //D3D11_SUBRESOURCE_DATA vertexbufferSRD = { vertices };
 
     ID3D11Buffer* vertexBuffer;
 
@@ -727,8 +873,10 @@ void FRenderer::RenderTexturePrimitive(
     {
         Console::GetInstance().AddLog(LogLevel::Warning, "numIndices Error");
     }
-    UINT offset = 0;
-    Graphics->DeviceContext->IASetVertexBuffers(0, 1, &pVertexBuffer, &TextureStride, &offset);
+
+    uint32 Stride = sizeof(FVertexTexture);
+    uint32 Offset = 0;
+    Graphics->DeviceContext->IASetVertexBuffers(0, 1, &pVertexBuffer, &Stride, &Offset);
     Graphics->DeviceContext->IASetIndexBuffer(pIndexBuffer, DXGI_FORMAT_R32_UINT, 0);
 
     Graphics->DeviceContext->IASetPrimitiveTopology(D3D11_PRIMITIVE_TOPOLOGY_TRIANGLELIST);
@@ -747,18 +895,18 @@ void FRenderer::RenderTextPrimitive(
     {
         Console::GetInstance().AddLog(LogLevel::Warning, "SRV, Sampler Error");
     }
-    UINT offset = 0;
-    Graphics->DeviceContext->IASetVertexBuffers(0, 1, &pVertexBuffer, &TextureStride, &offset);
 
-    // �Է� ���̾ƿ� �� �⺻ ����
+    uint32 Stride = sizeof(FVertexTexture);
+    uint32 Offset = 0;
+    Graphics->DeviceContext->IASetVertexBuffers(0, 1, &pVertexBuffer, &Stride, &Offset);
+
     Graphics->DeviceContext->IASetPrimitiveTopology(D3D11_PRIMITIVE_TOPOLOGY_TRIANGLELIST);
     Graphics->DeviceContext->PSSetShaderResources(0, 1, &_TextureSRV);
     Graphics->DeviceContext->PSSetSamplers(0, 1, &_SamplerState);
-    
+
     ID3D11DepthStencilState* DepthStateDisable = Graphics->DepthStateDisable;
     Graphics->DeviceContext->OMSetDepthStencilState(DepthStateDisable, 0);
 
-    // ��ο� ȣ�� (6���� �ε��� ���)
     Graphics->DeviceContext->Draw(numVertices, 0);
 }
 
@@ -768,7 +916,7 @@ ID3D11Buffer* FRenderer::CreateVertexBuffer(FVertexTexture* vertices, UINT byteW
     // 2. Create a vertex buffer
     D3D11_BUFFER_DESC vertexbufferdesc = {};
     vertexbufferdesc.ByteWidth = byteWidth;
-    vertexbufferdesc.Usage = D3D11_USAGE_IMMUTABLE; // will never be updated 
+    vertexbufferdesc.Usage = D3D11_USAGE_IMMUTABLE; // will never be updated
     vertexbufferdesc.BindFlags = D3D11_BIND_VERTEX_BUFFER;
 
     D3D11_SUBRESOURCE_DATA vertexbufferSRD = {vertices};
@@ -787,15 +935,15 @@ void FRenderer::UpdateSubUVConstant(float _indexU, float _indexV) const
 {
     if (SubUVConstantBuffer)
     {
-        D3D11_MAPPED_SUBRESOURCE constantbufferMSR; // GPU�� �޸� �ּ� ����
+        D3D11_MAPPED_SUBRESOURCE constantbufferMSR;
 
         Graphics->DeviceContext->Map(SubUVConstantBuffer, 0, D3D11_MAP_WRITE_DISCARD, 0, &constantbufferMSR); // update constant buffer every frame
-        auto constants = static_cast<FSubUVConstant*>(constantbufferMSR.pData);                               //GPU �޸� ���� ����
+        auto constants = static_cast<FSubUVConstant*>(constantbufferMSR.pData);
         {
             constants->indexU = _indexU;
             constants->indexV = _indexV;
         }
-        Graphics->DeviceContext->Unmap(SubUVConstantBuffer, 0); // GPU�� �ٽ� ��밡���ϰ� �����
+        Graphics->DeviceContext->Unmap(SubUVConstantBuffer, 0);
     }
 }
 
@@ -803,29 +951,64 @@ void FRenderer::PrepareSubUVConstant() const
 {
     if (SubUVConstantBuffer)
     {
-        Graphics->DeviceContext->VSSetConstantBuffers(1, 1, &SubUVConstantBuffer);
-        Graphics->DeviceContext->PSSetConstantBuffers(1, 1, &SubUVConstantBuffer);
+        Graphics->DeviceContext->PSSetConstantBuffers(3, 1, &SubUVConstantBuffer);
+    }
+}
+
+void FRenderer::PreparePostProcess()
+{
+    Graphics->PreparePostProcess();
+
+    ExponentialHeightFogComponent = nullptr;
+    for (UExponentialHeightFogComponent* iter : TObjectRange<UExponentialHeightFogComponent>())
+    {
+        ExponentialHeightFogComponent = iter;
+    }
+}
+
+void FRenderer::PostProcess(std::shared_ptr<FEditorViewportClient> ActiveViewport)
+{
+    PreparePostProcess();
+
+    // Draw Fog Quad
+    if (ExponentialHeightFogComponent != nullptr) {
+        // // TODO: Temp, 임시 코드
+        UpdateCameraConstant(ActiveViewport);
+        UpdateExponentialHeightFogConstant(ExponentialHeightFogComponent);
+        Graphics->DeviceContext->PSSetConstantBuffers(0, 1, &CameraConstantBuffer);
+        Graphics->DeviceContext->PSSetConstantBuffers(1, 1, &ExponentialConstantBuffer);
+
+        Graphics->DeviceContext->PSSetShaderResources(0, 1, &Graphics->DepthStencilSRV);
+        Graphics->DeviceContext->PSSetShaderResources(1, 1, &Graphics->WorldPosBufferSRV);
+
+        Graphics->DeviceContext->PSSetShader(FogShader, nullptr, 0);
+        Graphics->DeviceContext->PSSetSamplers(0, 1, &ScreenSamplerState);
+
+
+        DrawFullScreenQuad();
     }
 }
 
 void FRenderer::PrepareLineShader() const
 {
-    // ���̴��� �Է� ���̾ƿ� ����
     Graphics->DeviceContext->VSSetShader(VertexLineShader, nullptr, 0);
+
     Graphics->DeviceContext->PSSetShader(PixelLineShader, nullptr, 0);
 
-    // ��� ���� ���ε�: 
-    // - MatrixBuffer�� register(b0)��, Vertex Shader�� ���ε�
-    // - GridConstantBuffer�� register(b1)��, Vertex�� Pixel Shader�� ���ε� (�ȼ� ���̴��� �ʿ信 ����)
-    if (ConstantBuffer && GridConstantBuffer)
+    if (ObjectConstantBuffer && GridConstantBuffer)
     {
-        Graphics->DeviceContext->VSSetConstantBuffers(0, 1, &ConstantBuffer);     // MatrixBuffer (b0)
-        Graphics->DeviceContext->VSSetConstantBuffers(1, 1, &GridConstantBuffer); // GridParameters (b1)
-        Graphics->DeviceContext->PSSetConstantBuffers(1, 1, &GridConstantBuffer);
-        Graphics->DeviceContext->VSSetConstantBuffers(3, 1, &LinePrimitiveBuffer);
         Graphics->DeviceContext->VSSetShaderResources(2, 1, &pBBSRV);
         Graphics->DeviceContext->VSSetShaderResources(3, 1, &pConeSRV);
         Graphics->DeviceContext->VSSetShaderResources(4, 1, &pOBBSRV);
+
+        Graphics->DeviceContext->VSSetConstantBuffers(0, 1, &ObjectConstantBuffer);
+        Graphics->DeviceContext->VSSetConstantBuffers(1, 1, &ViewConstantBuffer);
+        Graphics->DeviceContext->VSSetConstantBuffers(2, 1, &ProjectionConstantBuffer);
+
+        Graphics->DeviceContext->VSSetConstantBuffers(3, 1, &GridConstantBuffer);
+        Graphics->DeviceContext->VSSetConstantBuffers(4, 1, &LinePrimitiveBuffer);
+
+        Graphics->DeviceContext->PSSetConstantBuffers(3, 1, &GridConstantBuffer);
     }
 }
 
@@ -835,14 +1018,14 @@ void FRenderer::CreateLineShader()
     ID3DBlob* PixelShaderLine;
 
     HRESULT hr;
-    hr = D3DCompileFromFile(L"Shaders/ShaderLine.hlsl", nullptr, nullptr, "mainVS", "vs_5_0", 0, 0, &VertexShaderLine, nullptr);
+    hr = D3DCompileFromFile(L"Shaders/ShaderLine.hlsl", nullptr, D3D_COMPILE_STANDARD_FILE_INCLUDE, "mainVS", "vs_5_0", 0, 0, &VertexShaderLine, nullptr);
     if (FAILED(hr))
     {
         Console::GetInstance().AddLog(LogLevel::Warning, "VertexShader Error");
     }
     Graphics->Device->CreateVertexShader(VertexShaderLine->GetBufferPointer(), VertexShaderLine->GetBufferSize(), nullptr, &VertexLineShader);
 
-    hr = D3DCompileFromFile(L"Shaders/ShaderLine.hlsl", nullptr, nullptr, "mainPS", "ps_5_0", 0, 0, &PixelShaderLine, nullptr);
+    hr = D3DCompileFromFile(L"Shaders/ShaderLine.hlsl", nullptr, D3D_COMPILE_STANDARD_FILE_INCLUDE, "mainPS", "ps_5_0", 0, 0, &PixelShaderLine, nullptr);
     if (FAILED(hr))
     {
         Console::GetInstance().AddLog(LogLevel::Warning, "PixelShader Error");
@@ -881,7 +1064,7 @@ ID3D11Buffer* FRenderer::CreateStaticVerticesBuffer() const
 ID3D11Buffer* FRenderer::CreateBoundingBoxBuffer(UINT numBoundingBoxes) const
 {
     D3D11_BUFFER_DESC bufferDesc;
-    bufferDesc.Usage = D3D11_USAGE_DYNAMIC; // ���� ������Ʈ�� ��� DYNAMIC, �׷��� ������ DEFAULT
+    bufferDesc.Usage = D3D11_USAGE_DYNAMIC;
     bufferDesc.ByteWidth = sizeof(FBoundingBox) * numBoundingBoxes;
     bufferDesc.BindFlags = D3D11_BIND_SHADER_RESOURCE;
     bufferDesc.CPUAccessFlags = D3D11_CPU_ACCESS_WRITE;
@@ -896,12 +1079,12 @@ ID3D11Buffer* FRenderer::CreateBoundingBoxBuffer(UINT numBoundingBoxes) const
 ID3D11Buffer* FRenderer::CreateOBBBuffer(UINT numBoundingBoxes) const
 {
     D3D11_BUFFER_DESC bufferDesc;
-    bufferDesc.Usage = D3D11_USAGE_DYNAMIC; // ���� ������Ʈ�� ��� DYNAMIC, �׷��� ������ DEFAULT
-    bufferDesc.ByteWidth = sizeof(FOBB) * numBoundingBoxes;
+    bufferDesc.Usage = D3D11_USAGE_DYNAMIC;
+    bufferDesc.ByteWidth = sizeof(FOrientedBoundingBox) * numBoundingBoxes;
     bufferDesc.BindFlags = D3D11_BIND_SHADER_RESOURCE;
     bufferDesc.CPUAccessFlags = D3D11_CPU_ACCESS_WRITE;
     bufferDesc.MiscFlags = D3D11_RESOURCE_MISC_BUFFER_STRUCTURED;
-    bufferDesc.StructureByteStride = sizeof(FOBB);
+    bufferDesc.StructureByteStride = sizeof(FOrientedBoundingBox);
 
     ID3D11Buffer* BoundingBoxBuffer = nullptr;
     Graphics->Device->CreateBuffer(&bufferDesc, nullptr, &BoundingBoxBuffer);
@@ -926,7 +1109,7 @@ ID3D11Buffer* FRenderer::CreateConeBuffer(UINT numCones) const
 ID3D11ShaderResourceView* FRenderer::CreateBoundingBoxSRV(ID3D11Buffer* pBoundingBoxBuffer, UINT numBoundingBoxes)
 {
     D3D11_SHADER_RESOURCE_VIEW_DESC srvDesc;
-    srvDesc.Format = DXGI_FORMAT_UNKNOWN; // ����ü ������ ��� UNKNOWN
+    srvDesc.Format = DXGI_FORMAT_UNKNOWN;
     srvDesc.ViewDimension = D3D11_SRV_DIMENSION_BUFFER;
     srvDesc.Buffer.ElementOffset = 0;
     srvDesc.Buffer.NumElements = numBoundingBoxes;
@@ -939,7 +1122,7 @@ ID3D11ShaderResourceView* FRenderer::CreateBoundingBoxSRV(ID3D11Buffer* pBoundin
 ID3D11ShaderResourceView* FRenderer::CreateOBBSRV(ID3D11Buffer* pBoundingBoxBuffer, UINT numBoundingBoxes)
 {
     D3D11_SHADER_RESOURCE_VIEW_DESC srvDesc;
-    srvDesc.Format = DXGI_FORMAT_UNKNOWN; // ����ü ������ ��� UNKNOWN
+    srvDesc.Format = DXGI_FORMAT_UNKNOWN;
     srvDesc.ViewDimension = D3D11_SRV_DIMENSION_BUFFER;
     srvDesc.Buffer.ElementOffset = 0;
     srvDesc.Buffer.NumElements = numBoundingBoxes;
@@ -950,7 +1133,7 @@ ID3D11ShaderResourceView* FRenderer::CreateOBBSRV(ID3D11Buffer* pBoundingBoxBuff
 ID3D11ShaderResourceView* FRenderer::CreateConeSRV(ID3D11Buffer* pConeBuffer, UINT numCones)
 {
     D3D11_SHADER_RESOURCE_VIEW_DESC srvDesc;
-    srvDesc.Format = DXGI_FORMAT_UNKNOWN; // ����ü ������ ��� UNKNOWN
+    srvDesc.Format = DXGI_FORMAT_UNKNOWN;
     srvDesc.ViewDimension = D3D11_SRV_DIMENSION_BUFFER;
     srvDesc.Buffer.ElementOffset = 0;
     srvDesc.Buffer.NumElements = numCones;
@@ -973,12 +1156,12 @@ void FRenderer::UpdateBoundingBoxBuffer(ID3D11Buffer* pBoundingBoxBuffer, const 
     Graphics->DeviceContext->Unmap(pBoundingBoxBuffer, 0);
 }
 
-void FRenderer::UpdateOBBBuffer(ID3D11Buffer* pBoundingBoxBuffer, const TArray<FOBB>& BoundingBoxes, int numBoundingBoxes) const
+void FRenderer::UpdateOBBBuffer(ID3D11Buffer* pBoundingBoxBuffer, const TArray<FOrientedBoundingBox>& BoundingBoxes, int numBoundingBoxes) const
 {
     if (!pBoundingBoxBuffer) return;
     D3D11_MAPPED_SUBRESOURCE mappedResource;
     Graphics->DeviceContext->Map(pBoundingBoxBuffer, 0, D3D11_MAP_WRITE_DISCARD, 0, &mappedResource);
-    auto pData = reinterpret_cast<FOBB*>(mappedResource.pData);
+    auto pData = reinterpret_cast<FOrientedBoundingBox*>(mappedResource.pData);
     for (int i = 0; i < BoundingBoxes.Num(); ++i)
     {
         pData[i] = BoundingBoxes[i];
@@ -1041,6 +1224,8 @@ void FRenderer::RenderBatch(
 
 void FRenderer::PrepareRender(ULevel* Level)
 {
+    // TODO: 임시로 진행한 코드이므로, 수정 필수
+
     TArray<USceneComponent*> Ss;
     for (const auto& A : Level->GetActors())
     {
@@ -1066,10 +1251,7 @@ void FRenderer::PrepareRender(ULevel* Level)
             LightObjs.Add(pLightComp);
         }
     }
-    
 
-
-    
     for (const auto iter : Ss)
     {
         if (UStaticMeshComponent* pStaticMeshComp = Cast<UStaticMeshComponent>(iter))
@@ -1093,35 +1275,128 @@ void FRenderer::PrepareRender(ULevel* Level)
     }
 }
 
+void FRenderer::RenderScene(ULevel* Level, std::shared_ptr<FEditorViewportClient> ActiveViewport)
+{
+    Graphics->DeviceContext->RSSetViewports(1, &ActiveViewport->GetD3DViewport());
+    Graphics->ChangeRasterizer(ActiveViewport->GetViewMode());
+    ChangeViewMode(ActiveViewport->GetViewMode());
+
+    // TODO: 임시로 여기에서 View 상수 버퍼와 Projection 상수 버퍼 업데이트
+    UpdateViewBuffer(ActiveViewport->GetViewMatrix(), ActiveViewport->ViewTransformPerspective.GetLocation());
+    UpdateProjectionBuffer(ActiveViewport->GetProjectionMatrix(), ActiveViewport->nearPlane, ActiveViewport->farPlane);
+
+    UpdateLightBuffer();
+
+    if (ActiveViewport->GetShowFlag() & static_cast<uint64>(EEngineShowFlags::SF_Primitives))
+    {
+        if (StaticMeshObjs.Num() > 0)
+        {
+            RenderStaticMeshes(Level, ActiveViewport);
+        }
+    }
+
+    RenderGizmos(Level, ActiveViewport);
+
+    UPrimitiveBatch::GetInstance().RenderBatch(ActiveViewport->GetViewMatrix(), ActiveViewport->GetProjectionMatrix());
+
+    if (GizmoObjs.Num() > 0)
+    {
+        RenderGizmos(Level, ActiveViewport);
+    }
+
+    if (ActiveViewport->GetShowFlag() & static_cast<uint64>(EEngineShowFlags::SF_BillboardText))
+    {
+        if (BillboardObjs.Num() > 0)
+        {
+            RenderBillboards(Level, ActiveViewport);
+        }
+        if (TextObjs.Num() > 0)
+        {
+            RenderTexts(Level, ActiveViewport);
+        }
+    }
+
+    if (LightObjs.Num() > 0)
+    {
+        RenderLight(Level, ActiveViewport);
+    }
+
+    ClearRenderArr();
+}
+
+void FRenderer::SampleAndProcessSRV(std::shared_ptr<FEditorViewportClient> ActiveViewport)
+{
+    Graphics->PrepareDepthMap();
+    // Depth - Normalize
+    UpdateCameraConstant(ActiveViewport);
+    Graphics->DeviceContext->PSSetConstantBuffers(0, 1, &CameraConstantBuffer);
+
+    Graphics->DeviceContext->PSSetShaderResources(0, 1, &Graphics->DepthStencilSRV);
+
+    Graphics->DeviceContext->PSSetShader(DepthShader, nullptr, 0);
+    Graphics->DeviceContext->PSSetSamplers(0, 1, &ScreenSamplerState);
+
+    DrawFullScreenQuad();
+}
+
+void FRenderer::RenderFullScreenQuad(std::shared_ptr<FEditorViewportClient> ActiveViewport)
+{
+    Graphics->PrepareFinal();
+
+    if (ViewModeFlags == EViewModeIndex::VMI_SceneDepth)
+    {
+        // TODO: 텍스처 슬롯 개수만큼 null -> 임시코드임
+        int n = 2;
+        for (int i = 0; i < n; i++)
+        {
+            ID3D11ShaderResourceView* nullSRV[1] = {nullptr};
+            Graphics->DeviceContext->PSSetShaderResources(i, 1, nullSRV);
+        }
+
+        // TODO: Temp, 임시 코드
+        // UpdateCameraConstant(ActiveViewport);
+        // Graphics->DeviceContext->PSSetConstantBuffers(0, 1, &CameraConstantBuffer);
+        // Graphics->DeviceContext->PSSetShader(DepthShader, nullptr, 0);
+        Graphics->DeviceContext->PSSetShaderResources(0, 1, &Graphics->NormalizedDepthSRV);
+    }
+    else
+    {
+        Graphics->DeviceContext->PSSetShaderResources(0, 1, &Graphics->SceneSRV);
+
+        // TODO: Temp 코드
+        if (ExponentialHeightFogComponent)
+        {
+            Graphics->DeviceContext->PSSetShaderResources(1, 1, &Graphics->FogSRV);
+        }
+        else
+        {
+            ID3D11ShaderResourceView* nullSRV[1] = {nullptr};
+            Graphics->DeviceContext->PSSetShaderResources(1, 1, nullSRV);
+        }
+    }
+    Graphics->DeviceContext->PSSetShader(FinalPixelShader, nullptr, 0);
+
+    Graphics->DeviceContext->PSSetSamplers(0, 1, &ScreenSamplerState);
+
+    DrawFullScreenQuad();
+}
+
+void FRenderer::DrawFullScreenQuad()
+{
+    Graphics->DeviceContext->VSSetShader(FinalVertexShader, nullptr, 0);
+
+    // (float3(), 0, 0), (float3(), 1, 0), (float3(), 0, 1), (float3(), 1, 0), (float3(), 1, 1), (float3(), 0, 1))
+    Graphics->DeviceContext->IASetInputLayout(nullptr);  // 입력 레이아웃 필요 없음
+    Graphics->DeviceContext->IASetVertexBuffers(0, 0, nullptr, nullptr, nullptr);
+    Graphics->DeviceContext->Draw(6, 0);
+}
+
 void FRenderer::ClearRenderArr()
 {
     StaticMeshObjs.Empty();
     GizmoObjs.Empty();
     TextObjs.Empty();
     LightObjs.Empty();
-}
-
-void FRenderer::Render(ULevel* Level, std::shared_ptr<FEditorViewportClient> ActiveViewport)
-{
-    Graphics->DeviceContext->RSSetViewports(1, &ActiveViewport->GetD3DViewport());
-    Graphics->ChangeRasterizer(ActiveViewport->GetViewMode());
-    ChangeViewMode(ActiveViewport->GetViewMode());
-    UpdateLightBuffer();
-    UPrimitiveBatch::GetInstance().RenderBatch(ActiveViewport->GetViewMatrix(), ActiveViewport->GetProjectionMatrix());
-
-    if (ActiveViewport->GetShowFlag() & static_cast<uint64>(EEngineShowFlags::SF_Primitives))
-    {
-        RenderStaticMeshes(Level, ActiveViewport);
-    }
-    RenderGizmos(Level, ActiveViewport);
-    if (ActiveViewport->GetShowFlag() & static_cast<uint64>(EEngineShowFlags::SF_BillboardText))
-    {
-        RenderBillboards(Level, ActiveViewport);
-        RenderTexts(Level, ActiveViewport);
-    }
-    RenderLight(Level, ActiveViewport);
-    
-    ClearRenderArr();
 }
 
 void FRenderer::RenderStaticMeshes(ULevel* Level, std::shared_ptr<FEditorViewportClient> ActiveViewport)
@@ -1134,26 +1409,13 @@ void FRenderer::RenderStaticMeshes(ULevel* Level, std::shared_ptr<FEditorViewpor
             StaticMeshComp->GetWorldRotation(),
             StaticMeshComp->GetWorldScale()
         );
-        // 최종 MVP 행렬
-        FMatrix MVP = Model * ActiveViewport->GetViewMatrix() * ActiveViewport->GetProjectionMatrix();
         // 노말 회전시 필요 행렬
         FMatrix NormalMatrix = FMatrix::Transpose(FMatrix::Inverse(Model));
         FVector4 UUIDColor = StaticMeshComp->EncodeUUID() / 255.0f;
-        if (Level->GetSelectedActor() == StaticMeshComp->GetOwner())
-        {
-            UpdateConstant(MVP, NormalMatrix, UUIDColor, true);
-        }
-        else
-            UpdateConstant(MVP, NormalMatrix, UUIDColor, false);
 
-        if (USkySphereComponent* skysphere = Cast<USkySphereComponent>(StaticMeshComp))
-        {
-            UpdateTextureConstant(skysphere->UOffset, skysphere->VOffset);
-        }
-        else
-        {
-            UpdateTextureConstant(0, 0);
-        }
+        UpdateObjectBuffer(Model, NormalMatrix, UUIDColor, Level->GetSelectedActor() == StaticMeshComp->GetOwner());
+
+        UpdateTextureConstant(0, 0);
 
         if (ActiveViewport->GetShowFlag() & static_cast<uint64>(EEngineShowFlags::SF_AABB))
         {
@@ -1163,8 +1425,7 @@ void FRenderer::RenderStaticMeshes(ULevel* Level, std::shared_ptr<FEditorViewpor
                 Model
             );
         }
-                
-    
+
         if (!StaticMeshComp->GetStaticMesh()) continue;
 
         OBJ::FStaticMeshRenderData* renderData = StaticMeshComp->GetStaticMesh()->GetRenderData();
@@ -1181,17 +1442,16 @@ void FRenderer::RenderGizmos(const ULevel* Level, const std::shared_ptr<FEditorV
         return;
     }
 
-    #pragma region GizmoDepth
-        ID3D11DepthStencilState* DepthStateDisable = Graphics->DepthStateDisable;
-        Graphics->DeviceContext->OMSetDepthStencilState(DepthStateDisable, 0);
-    #pragma endregion GizmoDepth
+#pragma region GizmoDepth
+    ID3D11DepthStencilState* DepthStateDisable = Graphics->DepthStateDisable;
+    Graphics->DeviceContext->OMSetDepthStencilState(DepthStateDisable, 0);
+#pragma endregion GizmoDepth
 
     //  fill solid,  Wirframe 에서도 제대로 렌더링되기 위함
-    Graphics->DeviceContext->RSSetState(FEngineLoop::graphicDevice.RasterizerStateSOLID);
-    
+    Graphics->DeviceContext->RSSetState(FEngineLoop::GraphicDevice.RasterizerStateSOLID);
+
     for (auto GizmoComp : GizmoObjs)
     {
-        
         if ((GizmoComp->GetGizmoType()==UGizmoBaseComponent::ArrowX ||
             GizmoComp->GetGizmoType()==UGizmoBaseComponent::ArrowY ||
             GizmoComp->GetGizmoType()==UGizmoBaseComponent::ArrowZ)
@@ -1214,17 +1474,18 @@ void FRenderer::RenderGizmos(const ULevel* Level, const std::shared_ptr<FEditorV
         FMatrix NormalMatrix = FMatrix::Transpose(FMatrix::Inverse(Model));
         FVector4 UUIDColor = GizmoComp->EncodeUUID() / 255.0f;
 
-        FMatrix MVP = Model * ActiveViewport->GetViewMatrix() * ActiveViewport->GetProjectionMatrix();
+        UpdateObjectBuffer(Model, NormalMatrix, UUIDColor, GizmoComp == Level->GetPickingGizmo());
 
-        if (GizmoComp == Level->GetPickingGizmo())
-            UpdateConstant(MVP, NormalMatrix, UUIDColor, true);
-        else
-            UpdateConstant(MVP, NormalMatrix, UUIDColor, false);
-
-        if (!GizmoComp->GetStaticMesh()) continue;
+        if (!GizmoComp->GetStaticMesh())
+        {
+            continue;
+        }
 
         OBJ::FStaticMeshRenderData* renderData = GizmoComp->GetStaticMesh()->GetRenderData();
-        if (renderData == nullptr) continue;
+        if (renderData == nullptr)
+        {
+            continue;
+        }
 
         RenderPrimitive(renderData, GizmoComp->GetStaticMesh()->GetMaterials(), GizmoComp->GetOverrideMaterials());
     }
@@ -1241,21 +1502,16 @@ void FRenderer::RenderBillboards(ULevel* Level, std::shared_ptr<FEditorViewportC
 {
     PrepareTextureShader();
     PrepareSubUVConstant();
-    
+
     for (auto BillboardComp : BillboardObjs)
     {
         UpdateSubUVConstant(BillboardComp->finalIndexU, BillboardComp->finalIndexV);
 
         FMatrix Model = BillboardComp->CreateBillboardMatrix();
-
-        // 최종 MVP 행렬
-        FMatrix MVP = Model * ActiveViewport->GetViewMatrix() * ActiveViewport->GetProjectionMatrix();
         FMatrix NormalMatrix = FMatrix::Transpose(FMatrix::Inverse(Model));
         FVector4 UUIDColor = BillboardComp->EncodeUUID() / 255.0f;
-        if (BillboardComp == Level->GetPickingGizmo())
-            UpdateConstant(MVP, NormalMatrix, UUIDColor, true);
-        else
-            UpdateConstant(MVP, NormalMatrix, UUIDColor, false);
+
+        UpdateObjectBuffer(Model, NormalMatrix, UUIDColor, BillboardComp == Level->GetPickingGizmo());
 
         if (UParticleSubUVComp* SubUVParticle = Cast<UParticleSubUVComp>(BillboardComp))
         {
@@ -1279,7 +1535,7 @@ void FRenderer::RenderTexts(ULevel* Level, std::shared_ptr<FEditorViewportClient
 {
     PrepareFontShader();
     PrepareSubUVConstant();
-    
+
     for (auto TextComps : TextObjs)
     {
         if (UTextBillboardComponent* Text = Cast<UTextBillboardComponent>(TextComps))
@@ -1287,17 +1543,12 @@ void FRenderer::RenderTexts(ULevel* Level, std::shared_ptr<FEditorViewportClient
             UpdateSubUVConstant(Text->finalIndexU, Text->finalIndexV);
 
             FMatrix Model = Text->CreateBillboardMatrix();
-
-            // 최종 MVP 행렬
-            FMatrix MVP = Model * ActiveViewport->GetViewMatrix() * ActiveViewport->GetProjectionMatrix();
             FMatrix NormalMatrix = FMatrix::Transpose(FMatrix::Inverse(Model));
             FVector4 UUIDColor = TextComps->EncodeUUID() / 255.0f;
-            if (TextComps == Level->GetPickingGizmo())
-                UpdateConstant(MVP, NormalMatrix, UUIDColor, true);
-            else
-                UpdateConstant(MVP, NormalMatrix, UUIDColor, false);
-            
-            FEngineLoop::renderer.RenderTextPrimitive(
+
+            UpdateObjectBuffer(Model, NormalMatrix, UUIDColor, TextComps == Level->GetPickingGizmo());
+
+            FEngineLoop::Renderer.RenderTextPrimitive(
                 Text->vertexTextBuffer, Text->numTextVertices,
                 Text->Texture->TextureSRV, Text->Texture->SamplerState
             );
@@ -1311,17 +1562,11 @@ void FRenderer::RenderTexts(ULevel* Level, std::shared_ptr<FEditorViewportClient
                 Text->GetWorldRotation(),
                 Text->GetWorldScale()
             );
-
-            // 최종 MVP 행렬
-            FMatrix MVP = Model * ActiveViewport->GetViewMatrix() * ActiveViewport->GetProjectionMatrix();
             FMatrix NormalMatrix = FMatrix::Transpose(FMatrix::Inverse(Model));
             FVector4 UUIDColor = TextComps->EncodeUUID() / 255.0f;
-            if (TextComps == Level->GetPickingGizmo())
-                UpdateConstant(MVP, NormalMatrix, UUIDColor, true);
-            else
-                UpdateConstant(MVP, NormalMatrix, UUIDColor, false);
-            
-            FEngineLoop::renderer.RenderTextPrimitive(
+            UpdateObjectBuffer(Model, NormalMatrix, UUIDColor, TextComps == Level->GetPickingGizmo());
+
+            FEngineLoop::Renderer.RenderTextPrimitive(
                 Text->vertexTextBuffer, Text->numTextVertices,
                 Text->Texture->TextureSRV, Text->Texture->SamplerState
             );

@@ -24,6 +24,8 @@ private:
     /* Materials Settings */
     void RenderForMaterial(UStaticMeshComponent* StaticMeshComp);
     void RenderMaterialView(UMaterial* Material);
+    void RenderForExponentialHeightFog(UExponentialHeightFogComponent* ExponentialHeightFogComponent);
+    
     void RenderCreateMaterialView();
 
     /* Text Settings */
