@@ -80,7 +80,7 @@ void UTextRenderComponent::SetText(FWString _text)
 		float startU = 0.0f;
 		float startV = 0.0f;
 
-		setStartUV(_text[i], startU, startV);
+		SetStartUV(_text[i], startU, startV);
 		leftUP.u += (nTexelUOffset * startU);
 		leftUP.v += (nTexelVOffset * startV);
 		rightUP.u += (nTexelUOffset * startU);
@@ -167,7 +167,7 @@ void UTextRenderComponent::setStartUV(char alphabet, float& outStartU, float& ou
     outStartV = static_cast<float>(StartV + offsetV);
 }
 
-void UTextRenderComponent::setStartUV(wchar_t hangul, float& outStartU, float& outStartV)
+void UTextRenderComponent::SetStartUV(wchar_t hangul, float& outStartU, float& outStartV)
 {
     //대문자만 받는중
     int StartU = 0;

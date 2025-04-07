@@ -214,23 +214,49 @@ void PropertyEditorPanel::RenderForComponents(USceneComponent* Component)
         }
         if (ImGui::BeginPopupModal("AddComponentPopup", nullptr, ImGuiWindowFlags_AlwaysAutoResize))
         {
+            static int CurrentItem = 0;
+            TArray<FString> Items = { "StaticMesh Component", "Billboard Component", "Text Component" };
+
             if (SelectedComponentForPopup)
             {
                 // TODO:
-                const char* items[] = { "StaticMesh Component", "Billboard Component", "Text Component" };
-                static int current_item = 0;
 
-                if (ImGui::Combo("Combo", &current_item, items, IM_ARRAYSIZE(items)))
+                if (ImGui::BeginCombo("##StaticMesh", *Items[CurrentItem], ImGuiComboFlags_None))
                 {
-                    // 선택이 바뀌었을 때의 처리
+                    for (int32 i = 0; i < Items.Num(); ++i)
+                    {
+                        if (ImGui::Selectable(*Items[i], false))
+                        {
+                            CurrentItem = i;
+                        }
+                    }
+
+                    ImGui::EndCombo();
                 }
             }
 
             if (ImGui::Button("Add"))
             {
-                auto x = SelectedComponentForPopup->GetOwner()->AddComponent<UBillboardComponent>();
-                x->SetTexture(L"Assets/Texture/font.png");
-                x->SetupAttachment(SelectedComponentForPopup);
+                if (CurrentItem == 0)
+                {
+                    auto NewComp = SelectedComponentForPopup->GetOwner()->AddComponent<UStaticMeshComponent>();
+                    NewComp->SetupAttachment(SelectedComponentForPopup);
+                }
+                else if (CurrentItem == 1)
+                {
+                    auto NewComp = SelectedComponentForPopup->GetOwner()->AddComponent<UBillboardComponent>();
+                    NewComp->SetTexture(L"Editor/Icon/S_Actor.png");
+                    NewComp->SetupAttachment(SelectedComponentForPopup);
+                }
+                else if (CurrentItem == 2)
+                {
+                    auto NewComp = SelectedComponentForPopup->GetOwner()->AddComponent<UTextRenderComponent>();
+                    NewComp->SetRowColumnCount(106, 106);
+                    NewComp->SetTexture(L"Assets/Texture/font.png");
+                    NewComp->SetText(L"Default Text");
+                    NewComp->SetupAttachment(SelectedComponentForPopup);
+                    NewComp->SetRotation(FVector(90.f, 0.f, 0.f));
+                }
 
                 ImGui::CloseCurrentPopup();
             }
@@ -312,7 +338,7 @@ void PropertyEditorPanel::RenderForMaterial(UStaticMeshComponent* StaticMeshComp
         }
 
         if (ImGui::Button("    +    ")) {
-            IsCreateMaterial = true;
+            bIsCreateMaterial = true;
         }
 
         ImGui::TreePop();
@@ -349,7 +375,7 @@ void PropertyEditorPanel::RenderForMaterial(UStaticMeshComponent* StaticMeshComp
     {
         RenderMaterialView(SelectedStaticMeshComp->GetMaterial(SelectedMaterialIndex));
     }
-    if (IsCreateMaterial) {
+    if (bIsCreateMaterial) {
         RenderCreateMaterialView();
     }
 }
@@ -511,13 +537,13 @@ void PropertyEditorPanel::RenderCreateMaterialView()
     // 기본 텍스트 입력 필드
     ImGui::SetNextItemWidth(128);
     if (ImGui::InputText("##NewName", materialName, IM_ARRAYSIZE(materialName))) {
-        tempMaterialInfo.MaterialName = materialName;
+        TempMaterialInfo.MaterialName = materialName;
     }
 
-    FVector MatDiffuseColor = tempMaterialInfo.Diffuse;
-    FVector MatSpecularColor = tempMaterialInfo.Specular;
-    FVector MatAmbientColor = tempMaterialInfo.Ambient;
-    FVector MatEmissiveColor = tempMaterialInfo.Emissive;
+    FVector MatDiffuseColor = TempMaterialInfo.Diffuse;
+    FVector MatSpecularColor = TempMaterialInfo.Specular;
+    FVector MatAmbientColor = TempMaterialInfo.Ambient;
+    FVector MatEmissiveColor = TempMaterialInfo.Emissive;
 
     float dr = MatDiffuseColor.X;
     float dg = MatDiffuseColor.Y;
@@ -533,7 +559,7 @@ void PropertyEditorPanel::RenderCreateMaterialView()
     if (ImGui::ColorEdit4("Diffuse##Color", (float*)&DiffuseColorPick, BaseFlag))
     {
         FVector NewColor = { DiffuseColorPick[0], DiffuseColorPick[1], DiffuseColorPick[2] };
-        tempMaterialInfo.Diffuse = NewColor;
+        TempMaterialInfo.Diffuse = NewColor;
     }
 
     float sr = MatSpecularColor.X;
@@ -547,7 +573,7 @@ void PropertyEditorPanel::RenderCreateMaterialView()
     if (ImGui::ColorEdit4("Specular##Color", (float*)&SpecularColorPick, BaseFlag))
     {
         FVector NewColor = { SpecularColorPick[0], SpecularColorPick[1], SpecularColorPick[2] };
-        tempMaterialInfo.Specular = NewColor;
+        TempMaterialInfo.Specular = NewColor;
     }
 
 
@@ -562,7 +588,7 @@ void PropertyEditorPanel::RenderCreateMaterialView()
     if (ImGui::ColorEdit4("Ambient##Color", (float*)&AmbientColorPick, BaseFlag))
     {
         FVector NewColor = { AmbientColorPick[0], AmbientColorPick[1], AmbientColorPick[2] };
-        tempMaterialInfo.Ambient = NewColor;
+        TempMaterialInfo.Ambient = NewColor;
     }
 
 
@@ -577,19 +603,19 @@ void PropertyEditorPanel::RenderCreateMaterialView()
     if (ImGui::ColorEdit4("Emissive##Color", (float*)&EmissiveColorPick, BaseFlag))
     {
         FVector NewColor = { EmissiveColorPick[0], EmissiveColorPick[1], EmissiveColorPick[2] };
-        tempMaterialInfo.Emissive = NewColor;
+        TempMaterialInfo.Emissive = NewColor;
     }
     ImGui::Unindent();
 
     ImGui::NewLine();
     if (ImGui::Button("Create Material")) {
-        FManagerOBJ::CreateMaterial(tempMaterialInfo);
+        FManagerOBJ::CreateMaterial(TempMaterialInfo);
     }
 
     ImGui::NewLine();
     if (ImGui::Button("Close"))
     {
-        IsCreateMaterial = false;
+        bIsCreateMaterial = false;
     }
 
     ImGui::End();

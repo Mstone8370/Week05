@@ -56,6 +56,6 @@ private:
     int SelectedMaterialIndex = -1;
     int CurMaterialIndex = -1;
     UStaticMeshComponent* SelectedStaticMeshComp = nullptr;
-    FObjMaterialInfo tempMaterialInfo;
-    bool IsCreateMaterial;
+    FObjMaterialInfo TempMaterialInfo = {};
+    bool bIsCreateMaterial = false;;
 };
