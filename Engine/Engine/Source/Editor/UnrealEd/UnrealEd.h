@@ -9,12 +9,13 @@ class UnrealEd
 public:
     UnrealEd() = default;
     ~UnrealEd() = default;
+
     void Initialize();
-    
+
      void Render() const;
     void RenderPIE() const;
     void OnResize(HWND hWnd) const;
-    
+
     void AddEditorPanel(const FString& PanelId, const std::shared_ptr<UEditorPanel>& EditorPanel);
     std::shared_ptr<UEditorPanel> GetEditorPanel(const FString& PanelId);
 

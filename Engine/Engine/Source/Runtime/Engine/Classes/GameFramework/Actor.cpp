@@ -56,7 +56,7 @@ void AActor::Destroyed()
     {
         if (Component)
         {
-            GetRootComponent()->DestroyComponent(true);
+            Component->DestroyComponent(true);
         }
     }
 }

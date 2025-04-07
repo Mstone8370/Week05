@@ -31,7 +31,8 @@ void USceneComponent::TickComponent(float DeltaTime)
 
 void USceneComponent::DestroyComponent(bool bPromoteChildren)
 {
-    for (auto& Child : AttachChildren)
+    TArray<USceneComponent*> ChildrenCopy = AttachChildren;
+    for (auto& Child : ChildrenCopy)
     {
         if (!Child)
         {
@@ -63,6 +64,12 @@ void USceneComponent::DestroyComponent(bool bPromoteChildren)
     }
 
     AttachChildren.Empty();
+
+    if (AttachParent)
+    {
+        DetachFromComponent(AttachParent);
+    }
+
     UActorComponent::DestroyComponent(bPromoteChildren);
 }
 
@@ -216,6 +223,11 @@ void USceneComponent::GetChildrenComponents(TArray<USceneComponent*>& Children) 
 
     for (auto& Child : AttachChildren)
     {
+        if (!Child)
+        {
+            // continue;
+        }
+
         Children.Add(Child);
 
         TArray<USceneComponent*> ChildrenComp;
