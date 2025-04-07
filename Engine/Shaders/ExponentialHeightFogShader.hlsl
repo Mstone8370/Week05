@@ -1,81 +1,98 @@
 #include "ShaderRegisters.hlsl"
 
-Texture2D depthTexture : register(t0);
-Texture2D worldPosTexture : register(t1);
+Texture2D DepthTexture : register(t0);
 
 struct PSInput
 {
-    float4 position : SV_POSITION;
-    float2 texCoord : TEXCOORD;
-    float3 worldPosition : POSITION;
+    float4 Position : SV_POSITION;
+    float2 TexCoord : TEXCOORD;
+    float3 WorldPosition : POSITION;
 };
 
 cbuffer FogConstants : register(b3)
 {
-    float3 fogColor; // 네가 원하는 색으로 바꿔도 됨
-    float fogDensity;
-    float fogFalloff;
-    float fogHeight;
-    float2 padding;
+    float3 FogColor; // 네가 원하는 색으로 바꿔도 됨
+    float FogDensity;
+    float FogFalloff;
+    float FogHeight;
+
+    float FogStartDistance;     // 안개 시작 거리
+    float FogEndDistance;       // 안개 끝 거리
+    float DistanceFogIntensity; // 거리 기반 안개 영향
+    float3 Padding345;
 }
 
-float3 ReconstructWorldPos(float2 uv, float depth)
+float3 ReconstructWorldPos(float2 UV, float Depth)
 {
-    float4 ndc;
-    ndc.xy = uv * 2.0 - 1.0;  // [0,1] → [-1,1]
-    ndc.y *= -1;
-    ndc.z = depth;
-    ndc.w = 1.0;
+    float4 NDC;
+    NDC.xy = UV * 2.0 - 1.0;  // [0,1] → [-1,1]
+    NDC.y *= -1;
+    NDC.z = Depth;
+    NDC.w = 1.0;
 
-    float4 worldPos = mul(ndc, InvProjectionMatrix);
-    worldPos /= worldPos.w;
+    float4 WorldPos = mul(NDC, InvProjectionMatrix);
+    WorldPos /= WorldPos.w;
 
-    worldPos = mul(worldPos, InvViewMatrix);
-    //worldPos /= worldPos.w;
+    WorldPos = mul(WorldPos, InvViewMatrix);
 
-    return worldPos.xyz;
+    return WorldPos.xyz;
 }
 
-float ComputeFogFactor(float3 worldPos)
+float GetCameraDistance(float Depth)
 {
-    // 높이 기반 안개 계산 - 아래로 갈수록 짙어짐
+    float Z = Depth;
+    float4 ClipPos = float4(0, 0, Z, 1);
+    float4 ViewPos = mul(ClipPos, InvProjectionMatrix);
+    float ViewZ = ViewPos.z / ViewPos.w;
+    return abs(ViewZ); // 카메라 기준 거리
+}
 
-    // 아래로 내려갈수록 heightDiff가 커지게 (기준보다 얼마나 아래인가?)
-    float heightDiff = max(0.0f, fogHeight - worldPos.z);
+float ComputeFogFactor(float3 WorldPos, float Depth)
+{
+    float3 CameraPos = InvViewMatrix[3].xyz;
 
-    // 지수적으로 감쇠되는 안개 계산
-    float fogFactor = 1.0 - exp(-heightDiff * fogFalloff);
+    float CameraDist = GetCameraDistance(Depth);
+    float DistFactor = saturate((CameraDist - FogStartDistance) / (FogEndDistance - FogStartDistance));
 
-    // 밀도 반영
-    fogFactor *= fogDensity;
+    // 높이 기반 안개
+    float HeightDiff = max(0.0f, FogHeight - WorldPos.z);
+    float HeightFactor = 1.0 - exp(-HeightDiff * FogFalloff);
+    float HeightFogFactor = HeightFactor * FogDensity * DistFactor; // <- 거리 영향 추가됨
 
+
+
+    // 거리 기반 안개 (카메라가 안개 안에 있을 때만)
+    float CameraHeightDiff = max(0.0f, FogHeight - CameraPos.z);
+    float CameraHeightFactor = 1.0 - exp(-CameraHeightDiff * FogFalloff);
+
+    float DistFogFactor = DistFactor * FogDensity * DistanceFogIntensity * (CameraHeightFactor);
+
+
+    float FogFactor = HeightFogFactor + DistFogFactor;
     // 안전한 클램핑
-    fogFactor = saturate(fogFactor);
+    FogFactor = saturate(FogFactor);
 
-    return fogFactor;
+    return FogFactor;
 }
 
-float LinearizeDepth(float depth, float nearPlane, float farPlane)
+float LinearizeDepth(float Depth, float NearPlane, float FarPlane)
 {
-    return (farPlane * nearPlane) / (farPlane - depth * (farPlane - nearPlane));
+    return (FarPlane * NearPlane) / (FarPlane - Depth * (FarPlane - NearPlane));
 }
 
-float NormalizeLinearDepth(float linearDepth, float nearPlane, float farPlane)
+float NormalizeLinearDepth(float LinearDepth, float NearPlane, float FarPlane)
 {
-    return saturate((linearDepth - nearPlane) / (farPlane - nearPlane));
+    return saturate((LinearDepth - NearPlane) / (FarPlane - NearPlane));
 }
 
-float4 main(PSInput input) : SV_TARGET
+float4 main(PSInput Input) : SV_TARGET
 {
-    float depth = depthTexture.Sample(Sampler, input.texCoord).r;
-    //float linearDepth = LinearizeDepth(depth, cameraNearPlane, cameraFarPlane);
-    //linearDepth = NormalizeLinearDepth(linearDepth, cameraNearPlane, cameraFarPlane);
+    float Depth = DepthTexture.Sample(Sampler, Input.TexCoord).r;
 
-    float3 worldPos = ReconstructWorldPos(input.texCoord, depth);
-    //worldPos /= 500;
-    //float3 worldPos =  worldPosTexture.Sample(gSampler, input.texCoord).xyz;
-    float fogFactor = ComputeFogFactor(worldPos);
-    //fogFactor = 1;
+    float3 WorldPos = ReconstructWorldPos(Input.TexCoord, Depth);
 
-    return float4(fogColor, fogFactor);
+    float FogFactor = ComputeFogFactor(WorldPos, Depth);
+
+
+    return float4(FogColor, FogFactor);
 }
