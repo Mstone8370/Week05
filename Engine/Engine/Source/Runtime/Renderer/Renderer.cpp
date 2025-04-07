@@ -121,7 +121,7 @@ void FRenderer::CreateDepthShader()
 {
     ID3DBlob* FinalPixelShaderCSO;
 
-    D3DCompileFromFile(L"Shaders/NormalizeDepthShader.hlsl", nullptr, nullptr, "main", "ps_5_0", 0, 0, &FinalPixelShaderCSO, nullptr);
+    D3DCompileFromFile(L"Shaders/NormalizeDepthShader.hlsl", nullptr, D3D_COMPILE_STANDARD_FILE_INCLUDE, "main", "ps_5_0", 0, 0, &FinalPixelShaderCSO, nullptr);
     Graphics->Device->CreatePixelShader(FinalPixelShaderCSO->GetBufferPointer(), FinalPixelShaderCSO->GetBufferSize(), nullptr, &DepthShader);
 
     FinalPixelShaderCSO->Release();
@@ -140,7 +140,7 @@ void FRenderer::CreateFogShader()
 {
     ID3DBlob* FogPixelShaderCSO;
 
-    D3DCompileFromFile(L"Shaders/ExponentialHeightFogShader.hlsl", nullptr, nullptr, "main", "ps_5_0", 0, 0, &FogPixelShaderCSO, nullptr);
+    D3DCompileFromFile(L"Shaders/ExponentialHeightFogShader.hlsl", nullptr, D3D_COMPILE_STANDARD_FILE_INCLUDE, "main", "ps_5_0", 0, 0, &FogPixelShaderCSO, nullptr);
     Graphics->Device->CreatePixelShader(FogPixelShaderCSO->GetBufferPointer(), FogPixelShaderCSO->GetBufferSize(), nullptr, &FogShader);
 
     FogPixelShaderCSO->Release();
@@ -458,9 +458,6 @@ void FRenderer::CreateConstantBuffer()
     ConstantBufferDesc.ByteWidth = sizeof(FTextureConstants) + 0xf & 0xfffffff0;
     Graphics->Device->CreateBuffer(&ConstantBufferDesc, nullptr, &TextureConstantBuffer);
 
-    ConstantBufferDesc.ByteWidth = sizeof(FCameraConstants) + 0xf & 0xfffffff0;
-    Graphics->Device->CreateBuffer(&ConstantBufferDesc, nullptr, &CameraConstantBuffer);
-
     ConstantBufferDesc.ByteWidth = sizeof(FExponentialHeightFogConstants) + 0xf & 0xfffffff0;
     Graphics->Device->CreateBuffer(&ConstantBufferDesc, nullptr, &ExponentialConstantBuffer);
 }
@@ -495,7 +492,6 @@ void FRenderer::ReleaseConstantBuffer()
     ReleaseBuffer(MaterialConstantBuffer);
     ReleaseBuffer(SubMeshConstantBuffer);
     ReleaseBuffer(TextureConstantBuffer);
-    ReleaseBuffer(CameraConstantBuffer);
     ReleaseBuffer(ExponentialConstantBuffer);
 }
 
@@ -527,6 +523,7 @@ void FRenderer::UpdateViewBuffer(const FMatrix& ViewMatrix, const FVector& ViewL
         if (FViewConstants* constants = static_cast<FViewConstants*>(ConstantBufferMSR.pData))
         {
             constants->ViewMatrix = ViewMatrix;
+            constants->InvViewMatrix = FMatrix::Inverse(ViewMatrix);
             constants->ViewLocation = ViewLocation;
         }
         Graphics->DeviceContext->Unmap(ViewConstantBuffer, 0);
@@ -543,6 +540,7 @@ void FRenderer::UpdateProjectionBuffer(const FMatrix& ProjectionMatrix, float Ne
         if (FProjectionConstants* constants = static_cast<FProjectionConstants*>(ConstantBufferMSR.pData))
         {
             constants->ProjectionMatrix = ProjectionMatrix;
+            constants->InvProjectionMatrix = FMatrix::Inverse(ProjectionMatrix);
             constants->NearClip = NearClip;
             constants->FarClip = FarClip;
         }
@@ -644,23 +642,6 @@ void FRenderer::UpdateTextureConstant(float UOffset, float VOffset)
             constants->VOffset = VOffset;
         }
         Graphics->DeviceContext->Unmap(TextureConstantBuffer, 0);
-    }
-}
-
-void FRenderer::UpdateCameraConstant(std::shared_ptr<FEditorViewportClient> ActiveViewport)
-{
-    if (CameraConstantBuffer) {
-        D3D11_MAPPED_SUBRESOURCE constantbufferMSR; // GPU �� �޸� �ּ� ����
-        Graphics->DeviceContext->Map(CameraConstantBuffer, 0, D3D11_MAP_WRITE_DISCARD, 0, &constantbufferMSR);
-        FCameraConstants* constants = (FCameraConstants*)constantbufferMSR.pData; //GPU �޸� ���� ����
-        {
-            constants->FarPlane = ActiveViewport->farPlane;
-            constants->NearPlane = ActiveViewport->nearPlane;
-            constants->cameraPos = ActiveViewport->GetWorldLocation();
-            constants->invProjection = FMatrix::Inverse(ActiveViewport->GetProjectionMatrix());
-            constants->invView = FMatrix::Inverse(ActiveViewport->GetViewMatrix());
-        }
-        Graphics->DeviceContext->Unmap(CameraConstantBuffer, 0);
     }
 }
 
@@ -973,10 +954,8 @@ void FRenderer::PostProcess(std::shared_ptr<FEditorViewportClient> ActiveViewpor
     // Draw Fog Quad
     if (ExponentialHeightFogComponent != nullptr) {
         // // TODO: Temp, 임시 코드
-        UpdateCameraConstant(ActiveViewport);
         UpdateExponentialHeightFogConstant(ExponentialHeightFogComponent);
-        Graphics->DeviceContext->PSSetConstantBuffers(0, 1, &CameraConstantBuffer);
-        Graphics->DeviceContext->PSSetConstantBuffers(1, 1, &ExponentialConstantBuffer);
+        Graphics->DeviceContext->PSSetConstantBuffers(3, 1, &ExponentialConstantBuffer);
 
         Graphics->DeviceContext->PSSetShaderResources(0, 1, &Graphics->DepthStencilSRV);
         Graphics->DeviceContext->PSSetShaderResources(1, 1, &Graphics->WorldPosBufferSRV);
@@ -1326,10 +1305,8 @@ void FRenderer::RenderScene(ULevel* Level, std::shared_ptr<FEditorViewportClient
 
 void FRenderer::SampleAndProcessSRV(std::shared_ptr<FEditorViewportClient> ActiveViewport)
 {
-    Graphics->PrepareDepthMap();
     // Depth - Normalize
-    UpdateCameraConstant(ActiveViewport);
-    Graphics->DeviceContext->PSSetConstantBuffers(0, 1, &CameraConstantBuffer);
+    Graphics->PrepareDepthMap();
 
     Graphics->DeviceContext->PSSetShaderResources(0, 1, &Graphics->DepthStencilSRV);
 
@@ -1354,9 +1331,6 @@ void FRenderer::RenderFullScreenQuad(std::shared_ptr<FEditorViewportClient> Acti
         }
 
         // TODO: Temp, 임시 코드
-        // UpdateCameraConstant(ActiveViewport);
-        // Graphics->DeviceContext->PSSetConstantBuffers(0, 1, &CameraConstantBuffer);
-        // Graphics->DeviceContext->PSSetShader(DepthShader, nullptr, 0);
         Graphics->DeviceContext->PSSetShaderResources(0, 1, &Graphics->NormalizedDepthSRV);
     }
     else

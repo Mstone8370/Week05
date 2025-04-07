@@ -1,6 +1,7 @@
+#include "ShaderRegisters.hlsl"
+
 Texture2D depthTexture : register(t0);
 Texture2D worldPosTexture : register(t1);
-SamplerState gSampler : register(s0);
 
 struct PSInput
 {
@@ -9,19 +10,7 @@ struct PSInput
     float3 worldPosition : POSITION;
 };
 
-cbuffer constants : register(b0)
-{
-    float cameraNearPlane;
-    float cameraFarPlane;
-    float padding1;
-    float padding4;
-    float3 cameraPos;
-    float padding2;
-    row_major float4x4 invProjection;
-    row_major float4x4 invView;
-}
-
-cbuffer FogConstants : register(b1)
+cbuffer FogConstants : register(b3)
 {
     float3 fogColor; // 네가 원하는 색으로 바꿔도 됨
     float fogDensity;
@@ -34,16 +23,16 @@ float3 ReconstructWorldPos(float2 uv, float depth)
 {
     float4 ndc;
     ndc.xy = uv * 2.0 - 1.0;  // [0,1] → [-1,1]
-    ndc.y *= -1;             
+    ndc.y *= -1;
     ndc.z = depth;
     ndc.w = 1.0;
-    
-    float4 worldPos = mul(ndc, invProjection);
+
+    float4 worldPos = mul(ndc, InvProjectionMatrix);
     worldPos /= worldPos.w;
-    
-    worldPos = mul(worldPos, invView);
+
+    worldPos = mul(worldPos, InvViewMatrix);
     //worldPos /= worldPos.w;
-    
+
     return worldPos.xyz;
 }
 
@@ -78,15 +67,15 @@ float NormalizeLinearDepth(float linearDepth, float nearPlane, float farPlane)
 
 float4 main(PSInput input) : SV_TARGET
 {
-    float depth = depthTexture.Sample(gSampler, input.texCoord).r;
+    float depth = depthTexture.Sample(Sampler, input.texCoord).r;
     //float linearDepth = LinearizeDepth(depth, cameraNearPlane, cameraFarPlane);
     //linearDepth = NormalizeLinearDepth(linearDepth, cameraNearPlane, cameraFarPlane);
-    
+
     float3 worldPos = ReconstructWorldPos(input.texCoord, depth);
     //worldPos /= 500;
     //float3 worldPos =  worldPosTexture.Sample(gSampler, input.texCoord).xyz;
     float fogFactor = ComputeFogFactor(worldPos);
     //fogFactor = 1;
-    
+
     return float4(fogColor, fogFactor);
 }
