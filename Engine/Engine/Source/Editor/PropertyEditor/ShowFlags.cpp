@@ -3,7 +3,7 @@
 
 ShowFlags::ShowFlags()
 {
-    currentFlags = 31;
+    currentFlags = UINT64_MAX;
 }
 
 ShowFlags::~ShowFlags()

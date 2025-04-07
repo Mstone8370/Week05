@@ -1289,9 +1289,6 @@ void FRenderer::RenderScene(ULevel* Level, std::shared_ptr<FEditorViewportClient
 
     if (ActiveViewport->GetShowFlag() & static_cast<uint64>(EEngineShowFlags::SF_Gizmo))
     {
-        // TODO: 임시로 밖으로 빼둠, 적당한 위치를 찾으면 이동
-        PrepareShader();
-
         if (GizmoObjs.Num() > 0)
         {
             RenderGizmos(Level, ActiveViewport);
@@ -1432,6 +1429,8 @@ void FRenderer::RenderGizmos(const ULevel* Level, const std::shared_ptr<FEditorV
     {
         return;
     }
+
+    PrepareShader();
 
 #pragma region GizmoDepth
     ID3D11DepthStencilState* DepthStateDisable = Graphics->DepthStateDisable;
