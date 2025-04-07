@@ -337,6 +337,7 @@ struct FObjectConstants
 struct FViewConstants
 {
     FMatrix ViewMatrix;
+    FMatrix InvViewMatrix;
     FVector ViewLocation;
     float ViewPadding;
 };
@@ -344,6 +345,7 @@ struct FViewConstants
 struct FProjectionConstants
 {
     FMatrix ProjectionMatrix;
+    FMatrix InvProjectionMatrix;
     float NearClip;
     float FarClip;
     FVector2D ProjectionPadding;
@@ -367,18 +369,6 @@ struct FTextureConstants
     float VOffset;
     float pad0;
     float pad1;
-};
-
-struct alignas(16) FCameraConstants
-{
-    float NearPlane;
-    float FarPlane;
-    float padding3;
-    float padding2;
-    FVector cameraPos;
-    float padding1;
-    FMatrix invProjection;
-    FMatrix invView;
 };
 
 struct alignas(16) FExponentialHeightFogConstants

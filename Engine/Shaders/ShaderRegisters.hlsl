@@ -16,6 +16,7 @@ cbuffer ObjectBuffer : register(b0)
 cbuffer ViewBuffer : register(b1)
 {
     row_major matrix ViewMatrix;
+    row_major matrix InvViewMatrix;
     float3 ViewLocation;
     float ViewPadding;
 }
@@ -23,6 +24,7 @@ cbuffer ViewBuffer : register(b1)
 cbuffer ProjectionBuffer : register(b2)
 {
     row_major matrix ProjectionMatrix;
+    row_major matrix InvProjectionMatrix;
     float NearClip;
     float FarClip;
     float2 ProjectionPadding;

@@ -49,7 +49,6 @@ public:
     ID3D11Buffer* MaterialConstantBuffer = nullptr;
     ID3D11Buffer* SubMeshConstantBuffer = nullptr;
     ID3D11Buffer* TextureConstantBuffer = nullptr;
-    ID3D11Buffer* CameraConstantBuffer = nullptr;
     ID3D11Buffer* ExponentialConstantBuffer = nullptr;
 
     ID3D11SamplerState* ScreenSamplerState = nullptr;
@@ -112,7 +111,6 @@ public:
     void UpdateLitUnlitConstant(int isLit) const;
     void UpdateSubMeshConstant(bool isSelected) const;
     void UpdateTextureConstant(float UOffset, float VOffset);
-    void UpdateCameraConstant(std::shared_ptr<FEditorViewportClient> ActiveViewport);
     void UpdateExponentialHeightFogConstant(UExponentialHeightFogComponent* ExponentialHeightFogComp);
 
     //텍스쳐용 기능 추가
