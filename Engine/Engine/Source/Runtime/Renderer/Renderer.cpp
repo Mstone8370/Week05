@@ -8,6 +8,7 @@
 #include "Components/LightComponent.h"
 #include "Components/StaticMeshComponent.h"
 #include "Components/BillboardComponent.h"
+#include "Components/ExponentialHeightFogComponent.h"
 #include "Components/ParticleSubUVComp.h"
 #include "Components/TextBillboardComponent.h"
 #include "Components/Material/Material.h"
@@ -28,22 +29,34 @@ void FRenderer::Initialize(FGraphicsDevice* graphics)
 {
     Graphics = graphics;
     CreateShader();
+    CreateFinalShader();
     CreateTextureShader();
+    CreateDepthShader();
+
+    CreateFogShader();
+
     CreateFontShader();
     CreateLineShader();
     CreateConstantBuffer();
     CreateLightingBuffer();
     CreateLitUnlitBuffer();
+    CreateScreenSamplerState();
     UpdateLitUnlitConstant(1);
 }
 
 void FRenderer::Release()
 {
     ReleaseShader();
+    ReleaseFinalShader();
+    ReleaseDepthShader();
+
+    ReleaseFogShader();
+
     ReleaseTextureShader();
     ReleaseFontShader();
     ReleaseLineShader();
     ReleaseConstantBuffer();
+    ReleaseScreenSamplerState();
 }
 
 void FRenderer::CreateShader()
@@ -72,6 +85,97 @@ void FRenderer::CreateShader()
 
     VertexShaderCSO->Release();
     PixelShaderCSO->Release();
+}
+
+void FRenderer::CreateFinalShader()
+{
+    ID3DBlob* FinalVertexShaderCSO;
+    ID3DBlob* FinalPixelShaderCSO;
+
+    D3DCompileFromFile(L"Shaders/FinalVertexShader.hlsl", nullptr, nullptr, "main", "vs_5_0", 0, 0, &FinalVertexShaderCSO, nullptr);
+    Graphics->Device->CreateVertexShader(FinalVertexShaderCSO->GetBufferPointer(), FinalVertexShaderCSO->GetBufferSize(), nullptr, &FinalVertexShader);
+
+    D3DCompileFromFile(L"Shaders/FinalPixelShader.hlsl", nullptr, nullptr, "main", "ps_5_0", 0, 0, &FinalPixelShaderCSO, nullptr);
+    Graphics->Device->CreatePixelShader(FinalPixelShaderCSO->GetBufferPointer(), FinalPixelShaderCSO->GetBufferSize(), nullptr, &FinalPixelShader);
+
+    FinalVertexShaderCSO->Release();
+    FinalPixelShaderCSO->Release();
+}
+
+void FRenderer::ReleaseFinalShader()
+{
+    if (FinalVertexShader)
+    {
+        FinalVertexShader->Release();
+        FinalVertexShader = nullptr;
+    }
+
+    if (FinalPixelShader)
+    {
+        FinalPixelShader->Release();
+        FinalPixelShader = nullptr;
+    }
+}
+
+void FRenderer::CreateDepthShader()
+{
+    ID3DBlob* FinalPixelShaderCSO;
+
+    D3DCompileFromFile(L"Shaders/NormalizeDepthShader.hlsl", nullptr, nullptr, "main", "ps_5_0", 0, 0, &FinalPixelShaderCSO, nullptr);
+    Graphics->Device->CreatePixelShader(FinalPixelShaderCSO->GetBufferPointer(), FinalPixelShaderCSO->GetBufferSize(), nullptr, &DepthShader);
+
+    FinalPixelShaderCSO->Release();
+}
+
+void FRenderer::ReleaseDepthShader()
+{
+    if (DepthShader)
+    {
+        DepthShader->Release();
+        DepthShader = nullptr;
+    }
+}
+
+void FRenderer::CreateFogShader()
+{
+    ID3DBlob* FogPixelShaderCSO;
+
+    D3DCompileFromFile(L"Shaders/ExponentialHeightFogShader.hlsl", nullptr, nullptr, "main", "ps_5_0", 0, 0, &FogPixelShaderCSO, nullptr);
+    Graphics->Device->CreatePixelShader(FogPixelShaderCSO->GetBufferPointer(), FogPixelShaderCSO->GetBufferSize(), nullptr, &FogShader);
+
+    FogPixelShaderCSO->Release();
+}
+
+void FRenderer::ReleaseFogShader()
+{
+    if (FogShader)
+    {
+        FogShader->Release();
+        FogShader = nullptr;
+    }
+}
+
+void FRenderer::CreateScreenSamplerState()
+{
+    D3D11_SAMPLER_DESC samplerDesc = {};
+    samplerDesc.Filter = D3D11_FILTER_MIN_MAG_MIP_POINT;
+    samplerDesc.AddressU = D3D11_TEXTURE_ADDRESS_CLAMP;
+    samplerDesc.AddressV = D3D11_TEXTURE_ADDRESS_CLAMP;
+    samplerDesc.AddressW = D3D11_TEXTURE_ADDRESS_CLAMP;
+    samplerDesc.ComparisonFunc = D3D11_COMPARISON_NEVER;
+    samplerDesc.MinLOD = 0;
+    samplerDesc.MaxLOD = D3D11_FLOAT32_MAX;
+
+    Graphics->Device->CreateSamplerState(&samplerDesc, &ScreenSamplerState);
+}
+
+void FRenderer::ReleaseScreenSamplerState()
+{
+    if (ScreenSamplerState)
+    {
+        ScreenSamplerState->Release();
+        ScreenSamplerState = nullptr;
+    }
 }
 
 void FRenderer::ReleaseShader()
@@ -128,8 +232,9 @@ void FRenderer::ResetPixelShader() const
     PixelShader->Release();
 }
 
-void FRenderer::ChangeViewMode(EViewModeIndex InViewModeIndex) const
+void FRenderer::ChangeViewMode(EViewModeIndex InViewModeIndex)
 {
+    ViewModeFlags = InViewModeIndex;
     switch (InViewModeIndex)
     {
     case EViewModeIndex::VMI_Lit:
@@ -137,7 +242,10 @@ void FRenderer::ChangeViewMode(EViewModeIndex InViewModeIndex) const
         break;
     case EViewModeIndex::VMI_Wireframe:
     case EViewModeIndex::VMI_Unlit:
+    case EViewModeIndex::VMI_SceneDepth:
         UpdateLitUnlitConstant(0);
+        break;
+    default:
         break;
     }
 }
@@ -332,8 +440,8 @@ void FRenderer::CreateConstantBuffer()
     ConstantBufferDesc.ByteWidth = sizeof(FProjectionConstants) + 0xf & 0xfffffff0;
     Graphics->Device->CreateBuffer(&ConstantBufferDesc, nullptr, &ProjectionConstantBuffer);
 
-    ConstantBufferDesc.ByteWidth = sizeof(FSubUVConstant) + 0xf & 0xfffffff0;
-    Graphics->Device->CreateBuffer(&ConstantBufferDesc, nullptr, &SubUVConstantBuffer);
+    ConstantBufferDesc.ByteWidth = sizeof(FGridParameters) + 0xf & 0xfffffff0;
+    Graphics->Device->CreateBuffer(&ConstantBufferDesc, nullptr, &GridConstantBuffer);
 
     ConstantBufferDesc.ByteWidth = sizeof(FGridParameters) + 0xf & 0xfffffff0;
     Graphics->Device->CreateBuffer(&ConstantBufferDesc, nullptr, &GridConstantBuffer);
@@ -349,6 +457,12 @@ void FRenderer::CreateConstantBuffer()
 
     ConstantBufferDesc.ByteWidth = sizeof(FTextureConstants) + 0xf & 0xfffffff0;
     Graphics->Device->CreateBuffer(&ConstantBufferDesc, nullptr, &TextureConstantBuffer);
+
+    ConstantBufferDesc.ByteWidth = sizeof(FCameraConstants) + 0xf & 0xfffffff0;
+    Graphics->Device->CreateBuffer(&ConstantBufferDesc, nullptr, &CameraConstantBuffer);
+
+    ConstantBufferDesc.ByteWidth = sizeof(FExponentialHeightFogConstants) + 0xf & 0xfffffff0;
+    Graphics->Device->CreateBuffer(&ConstantBufferDesc, nullptr, &ExponentialConstantBuffer);
 }
 
 void FRenderer::CreateLightingBuffer()
@@ -381,6 +495,8 @@ void FRenderer::ReleaseConstantBuffer()
     ReleaseBuffer(MaterialConstantBuffer);
     ReleaseBuffer(SubMeshConstantBuffer);
     ReleaseBuffer(TextureConstantBuffer);
+    ReleaseBuffer(CameraConstantBuffer);
+    ReleaseBuffer(ExponentialConstantBuffer);
 }
 
 void FRenderer::UpdateObjectBuffer(const FMatrix& ModelMatrix, const FMatrix& InverseTransposedNormal, FVector4 UUIDColor, bool IsSelected) const
@@ -528,6 +644,39 @@ void FRenderer::UpdateTextureConstant(float UOffset, float VOffset)
             constants->VOffset = VOffset;
         }
         Graphics->DeviceContext->Unmap(TextureConstantBuffer, 0);
+    }
+}
+
+void FRenderer::UpdateCameraConstant(std::shared_ptr<FEditorViewportClient> ActiveViewport)
+{
+    if (CameraConstantBuffer) {
+        D3D11_MAPPED_SUBRESOURCE constantbufferMSR; // GPU �� �޸� �ּ� ����
+        Graphics->DeviceContext->Map(CameraConstantBuffer, 0, D3D11_MAP_WRITE_DISCARD, 0, &constantbufferMSR);
+        FCameraConstants* constants = (FCameraConstants*)constantbufferMSR.pData; //GPU �޸� ���� ����
+        {
+            constants->FarPlane = ActiveViewport->farPlane;
+            constants->NearPlane = ActiveViewport->nearPlane;
+            constants->cameraPos = ActiveViewport->GetWorldLocation();
+            constants->invProjection = FMatrix::Inverse(ActiveViewport->GetProjectionMatrix());
+            constants->invView = FMatrix::Inverse(ActiveViewport->GetViewMatrix());
+        }
+        Graphics->DeviceContext->Unmap(CameraConstantBuffer, 0);
+    }
+}
+
+void FRenderer::UpdateExponentialHeightFogConstant(UExponentialHeightFogComponent* ExponentialHeightFogComp)
+{
+    if (ExponentialConstantBuffer) {
+        D3D11_MAPPED_SUBRESOURCE constantbufferMSR; // GPU �� �޸� �ּ� ����
+        Graphics->DeviceContext->Map(ExponentialConstantBuffer, 0, D3D11_MAP_WRITE_DISCARD, 0, &constantbufferMSR);
+        FExponentialHeightFogConstants* constants = (FExponentialHeightFogConstants*)constantbufferMSR.pData; //GPU �޸� ���� ����
+        {
+            constants->FogColor = ExponentialHeightFogComp->FogColor;
+            constants->FogDensity = ExponentialHeightFogComp->FogDensity;
+            constants->FogFalloff = ExponentialHeightFogComp->FogFalloff;
+            constants->FogHeight = ExponentialHeightFogComp->FogHeight;
+        }
+        Graphics->DeviceContext->Unmap(ExponentialConstantBuffer, 0);
     }
 }
 
@@ -803,6 +952,40 @@ void FRenderer::PrepareSubUVConstant() const
     if (SubUVConstantBuffer)
     {
         Graphics->DeviceContext->PSSetConstantBuffers(3, 1, &SubUVConstantBuffer);
+    }
+}
+
+void FRenderer::PreparePostProcess()
+{
+    Graphics->PreparePostProcess();
+
+    ExponentialHeightFogComponent = nullptr;
+    for (UExponentialHeightFogComponent* iter : TObjectRange<UExponentialHeightFogComponent>())
+    {
+        ExponentialHeightFogComponent = iter;
+    }
+}
+
+void FRenderer::PostProcess(std::shared_ptr<FEditorViewportClient> ActiveViewport)
+{
+    PreparePostProcess();
+
+    // Draw Fog Quad
+    if (ExponentialHeightFogComponent != nullptr) {
+        // // TODO: Temp, 임시 코드
+        UpdateCameraConstant(ActiveViewport);
+        UpdateExponentialHeightFogConstant(ExponentialHeightFogComponent);
+        Graphics->DeviceContext->PSSetConstantBuffers(0, 1, &CameraConstantBuffer);
+        Graphics->DeviceContext->PSSetConstantBuffers(1, 1, &ExponentialConstantBuffer);
+
+        Graphics->DeviceContext->PSSetShaderResources(0, 1, &Graphics->DepthStencilSRV);
+        Graphics->DeviceContext->PSSetShaderResources(1, 1, &Graphics->WorldPosBufferSRV);
+
+        Graphics->DeviceContext->PSSetShader(FogShader, nullptr, 0);
+        Graphics->DeviceContext->PSSetSamplers(0, 1, &ScreenSamplerState);
+
+
+        DrawFullScreenQuad();
     }
 }
 
@@ -1092,15 +1275,7 @@ void FRenderer::PrepareRender(ULevel* Level)
     }
 }
 
-void FRenderer::ClearRenderArr()
-{
-    StaticMeshObjs.Empty();
-    GizmoObjs.Empty();
-    TextObjs.Empty();
-    LightObjs.Empty();
-}
-
-void FRenderer::Render(ULevel* Level, std::shared_ptr<FEditorViewportClient> ActiveViewport)
+void FRenderer::RenderScene(ULevel* Level, std::shared_ptr<FEditorViewportClient> ActiveViewport)
 {
     Graphics->DeviceContext->RSSetViewports(1, &ActiveViewport->GetD3DViewport());
     Graphics->ChangeRasterizer(ActiveViewport->GetViewMode());
@@ -1112,24 +1287,116 @@ void FRenderer::Render(ULevel* Level, std::shared_ptr<FEditorViewportClient> Act
 
     UpdateLightBuffer();
 
-    UPrimitiveBatch::GetInstance().RenderBatch(ActiveViewport->GetViewMatrix(), ActiveViewport->GetProjectionMatrix());
-
     if (ActiveViewport->GetShowFlag() & static_cast<uint64>(EEngineShowFlags::SF_Primitives))
     {
-        RenderStaticMeshes(Level, ActiveViewport);
+        if (StaticMeshObjs.Num() > 0)
+        {
+            RenderStaticMeshes(Level, ActiveViewport);
+        }
     }
 
     RenderGizmos(Level, ActiveViewport);
 
-    if (ActiveViewport->GetShowFlag() & static_cast<uint64>(EEngineShowFlags::SF_BillboardText))
+    UPrimitiveBatch::GetInstance().RenderBatch(ActiveViewport->GetViewMatrix(), ActiveViewport->GetProjectionMatrix());
+
+    if (GizmoObjs.Num() > 0)
     {
-        RenderBillboards(Level, ActiveViewport);
-        RenderTexts(Level, ActiveViewport);
+        RenderGizmos(Level, ActiveViewport);
     }
 
-    RenderLight(Level, ActiveViewport);
+    if (ActiveViewport->GetShowFlag() & static_cast<uint64>(EEngineShowFlags::SF_BillboardText))
+    {
+        if (BillboardObjs.Num() > 0)
+        {
+            RenderBillboards(Level, ActiveViewport);
+        }
+        if (TextObjs.Num() > 0)
+        {
+            RenderTexts(Level, ActiveViewport);
+        }
+    }
+
+    if (LightObjs.Num() > 0)
+    {
+        RenderLight(Level, ActiveViewport);
+    }
 
     ClearRenderArr();
+}
+
+void FRenderer::SampleAndProcessSRV(std::shared_ptr<FEditorViewportClient> ActiveViewport)
+{
+    Graphics->PrepareDepthMap();
+    // Depth - Normalize
+    UpdateCameraConstant(ActiveViewport);
+    Graphics->DeviceContext->PSSetConstantBuffers(0, 1, &CameraConstantBuffer);
+
+    Graphics->DeviceContext->PSSetShaderResources(0, 1, &Graphics->DepthStencilSRV);
+
+    Graphics->DeviceContext->PSSetShader(DepthShader, nullptr, 0);
+    Graphics->DeviceContext->PSSetSamplers(0, 1, &ScreenSamplerState);
+
+    DrawFullScreenQuad();
+}
+
+void FRenderer::RenderFullScreenQuad(std::shared_ptr<FEditorViewportClient> ActiveViewport)
+{
+    Graphics->PrepareFinal();
+
+    if (ViewModeFlags == EViewModeIndex::VMI_SceneDepth)
+    {
+        // TODO: 텍스처 슬롯 개수만큼 null -> 임시코드임
+        int n = 2;
+        for (int i = 0; i < n; i++)
+        {
+            ID3D11ShaderResourceView* nullSRV[1] = {nullptr};
+            Graphics->DeviceContext->PSSetShaderResources(i, 1, nullSRV);
+        }
+
+        // TODO: Temp, 임시 코드
+        // UpdateCameraConstant(ActiveViewport);
+        // Graphics->DeviceContext->PSSetConstantBuffers(0, 1, &CameraConstantBuffer);
+        // Graphics->DeviceContext->PSSetShader(DepthShader, nullptr, 0);
+        Graphics->DeviceContext->PSSetShaderResources(0, 1, &Graphics->NormalizedDepthSRV);
+    }
+    else
+    {
+        Graphics->DeviceContext->PSSetShaderResources(0, 1, &Graphics->SceneSRV);
+
+        // TODO: Temp 코드
+        if (ExponentialHeightFogComponent)
+        {
+            Graphics->DeviceContext->PSSetShaderResources(1, 1, &Graphics->FogSRV);
+        }
+        else
+        {
+            ID3D11ShaderResourceView* nullSRV[1] = {nullptr};
+            Graphics->DeviceContext->PSSetShaderResources(1, 1, nullSRV);
+        }
+    }
+    Graphics->DeviceContext->PSSetShader(FinalPixelShader, nullptr, 0);
+
+    Graphics->DeviceContext->PSSetSamplers(0, 1, &ScreenSamplerState);
+
+    DrawFullScreenQuad();
+}
+
+void FRenderer::DrawFullScreenQuad()
+{
+    Graphics->DeviceContext->VSSetShader(FinalVertexShader, nullptr, 0);
+
+    // (float3(), 0, 0), (float3(), 1, 0), (float3(), 0, 1), (float3(), 1, 0), (float3(), 1, 1), (float3(), 0, 1))
+    Graphics->DeviceContext->IASetInputLayout(nullptr);  // 입력 레이아웃 필요 없음
+    Graphics->DeviceContext->IASetVertexBuffers(0, 0, nullptr, nullptr, nullptr);
+    Graphics->DeviceContext->Draw(6, 0);
+}
+
+void FRenderer::ClearRenderArr()
+{
+    StaticMeshObjs.Empty();
+    GizmoObjs.Empty();
+    TextObjs.Empty();
+    LightObjs.Empty();
 }
 
 void FRenderer::RenderStaticMeshes(ULevel* Level, std::shared_ptr<FEditorViewportClient> ActiveViewport)
@@ -1185,7 +1452,6 @@ void FRenderer::RenderGizmos(const ULevel* Level, const std::shared_ptr<FEditorV
 
     for (auto GizmoComp : GizmoObjs)
     {
-
         if ((GizmoComp->GetGizmoType()==UGizmoBaseComponent::ArrowX ||
             GizmoComp->GetGizmoType()==UGizmoBaseComponent::ArrowY ||
             GizmoComp->GetGizmoType()==UGizmoBaseComponent::ArrowZ)

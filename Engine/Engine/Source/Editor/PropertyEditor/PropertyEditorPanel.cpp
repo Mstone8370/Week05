@@ -2,6 +2,7 @@
 
 #include "Level.h"
 #include "Actors/Player.h"
+#include "Components/ExponentialHeightFogComponent.h"
 #include "Components/LightComponent.h"
 #include "Components/StaticMeshComponent.h"
 #include "Components/TextBillboardComponent.h"
@@ -23,10 +24,10 @@ void PropertyEditorPanel::Render()
 
     ImVec2 MinSize(140, 370);
     ImVec2 MaxSize(FLT_MAX, 900);
-    
+
     /* Min, Max Size */
     ImGui::SetNextWindowSizeConstraints(MinSize, MaxSize);
-    
+
     /* Panel Position */
     ImGui::SetNextWindowPos(ImVec2(PanelPosX, PanelPosY), ImGuiCond_Always);
 
@@ -38,7 +39,7 @@ void PropertyEditorPanel::Render()
 
     /* Render Start */
     ImGui::Begin("Detail", nullptr, PanelFlags);
-    
+
     AEditorPlayer* player = GEngineLoop.GetLevel()->GetEditorPlayer();
     AActor* PickedActor = GEngineLoop.GetLevel()->GetSelectedActor();
     if (PickedActor)
@@ -51,7 +52,7 @@ void PropertyEditorPanel::Render()
             Location = PickedActor->GetActorLocation();
             Rotation = PickedActor->GetActorRotation();
             Scale = PickedActor->GetActorScale();
-                
+
             FImGuiWidget::DrawVec3Control("Location", Location, 0, 85);
             ImGui::Spacing();
 
@@ -70,7 +71,7 @@ void PropertyEditorPanel::Render()
                 coordiButtonLabel = "World";
             else if (player->GetCoordiMode() == CoordiMode::CDM_LOCAL)
                 coordiButtonLabel = "Local";
-                
+
             if (ImGui::Button(coordiButtonLabel.c_str(), ImVec2(ImGui::GetWindowContentRegionMax().x * 0.9f, 32)))
             {
                 player->AddCoordiMode();
@@ -122,7 +123,7 @@ void PropertyEditorPanel::Render()
                 ImGui::SameLine();
                 if (ImGui::DragFloat("B##B", &b, 0.001f, 0.f, 1.f)) changedRGB = true;
                 ImGui::Spacing();
-                
+
                 // HSV
                 if (ImGui::DragFloat("H##H", &h, 0.1f, 0.f, 360)) changedHSV = true;
                 ImGui::SameLine();
@@ -131,7 +132,7 @@ void PropertyEditorPanel::Render()
                 if (ImGui::DragFloat("V##V", &v, 0.001f, 0.f, 1)) changedHSV = true;
                 ImGui::PopItemWidth();
                 ImGui::Spacing();
-                
+
                 if (changedRGB && !changedHSV)
                 {
                     // RGB -> HSV
@@ -171,9 +172,13 @@ void PropertyEditorPanel::Render()
         {
             RenderForStaticMesh(StaticMeshComponent);
             RenderForMaterial(StaticMeshComponent);
-        }        
+        }
+        else if (UExponentialHeightFogComponent* ExponentialHeightFogComponent = Cast<UExponentialHeightFogComponent>(PickedActor->GetRootComponent()))
+        {
+            RenderForExponentialHeightFog(ExponentialHeightFogComponent);
+        }
     }
-    
+
     ImGui::End();
 }
 
@@ -238,7 +243,7 @@ void PropertyEditorPanel::RenderForStaticMesh(UStaticMeshComponent* StaticMeshCo
     {
         return;
     }
-    
+
     ImGui::PushStyleColor(ImGuiCol_Header, ImVec4(0.1f, 0.1f, 0.1f, 1.0f));
     if (ImGui::TreeNodeEx("Static Mesh", ImGuiTreeNodeFlags_Framed | ImGuiTreeNodeFlags_DefaultOpen)) // 트리 노드 생성
     {
@@ -259,7 +264,7 @@ void PropertyEditorPanel::RenderForStaticMesh(UStaticMeshComponent* StaticMeshCo
 
             ImGui::EndCombo();
         }
-        
+
         ImGui::TreePop();
     }
     ImGui::PopStyleColor();
@@ -272,7 +277,7 @@ void PropertyEditorPanel::RenderForMaterial(UStaticMeshComponent* StaticMeshComp
     {
         return;
     }
-    
+
     ImGui::PushStyleColor(ImGuiCol_Header, ImVec4(0.1f, 0.1f, 0.1f, 1.0f));
     if (ImGui::TreeNodeEx("Materials", ImGuiTreeNodeFlags_Framed | ImGuiTreeNodeFlags_DefaultOpen)) // 트리 노드 생성
     {
@@ -292,7 +297,7 @@ void PropertyEditorPanel::RenderForMaterial(UStaticMeshComponent* StaticMeshComp
         if (ImGui::Button("    +    ")) {
             IsCreateMaterial = true;
         }
-        
+
         ImGui::TreePop();
     }
 
@@ -338,7 +343,7 @@ void PropertyEditorPanel::RenderMaterialView(UMaterial* Material)
     ImGui::Begin("Material Viewer", nullptr, ImGuiWindowFlags_NoCollapse | ImGuiWindowFlags_NoNav);
 
     static ImGuiSelectableFlags BaseFlag = ImGuiColorEditFlags_NoInputs | ImGuiColorEditFlags_NoLabel | ImGuiColorEditFlags_None | ImGuiColorEditFlags_NoAlpha;
-    
+
     FVector MatDiffuseColor = Material->GetMaterialInfo().Diffuse;
     FVector MatSpecularColor = Material->GetMaterialInfo().Specular;
     FVector MatAmbientColor = Material->GetMaterialInfo().Ambient;
@@ -409,10 +414,10 @@ void PropertyEditorPanel::RenderMaterialView(UMaterial* Material)
 
     ImGui::Spacing();
     ImGui::Separator();
-    
+
     ImGui::Text("Choose Material");
     ImGui::Spacing();
-    
+
     ImGui::Text("Material Slot Name |");
     ImGui::SameLine();
     ImGui::Text(GetData(SelectedStaticMeshComp->GetMaterialSlotNames()[SelectedMaterialIndex].ToString()));
@@ -434,14 +439,46 @@ void PropertyEditorPanel::RenderMaterialView(UMaterial* Material)
         UMaterial* material = FManagerOBJ::GetMaterial(materialChars[CurMaterialIndex]);
         SelectedStaticMeshComp->SetMaterial(SelectedMaterialIndex, material);
     }
-    
+
     if (ImGui::Button("Close"))
     {
         SelectedMaterialIndex = -1;
         SelectedStaticMeshComp = nullptr;
     }
-     
+
     ImGui::End();
+}
+
+void PropertyEditorPanel::RenderForExponentialHeightFog(UExponentialHeightFogComponent* ExponentialHeightFogComponent)
+{
+    ImGui::PushStyleColor(ImGuiCol_Header, ImVec4(0.1f, 0.1f, 0.1f, 1.0f));
+    //if (ImGui::TreeNodeEx("ExponentialHeightFog", ImGuiTreeNodeFlags_Framed | ImGuiTreeNodeFlags_DefaultOpen)) // 트리 노드 생성
+    {
+        static ImGuiSelectableFlags BaseFlag = ImGuiColorEditFlags_NoInputs | ImGuiColorEditFlags_NoLabel | ImGuiColorEditFlags_None | ImGuiColorEditFlags_NoAlpha;
+        FVector FogColor = ExponentialHeightFogComponent->FogColor;
+
+        float dr = FogColor.X;
+        float dg = FogColor.Y;
+        float db = FogColor.Z;
+        float da = 1.0f;
+        float DiffuseColorPick[4] = { dr, dg, db, da };
+
+        //ImGui::Text("Set Property");
+        //ImGui::Indent();
+
+        ImGui::Text("  Fog Color");
+        ImGui::SameLine();
+        if (ImGui::ColorEdit4("Fog##Color", (float*)&DiffuseColorPick, BaseFlag))
+        {
+            FVector NewColor = { DiffuseColorPick[0], DiffuseColorPick[1], DiffuseColorPick[2] };
+            ExponentialHeightFogComponent->FogColor = NewColor;
+        }
+
+        ImGui::SliderFloat("FogDensity", &ExponentialHeightFogComponent->FogDensity, 0.001f, 5.0f);
+        ImGui::SliderFloat("FogFalloff", &ExponentialHeightFogComponent->FogFalloff, 0.01f, 1.0f);
+        ImGui::SliderFloat("FogHeight", &ExponentialHeightFogComponent->FogHeight, -100.f, 100.0f);
+    }
+    ImGui::PopStyleColor();
 }
 
 void PropertyEditorPanel::RenderCreateMaterialView()
@@ -615,7 +652,7 @@ void PropertyEditorPanel::RenderForBillboard(UBillboardComponent* BillboardComp)
     {
         return;
     }
-    
+
     ImGui::PushStyleColor(ImGuiCol_Header, ImVec4(0.1f, 0.1f, 0.1f, 1.0f));
     if (ImGui::TreeNodeEx("Sprite", ImGuiTreeNodeFlags_Framed | ImGuiTreeNodeFlags_DefaultOpen)) // 트리 노드 생성
     {
@@ -641,7 +678,7 @@ void PropertyEditorPanel::RenderForBillboard(UBillboardComponent* BillboardComp)
 
             ImGui::EndCombo();
         }
-        
+
         ImGui::TreePop();
     }
     ImGui::PopStyleColor();

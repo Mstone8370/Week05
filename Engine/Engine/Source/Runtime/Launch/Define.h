@@ -331,6 +331,7 @@ struct FObjectConstants
     FVector4 UUIDColor;
     bool IsSelected;
     FVector pad;
+    FMatrix M;
 };
 
 struct FViewConstants
@@ -366,4 +367,26 @@ struct FTextureConstants
     float VOffset;
     float pad0;
     float pad1;
+};
+
+struct alignas(16) FCameraConstants
+{
+    float NearPlane;
+    float FarPlane;
+    float padding3;
+    float padding2;
+    FVector cameraPos;
+    float padding1;
+    FMatrix invProjection;
+    FMatrix invView;
+};
+
+struct alignas(16) FExponentialHeightFogConstants
+{
+    FVector FogColor;
+    float FogDensity;
+    float FogFalloff;
+    float FogHeight;
+    float padding1;
+    float padding2;
 };

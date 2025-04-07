@@ -9,6 +9,7 @@
 #include "Define.h"
 #include "Container/Set.h"
 
+class UExponentialHeightFogComponent;
 class UPrimitiveComponent;
 class ULightComponentBase;
 class ULevel;
@@ -23,11 +24,21 @@ struct FStaticMaterial;
 
 class FRenderer
 {
+
+private:
+    uint16 ViewModeFlags = 0;
+
 public:
     FGraphicsDevice* Graphics;
     ID3D11VertexShader* VertexShader = nullptr;
     ID3D11PixelShader* PixelShader = nullptr;
     ID3D11InputLayout* InputLayout = nullptr;
+
+    ID3D11VertexShader* FinalVertexShader = nullptr;
+    ID3D11PixelShader* FinalPixelShader = nullptr;
+    ID3D11PixelShader* DepthShader = nullptr;
+
+    ID3D11PixelShader* FogShader = nullptr;
 
     ID3D11Buffer* ObjectConstantBuffer = nullptr;
     ID3D11Buffer* ViewConstantBuffer = nullptr;
@@ -38,6 +49,10 @@ public:
     ID3D11Buffer* MaterialConstantBuffer = nullptr;
     ID3D11Buffer* SubMeshConstantBuffer = nullptr;
     ID3D11Buffer* TextureConstantBuffer = nullptr;
+    ID3D11Buffer* CameraConstantBuffer = nullptr;
+    ID3D11Buffer* ExponentialConstantBuffer = nullptr;
+
+    ID3D11SamplerState* ScreenSamplerState = nullptr;
 
     FLighting lightingData;
 
@@ -61,7 +76,22 @@ public:
     void ResetPixelShader() const;
     void CreateShader();
 
-    void ChangeViewMode(EViewModeIndex InViewModeIndex) const;
+    void CreateFinalShader();
+    void ReleaseFinalShader();
+
+    void CreateDepthShader();
+    void ReleaseDepthShader();
+
+    void CreateFogShader();
+    void ReleaseFogShader();
+
+    void CreateScreenSamplerState();
+    void ReleaseScreenSamplerState();
+
+    void SetVertexShader(const FWString& filename, const FString& funcname, const FString& version);
+    void SetPixelShader(const FWString& filename, const FString& funcname, const FString& version);
+
+    void ChangeViewMode(EViewModeIndex InViewModeIndex);
 
     // CreateBuffer
     void CreateConstantBuffer();
@@ -82,6 +112,8 @@ public:
     void UpdateLitUnlitConstant(int isLit) const;
     void UpdateSubMeshConstant(bool isSelected) const;
     void UpdateTextureConstant(float UOffset, float VOffset);
+    void UpdateCameraConstant(std::shared_ptr<FEditorViewportClient> ActiveViewport);
+    void UpdateExponentialHeightFogConstant(UExponentialHeightFogComponent* ExponentialHeightFogComp);
 
     //텍스쳐용 기능 추가
     ID3D11VertexShader* TextureVertexShader = nullptr;
@@ -122,12 +154,23 @@ public:
     void UpdateSubUVConstant(float _indexU, float _indexV) const;
     void PrepareSubUVConstant() const;
 
+    void PrepareRender(ULevel* Level);
+    void RenderScene(ULevel* Level, std::shared_ptr<FEditorViewportClient> ActiveViewport);
+
+    void SampleAndProcessSRV(std::shared_ptr<FEditorViewportClient> ActiveViewport);
+
+    void PreparePostProcess();
+    void PostProcess(std::shared_ptr<FEditorViewportClient> ActiveViewport);
+
+    void RenderFullScreenQuad(std::shared_ptr<FEditorViewportClient> ActiveViewport);
+
+    void DrawFullScreenQuad();
+
     // line shader
     void PrepareLineShader() const;
     void CreateLineShader();
     void ReleaseLineShader() const;
     void RenderBatch(const FGridParameters& gridParam, ID3D11Buffer* pVertexBuffer, int boundingBoxCount, int coneCount, int coneSegmentCount, int obbCount) const;
-    void PrepareRender(ULevel* Level);
     void UpdateGridConstantBuffer(const FGridParameters& gridParams) const;
     void UpdateLinePrimitveCountBuffer(int numBoundingBoxes, int numCones) const;
     ID3D11Buffer* CreateStaticVerticesBuffer() const;
@@ -142,9 +185,8 @@ public:
     void UpdateOBBBuffer(ID3D11Buffer* pBoundingBoxBuffer, const TArray<FOrientedBoundingBox>& BoundingBoxes, int numBoundingBoxes) const;
     void UpdateConesBuffer(ID3D11Buffer* pConeBuffer, const TArray<FCone>& Cones, int numCones) const;
 
-    //Render Pass Demo
+private:
     void ClearRenderArr();
-    void Render(ULevel* Level, std::shared_ptr<FEditorViewportClient> ActiveViewport);
     void RenderStaticMeshes(ULevel* Level, std::shared_ptr<FEditorViewportClient> ActiveViewport);
     void RenderGizmos(const ULevel* Level, const std::shared_ptr<FEditorViewportClient>& ActiveViewport);
     void RenderLight(ULevel* Level, std::shared_ptr<FEditorViewportClient> ActiveViewport);
@@ -159,6 +201,9 @@ private:
     TArray<ULightComponentBase*> LightObjs;
 
     float litFlag = 0;
+
+    // TODO: Post Processing Target 따로 정리
+    UExponentialHeightFogComponent* ExponentialHeightFogComponent = nullptr;
 
 public:
     ID3D11VertexShader* VertexLineShader = nullptr;

@@ -8,6 +8,7 @@
 #include "Components/ParticleSubUVComp.h"
 #include "Components/TextBillboardComponent.h"
 #include "Components/TextRenderComponent.h"
+#include "Components/ExponentialHeightFogComponent.h"
 #include "Engine/FLoaderOBJ.h"
 #include "Engine/StaticMeshActor.h"
 #include "ImGUI/imgui_internal.h"
@@ -265,7 +266,8 @@ void ControlEditorPanel::CreateModifyButton(ImVec2 ButtonSize, ImFont* IconFont)
             { .label= "SpotLight", .obj= OBJ_SpotLight },
             { .label= "Particle",  .obj= OBJ_PARTICLE },
             { .label= "Billboard", .obj= OBJ_BILLBOARD },
-            { .label= "Text",      .obj= OBJ_Text }
+            { .label= "Text",      .obj= OBJ_Text },
+            { .label= "ExponentialHeightFog",      .obj= OBJ_FOG }
         };
 
         for (const auto& primitive : primitives)
@@ -331,6 +333,14 @@ void ControlEditorPanel::CreateModifyButton(ImVec2 ButtonSize, ImFont* IconFont)
                     SpawnedActor->SetActorLabel(TEXT("OBJ_BILLBOARD"));
                     UBillboardComponent* BillboardComp = SpawnedActor->AddComponent<UBillboardComponent>();
                     BillboardComp->SetTexture(L"Editor/Icon/S_Actor.png");
+                    break;
+                }
+                case OBJ_FOG:
+                {
+                    SpawnedActor = level->SpawnActor<AActor>();
+                    SpawnedActor->SetActorLabel(TEXT("FOG"));
+                    SpawnedActor->AddComponent<UExponentialHeightFogComponent>();
+                    break;
                 }
                 case OBJ_TRIANGLE:
                 case OBJ_CAMERA:

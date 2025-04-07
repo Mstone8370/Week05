@@ -121,8 +121,8 @@ public:
     /** Viewport's stored horizontal field of view (saved in ini files). */
     float FOVAngle = 60.0f;
     float AspectRatio;
-    float nearPlane = 0.1f;
-    float farPlane = 1000000.0f;
+    float nearPlane = 1.0f;
+    float farPlane = 2000.0f;
     ELevelViewportType ViewportType;
     uint64 ShowFlag;
     EViewModeIndex ViewMode;
@@ -138,6 +138,17 @@ public:
     void CameraRotatePitch(float Value);
     void PivotMoveRight(float Value);
     void PivotMoveUp(float Value);
+
+    FVector GetWorldLocation()
+    {
+        if (IsPerspective())
+            return ViewTransformPerspective.GetLocation();
+
+        if (IsOrtho())
+            return ViewTransformOrthographic.GetLocation();
+
+        return FVector::ZeroVector;
+    }
 
     FMatrix& GetViewMatrix() { return  View; }
     FMatrix& GetProjectionMatrix() { return Projection; }

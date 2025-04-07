@@ -9,6 +9,7 @@ cbuffer MatrixBuffer : register(b0)
     float4 UUID;
     bool isSelected;
     float3 MatrixPad0;
+    row_major float4x4 M;
 };
 
 // LightingBuffer: 조명 관련 파라미터 관리
@@ -41,12 +42,14 @@ struct PS_INPUT
     float3 normal : NORMAL; // 정규화된 노멀 벡터
     float normalFlag : TEXCOORD0; // 노멀 유효성 플래그 (1.0: 유효, 0.0: 무효)
     float2 texcoord : TEXCOORD1;
+    float3 worldPosition : POSITION;
 };
 
 struct PS_OUTPUT
 {
     float4 color : SV_Target0;
     float4 UUID : SV_Target1;
+    float4 worldPos : SV_Target2;    
 };
 
 PS_INPUT mainVS(VS_INPUT input)
@@ -73,6 +76,7 @@ PS_INPUT mainVS(VS_INPUT input)
         output.normalFlag = 1.0;
     }
     output.texcoord = input.texcoord;
+    output.worldPosition = mul(float4(input.position), M);
     return output;
 }
 
@@ -111,7 +115,7 @@ PS_OUTPUT mainPS(PS_INPUT input) : SV_Target
     PS_OUTPUT output;
     
     output.UUID = UUID;
-    
+    output.worldPos = float4(input.worldPosition, 1);
     // 기존의 색상과 텍스처 색상을 조합
     //input.texcoord
     float4 texColor = Texture.Sample(Sampler, input.texcoord);
