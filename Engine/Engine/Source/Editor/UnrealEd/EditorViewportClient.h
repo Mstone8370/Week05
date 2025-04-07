@@ -122,7 +122,7 @@ public:
     float FOVAngle = 60.0f;
     float AspectRatio;
     float nearPlane = 1.0f;
-    float farPlane = 2000.0f;
+    float farPlane = 100.0f;
     ELevelViewportType ViewportType;
     uint64 ShowFlag;
     EViewModeIndex ViewMode;
