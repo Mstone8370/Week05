@@ -212,6 +212,8 @@ void FRenderer::PrepareShader() const
         Graphics->DeviceContext->VSSetConstantBuffers(2, 1, &ProjectionConstantBuffer);
 
         Graphics->DeviceContext->PSSetConstantBuffers(0, 1, &ObjectConstantBuffer);
+        Graphics->DeviceContext->PSSetConstantBuffers(1, 1, &ViewConstantBuffer);
+        Graphics->DeviceContext->PSSetConstantBuffers(2, 1, &ProjectionConstantBuffer);
         Graphics->DeviceContext->PSSetConstantBuffers(3, 1, &FlagBuffer);
         Graphics->DeviceContext->PSSetConstantBuffers(4, 1, &MaterialConstantBuffer);
         Graphics->DeviceContext->PSSetConstantBuffers(5, 1, &LightingBuffer);
