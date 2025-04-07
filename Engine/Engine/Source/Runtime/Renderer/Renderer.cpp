@@ -1373,6 +1373,7 @@ void FRenderer::ClearRenderArr()
     GizmoObjs.Empty();
     TextObjs.Empty();
     LightObjs.Empty();
+    BillboardObjs.Empty();
 }
 
 void FRenderer::RenderStaticMeshes(ULevel* Level, std::shared_ptr<FEditorViewportClient> ActiveViewport)

@@ -50,6 +50,15 @@ void AActor::Destroyed()
 {
     // Actor가 제거되었을 때 호출하는 EndPlay
     EndPlay(EEndPlayReason::Destroyed);
+
+    TArray<UActorComponent*> ComponentsCopy = OwnedComponents;
+    for (UActorComponent* Component : ComponentsCopy)
+    {
+        if (Component)
+        {
+            GetRootComponent()->DestroyComponent(true);
+        }
+    }
 }
 
 void AActor::EndPlay(const EEndPlayReason::Type EndPlayReason)

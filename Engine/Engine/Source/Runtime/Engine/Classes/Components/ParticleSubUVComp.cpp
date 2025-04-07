@@ -71,9 +71,6 @@ void UParticleSubUVComp::TickComponent(float DeltaTime)
 	    {
             Deactivate();
 	    }
-	    // DestroyComponent();
-		// GetWorld()->ThrowAwayObj(this);
-		// GetWorld()->SetPickingObj(nullptr);
 	}
 
 

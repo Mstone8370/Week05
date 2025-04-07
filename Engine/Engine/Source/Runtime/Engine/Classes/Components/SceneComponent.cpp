@@ -29,10 +29,8 @@ void USceneComponent::TickComponent(float DeltaTime)
 	Super::TickComponent(DeltaTime);
 }
 
-void USceneComponent::DestroyComponent()
+void USceneComponent::DestroyComponent(bool bPromoteChildren)
 {
-    UActorComponent::DestroyComponent();
-
     for (auto& Child : AttachChildren)
     {
         if (!Child)
@@ -40,24 +38,32 @@ void USceneComponent::DestroyComponent()
             continue;
         }
 
-        if (AttachParent)
+        if (bPromoteChildren)
         {
-            // 자식 컴포넌트들을 부모에 어태치
-            Child->SetupAttachment(AttachParent);
+            Child->DestroyComponent(bPromoteChildren);
         }
-        else if (GetOwner() && GetOwner()->GetRootComponent())
+        else
         {
-            // 부모가 nullptr인 경우 Owner의 Root에라도 어태치
-            Child->SetupAttachment(GetOwner()->GetRootComponent());
-        }
-        else if (GetOwner())
-        {
-            // 루트 컴포넌트도 없는 경우, 아무거나 하나를 루트로 지정해줌
-            GetOwner()->SetRootComponent(Child);
+            if (AttachParent)
+            {
+                // 자식 컴포넌트들을 부모에 어태치
+                Child->SetupAttachment(AttachParent);
+            }
+            else if (GetOwner() && GetOwner()->GetRootComponent())
+            {
+                // 부모가 nullptr인 경우 Owner의 Root에라도 어태치
+                Child->SetupAttachment(GetOwner()->GetRootComponent());
+            }
+            else if (GetOwner())
+            {
+                // 루트 컴포넌트도 없는 경우, 아무거나 하나를 루트로 지정해줌
+                GetOwner()->SetRootComponent(Child);
+            }
         }
     }
 
     AttachChildren.Empty();
+    UActorComponent::DestroyComponent(bPromoteChildren);
 }
 
 int USceneComponent::CheckRayIntersection(FVector& rayOrigin, FVector& rayDirection, float& pfNearHitDistance)
