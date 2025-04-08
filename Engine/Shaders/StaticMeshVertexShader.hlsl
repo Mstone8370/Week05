@@ -19,6 +19,7 @@ struct PS_INPUT
     float2 texcoord : TEXCOORD1;
     int materialIndex : MATERIAL_INDEX;
     float3 worldPos : TEXCOORD2; // 월드 공간 좌표 추가
+    float3 cameraPos : TEXCOORD3;
 };
 
 PS_INPUT mainVS(VS_INPUT input)
@@ -30,6 +31,7 @@ PS_INPUT mainVS(VS_INPUT input)
     // 위치 변환
     output.position = float4(input.position, 1.0);
     float4 worldPosition = mul(output.position, ModelMatrix);
+    output.cameraPos = float3(InvViewMatrix._41, InvViewMatrix._42, InvViewMatrix._43);
     output.worldPos = worldPosition.xyz;
     output.position = mul(worldPosition, ViewMatrix);
     output.position = mul(output.position, ProjectionMatrix);
@@ -50,7 +52,7 @@ PS_INPUT mainVS(VS_INPUT input)
     else
     {
         //output.normal = normalize(input.normal);
-        output.normal = mul(float4(input.normal,1.0f), ModelMatrix);
+        output.normal = mul(float4(input.normal,0), ModelMatrix);
         output.normalFlag = 1.0;
     }
     output.texcoord = input.texcoord;
