@@ -30,7 +30,7 @@ cbuffer LightingConstants : register(b5)
      // FireBall 정보
     int FireBallCount;          // 활성화된 FireBall 개수
     float3 Padding0;            // 16바이트 정렬용 패딩
-    
+
     struct FireBallInfo
     {
         float3 Position; // FireBall 위치
@@ -59,7 +59,6 @@ struct PS_INPUT
     float4 position : SV_POSITION; // 변환된 화면 좌표
     float4 color : COLOR; // 전달할 색상
     float3 normal : NORMAL; // 정규화된 노멀 벡터
-    bool normalFlag : TEXCOORD0; // 노멀 유효성 플래그 (1.0: 유효, 0.0: 무효)
     float2 texcoord : TEXCOORD1;
     int materialIndex : MATERIAL_INDEX;
     float3 worldPos : TEXCOORD2; // 월드 공간 좌표 추가
@@ -143,35 +142,26 @@ PS_OUTPUT mainPS(PS_INPUT input)
 
     if (IsLit == 1) // 조명이 적용되는 경우
     {
-        
-        if (input.normalFlag < 0.5)
-        {
-            output.color = float4(color, Material.TransparencyScalar);
-            return output;
-        }
-        
         float3 N = normalize(input.normal);
-        
-        float3 lightDir = normalize(float3(-1.0f, -1.0f, -1.0f));
+
+        float3 lightDir = normalize(float3(-1.0f, -0.3f, -2.0f));
         float diff = max(dot(N, -lightDir), 0.0f);
 
-// 그림자 대비 강화
+        // 그림자 대비 강화
         diff = pow(diff, 1.5f); // 약한 각도는 더 어둡게, 정면은 밝게
 
         float3 diffuse = diff * color * 1.0f; // 조명 세기 강화
-        float3 ambient = color * 0.05f; // Ambient 확 줄임
+        float3 ambient = color * 0.01f; // Ambient 확 줄임
 
         float3 finalColor = diffuse;
 
-
-        
         // FireBall 조명 계산 (원본 코드 유지)
         for (int i = 0; i < FireBallCount; i++)
         {
             // 반경이 0인 FireBall은 건너뛰기 (비활성화된 슬롯)
             if (FireBalls[i].Radius <= 0.0f)
                 continue;
-        
+
             // FireBall과의 거리 계산
             float3 lightVec = FireBalls[i].Position - input.worldPos;
             float distance = length(lightVec);
@@ -180,37 +170,31 @@ PS_OUTPUT mainPS(PS_INPUT input)
             {
                 // 정규화된 거리 (0~1)
                 float normalizedDist = distance / FireBalls[i].Radius;
-            
+
                 // 감쇠 계산
                 float attenuation = 1.0 - pow(normalizedDist, FireBalls[i].RadiusFallOff);
-            
+
                 // 표면 각도 계산
                 float3 L = normalize(lightVec);
                 float NdotL = max(0.0f, dot(N, L));
-            
+
                 // FireBall 조명 기여도 계산
                 float3 fireBallLight = FireBalls[i].Color.rgb * attenuation * NdotL * FireBalls[i].Intensity;
-            
+
                 // 최종 색상에 FireBall 조명 추가
                 finalColor += fireBallLight * color;
             }
         }
-    
+
         // 색상 클램핑 (HDR 효과를 원한다면 이 부분을 조정)
-        finalColor = saturate(finalColor);
-    
+        finalColor = saturate(finalColor + ambient);
+
         output.color = float4(finalColor, Material.TransparencyScalar);
         return output;
-       
+
     }
     else // unlit 상태일 때 PaperTexture 효과 적용
     {
-        if (input.normalFlag < 0.5)
-        {
-            output.color = float4(color, Material.TransparencyScalar);
-            return output;
-        }
-
         output.color = float4(color, 1);
         // 투명도 적용
         output.color.a = Material.TransparencyScalar;
