@@ -101,7 +101,7 @@ private:
 
     /** 본인이 소유하고 있는 컴포넌트들의 정보 */
     TArray<UActorComponent*> OwnedComponents;
-    
+
     UTextBillboardComponent* UUIDComponent = nullptr;
 
     void InitUUIDBillboard();

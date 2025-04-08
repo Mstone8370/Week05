@@ -1385,6 +1385,7 @@ void FRenderer::ClearRenderArr()
     GizmoObjs.Empty();
     TextObjs.Empty();
     LightObjs.Empty();
+    BillboardObjs.Empty();
 }
 
 void FRenderer::RenderStaticMeshes(ULevel* Level, std::shared_ptr<FEditorViewportClient> ActiveViewport)
@@ -1528,37 +1529,37 @@ void FRenderer::RenderTexts(ULevel* Level, std::shared_ptr<FEditorViewportClient
 
     for (auto TextComps : TextObjs)
     {
-        if (UTextBillboardComponent* Text = Cast<UTextBillboardComponent>(TextComps))
+        if (UTextBillboardComponent* TextBillboard = Cast<UTextBillboardComponent>(TextComps))
         {
-            UpdateSubUVConstant(Text->finalIndexU, Text->finalIndexV);
+            UpdateSubUVConstant(TextBillboard->finalIndexU, TextBillboard->finalIndexV);
 
-            FMatrix Model = Text->CreateBillboardMatrix();
+            FMatrix Model = TextBillboard->CreateBillboardMatrix();
             FMatrix NormalMatrix = FMatrix::Transpose(FMatrix::Inverse(Model));
             FVector4 UUIDColor = TextComps->EncodeUUID() / 255.0f;
 
             UpdateObjectBuffer(Model, NormalMatrix, UUIDColor, TextComps == Level->GetPickingGizmo());
 
             FEngineLoop::Renderer.RenderTextPrimitive(
-                Text->vertexTextBuffer, Text->numTextVertices,
-                Text->Texture->TextureSRV, Text->Texture->SamplerState
+                TextBillboard->vertexTextBuffer, TextBillboard->numTextVertices,
+                TextBillboard->Texture->TextureSRV, TextBillboard->Texture->SamplerState
             );
         }
-        else if (UTextRenderComponent* Text = Cast<UTextRenderComponent>(TextComps))
+        else if (UTextRenderComponent* TextRender = Cast<UTextRenderComponent>(TextComps))
         {
-            UpdateSubUVConstant(Text->finalIndexU, Text->finalIndexV);
+            UpdateSubUVConstant(TextRender->finalIndexU, TextRender->finalIndexV);
 
             FMatrix Model = JungleMath::CreateModelMatrix(
-                Text->GetWorldLocation(),
-                Text->GetWorldRotation(),
-                Text->GetWorldScale()
+                TextRender->GetWorldLocation(),
+                TextRender->GetWorldRotation(),
+                TextRender->GetWorldScale()
             );
             FMatrix NormalMatrix = FMatrix::Transpose(FMatrix::Inverse(Model));
             FVector4 UUIDColor = TextComps->EncodeUUID() / 255.0f;
             UpdateObjectBuffer(Model, NormalMatrix, UUIDColor, TextComps == Level->GetPickingGizmo());
 
             FEngineLoop::Renderer.RenderTextPrimitive(
-                Text->vertexTextBuffer, Text->numTextVertices,
-                Text->Texture->TextureSRV, Text->Texture->SamplerState
+                TextRender->vertexTextBuffer, TextRender->numTextVertices,
+                TextRender->Texture->TextureSRV, TextRender->Texture->SamplerState
             );
         }
     }
