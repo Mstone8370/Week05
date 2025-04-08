@@ -11,6 +11,7 @@ class PropertyEditorPanel : public UEditorPanel
 {
 public:
     virtual void Render() override;
+    void RenderForFireBall(UFireBallComponent* FireBallComp);
     virtual void OnResize(HWND hWnd) override;
 
 
