@@ -139,16 +139,7 @@ public:
     void PivotMoveRight(float Value);
     void PivotMoveUp(float Value);
 
-    FVector GetWorldLocation()
-    {
-        if (IsPerspective())
-            return ViewTransformPerspective.GetLocation();
-
-        if (IsOrtho())
-            return ViewTransformOrthographic.GetLocation();
-
-        return FVector::ZeroVector;
-    }
+    FVector GetWorldLocation() const;
 
     FMatrix& GetViewMatrix() { return  View; }
     FMatrix& GetProjectionMatrix() { return Projection; }
@@ -189,7 +180,8 @@ public:
 
 private:
     template <typename T>
-    T GetValueFromConfig(const TMap<FString, FString>& config, const FString& key, T defaultValue) {
+    T GetValueFromConfig(const TMap<FString, FString>& config, const FString& key, T defaultValue)
+    {
         if (const FString* Value = config.Find(key))
         {
             std::istringstream iss(**Value);

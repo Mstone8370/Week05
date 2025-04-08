@@ -8,7 +8,7 @@ class UTextRenderComponent : public UPrimitiveComponent
 public:
     UTextRenderComponent();
     virtual ~UTextRenderComponent() override;
-    
+
     virtual void InitializeComponent() override;
     virtual void TickComponent(float DeltaTime) override;
     void ClearText();
@@ -18,7 +18,7 @@ public:
     virtual int CheckRayIntersection(FVector& rayOrigin, FVector& rayDirection, float& pfNearHitDistance) override;
 
     void SetTexture(FWString _fileName);
-    
+
     ID3D11Buffer* vertexTextBuffer;
     TArray<FVertexTexture> vertexTextureArr;
     UINT numTextVertices;
@@ -27,7 +27,7 @@ public:
     float finalIndexV = 0.0f;
 
     std::shared_ptr<FTexture> Texture;
-    
+
 protected:
     FWString text;
 
@@ -42,6 +42,6 @@ protected:
     float quadHeight = 2.0f;
 
     void setStartUV(char alphabet, float& outStartU, float& outStartV);
-    void setStartUV(wchar_t hangul, float& outStartU, float& outStartV);
+    void SetStartUV(wchar_t hangul, float& outStartU, float& outStartV);
     void CreateTextTextureVertexBuffer(const TArray<FVertexTexture>& _vertex, UINT byteWidth);
 };
