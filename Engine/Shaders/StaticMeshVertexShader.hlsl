@@ -20,6 +20,7 @@ struct PS_INPUT
     int materialIndex : MATERIAL_INDEX;
     float2 Velocity : TEXCOORD2;
     float2 WorldPos : TEXCOORD3;
+    float3 ViewNormal   : TEXCOORD4;
 };
 
 PS_INPUT mainVS(VS_INPUT input)
@@ -68,7 +69,11 @@ PS_INPUT mainVS(VS_INPUT input)
 
     // 보간할 velocity
     output.Velocity = CurrNDC - PrevNDC;
-    output.WorldPos = PrevNDC;
+
+    float3 WorldNormal = normalize(mul(float4(input.normal, 0.0), ModelMatrix).xyz);
+    output.ViewNormal = mul(WorldNormal, (float3x3)ViewMatrix); // Rotation only
+
+    //output.WorldPos = PrevNDC;
 
     return output;
 }

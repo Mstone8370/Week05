@@ -9,6 +9,7 @@
 #include "Components/StaticMeshComponent.h"
 #include "Components/BillboardComponent.h"
 #include "Components/ExponentialHeightFogComponent.h"
+#include "Components/MotionBlurComponent.h"
 #include "Components/ParticleSubUVComp.h"
 #include "Components/TextBillboardComponent.h"
 #include "Components/Material/Material.h"
@@ -17,6 +18,7 @@
 #include "Math/JungleMath.h"
 #include "UnrealEd/EditorViewportClient.h"
 #include "PrimitiveBatch.h"
+#include "UnrealClient.h"
 #include "UObject/Casts.h"
 #include "UObject/Object.h"
 #include "PropertyEditor/ShowFlags.h"
@@ -29,12 +31,13 @@ void FRenderer::Initialize(FGraphicsDevice* graphics)
 {
     Graphics = graphics;
     CreateShader();
+
+    CreateVisualizationShader();
+    CreatePostProcessShader();
     CreateFinalShader();
+
+
     CreateTextureShader();
-    CreateDepthShader();
-
-    CreateFogShader();
-
     CreateFontShader();
     CreateLineShader();
     CreateConstantBuffer();
@@ -47,10 +50,10 @@ void FRenderer::Initialize(FGraphicsDevice* graphics)
 void FRenderer::Release()
 {
     ReleaseShader();
-    ReleaseFinalShader();
-    ReleaseDepthShader();
 
-    ReleaseFogShader();
+    ReleaseVisualizationShader();
+    ReleasePostProcessShader();
+    ReleaseFinalShader();
 
     ReleaseTextureShader();
     ReleaseFontShader();
@@ -104,17 +107,9 @@ void FRenderer::CreateFinalShader()
 
 void FRenderer::ReleaseFinalShader()
 {
-    if (FinalVertexShader)
-    {
-        FinalVertexShader->Release();
-        FinalVertexShader = nullptr;
-    }
+    ReleaseShader(FinalVertexShader);
 
-    if (FinalPixelShader)
-    {
-        FinalPixelShader->Release();
-        FinalPixelShader = nullptr;
-    }
+    ReleaseShader(FinalPixelShader);
 }
 
 void FRenderer::CreateDepthShader()
@@ -127,15 +122,6 @@ void FRenderer::CreateDepthShader()
     FinalPixelShaderCSO->Release();
 }
 
-void FRenderer::ReleaseDepthShader()
-{
-    if (DepthShader)
-    {
-        DepthShader->Release();
-        DepthShader = nullptr;
-    }
-}
-
 void FRenderer::CreateFogShader()
 {
     ID3DBlob* FogPixelShaderCSO;
@@ -146,13 +132,37 @@ void FRenderer::CreateFogShader()
     FogPixelShaderCSO->Release();
 }
 
-void FRenderer::ReleaseFogShader()
+
+void FRenderer::CreateMotionBlurShader()
 {
-    if (FogShader)
-    {
-        FogShader->Release();
-        FogShader = nullptr;
-    }
+    ID3DBlob* PixelShaderCSO;
+
+    D3DCompileFromFile(L"Shaders/MotionBlurShader.hlsl", nullptr, D3D_COMPILE_STANDARD_FILE_INCLUDE, "main", "ps_5_0", 0, 0, &PixelShaderCSO, nullptr);
+    Graphics->Device->CreatePixelShader(PixelShaderCSO->GetBufferPointer(), PixelShaderCSO->GetBufferSize(), nullptr, &MotionBlurShader);
+
+    PixelShaderCSO->Release();
+}
+
+void FRenderer::CreateVisualizationShader()
+{
+    CreateDepthShader();
+}
+
+void FRenderer::CreatePostProcessShader()
+{
+    CreateMotionBlurShader();
+    CreateFogShader();
+}
+
+void FRenderer::ReleaseVisualizationShader()
+{
+    ReleaseShader(DepthShader);
+}
+
+void FRenderer::ReleasePostProcessShader()
+{
+    ReleaseShader(FogShader);
+    ReleaseShader(MotionBlurShader);
 }
 
 void FRenderer::CreateScreenSamplerState()
@@ -186,16 +196,34 @@ void FRenderer::ReleaseShader()
         InputLayout = nullptr;
     }
 
-    if (PixelShader)
-    {
-        PixelShader->Release();
-        PixelShader = nullptr;
-    }
+    ReleaseShader(PixelShader);
+    ReleaseShader(VertexShader);
+}
 
-    if (VertexShader)
+void FRenderer::ReleaseShader(ID3D11VertexShader*& Shader)
+{
+    if (Shader)
     {
-        VertexShader->Release();
-        VertexShader = nullptr;
+        Shader->Release();
+        Shader = nullptr;
+    }
+}
+
+void FRenderer::ReleaseShader(ID3D11PixelShader*& Shader)
+{
+    if (Shader)
+    {
+        Shader->Release();
+        Shader = nullptr;
+    }
+}
+
+void FRenderer::ReleaseBuffer(ID3D11Buffer*& Buffer)
+{
+    if (Buffer)
+    {
+        Buffer->Release();
+        Buffer = nullptr;
     }
 }
 
@@ -216,16 +244,16 @@ void FRenderer::PrepareShader() const
     }
 }
 
-void FRenderer::ResetVertexShader() const
+void FRenderer::ResetVertexShader()
 {
     Graphics->DeviceContext->VSSetShader(nullptr, nullptr, 0);
-    VertexShader->Release();
+    ReleaseShader(VertexShader);
 }
 
-void FRenderer::ResetPixelShader() const
+void FRenderer::ResetPixelShader()
 {
     Graphics->DeviceContext->PSSetShader(nullptr, nullptr, 0);
-    PixelShader->Release();
+    ReleaseShader(PixelShader);
 }
 
 void FRenderer::ChangeViewMode(EViewModeIndex InViewModeIndex)
@@ -412,15 +440,6 @@ ID3D11Buffer* FRenderer::CreateIndexBuffer(const TArray<uint32>& Indices, UINT B
     return indexBuffer;
 }
 
-void FRenderer::ReleaseBuffer(ID3D11Buffer*& Buffer) const
-{
-    if (Buffer)
-    {
-        Buffer->Release();
-        Buffer = nullptr;
-    }
-}
-
 void FRenderer::CreateConstantBuffer()
 {
     D3D11_BUFFER_DESC ConstantBufferDesc = {};
@@ -457,6 +476,9 @@ void FRenderer::CreateConstantBuffer()
 
     ConstantBufferDesc.ByteWidth = sizeof(FExponentialHeightFogConstants) + 0xf & 0xfffffff0;
     Graphics->Device->CreateBuffer(&ConstantBufferDesc, nullptr, &ExponentialConstantBuffer);
+
+    ConstantBufferDesc.ByteWidth = sizeof(FMotionBlurConstants) + 0xf & 0xfffffff0;
+    Graphics->Device->CreateBuffer(&ConstantBufferDesc, nullptr, &MotionBlurConstantBuffer);
 }
 
 void FRenderer::CreateLightingBuffer()
@@ -490,6 +512,7 @@ void FRenderer::ReleaseConstantBuffer()
     ReleaseBuffer(SubMeshConstantBuffer);
     ReleaseBuffer(TextureConstantBuffer);
     ReleaseBuffer(ExponentialConstantBuffer);
+    ReleaseBuffer(MotionBlurConstantBuffer);
 }
 
 void FRenderer::UpdateObjectBuffer(const FMatrix& PrevModelMatrix, const FMatrix& ModelMatrix, const FMatrix& InverseTransposedNormal, FVector4 UUIDColor, bool IsSelected) const
@@ -664,6 +687,23 @@ void FRenderer::UpdateExponentialHeightFogConstant(UExponentialHeightFogComponen
     }
 }
 
+void FRenderer::UpdateMotionBlurConstant(UMotionBlurComponent* MotionBlurComponent, std::shared_ptr<FEditorViewportClient> ActiveViewport)
+{
+    if (MotionBlurComponent) {
+        D3D11_MAPPED_SUBRESOURCE constantbufferMSR; // GPU �� �޸� �ּ� ����
+        Graphics->DeviceContext->Map(MotionBlurConstantBuffer, 0, D3D11_MAP_WRITE_DISCARD, 0, &constantbufferMSR);
+        FMotionBlurConstants* constants = static_cast<FMotionBlurConstants*>(constantbufferMSR.pData);
+        {
+            constants->ScreenSizeX = ActiveViewport->Viewport->GetViewport().Width;
+            constants->ScreenSizeY = ActiveViewport->Viewport->GetViewport().Height;
+            constants->MaxBlurPixels = MotionBlurComponent->MaxBlurPixels;
+            constants->VelocityScale = MotionBlurComponent->VelocityScale;
+            constants->DepthThreshold = MotionBlurComponent->DepthThreshold;
+        }
+        Graphics->DeviceContext->Unmap(MotionBlurConstantBuffer, 0);
+    }
+}
+
 void FRenderer::CreateFontShader()
 {
     ID3DBlob* VertexShaderCSO;
@@ -702,16 +742,8 @@ void FRenderer::CreateFontShader()
 
 void FRenderer::ReleaseFontShader()
 {
-    if (FontVertexShader)
-    {
-        FontVertexShader->Release();
-        FontVertexShader = nullptr;
-    }
-    if (FontPixelShader)
-    {
-        FontPixelShader->Release();
-        FontPixelShader = nullptr;
-    }
+    ReleaseShader(FontVertexShader);
+    ReleaseShader(FontPixelShader);
     if (FontInputLayout)
     {
         FontInputLayout->Release();
@@ -770,27 +802,11 @@ void FRenderer::ReleaseTextureShader()
         TextureInputLayout = nullptr;
     }
 
-    if (TexturePixelShader)
-    {
-        TexturePixelShader->Release();
-        TexturePixelShader = nullptr;
-    }
+    ReleaseShader(TexturePixelShader);
 
-    if (TextureVertexShader)
-    {
-        TextureVertexShader->Release();
-        TextureVertexShader = nullptr;
-    }
-    if (SubUVConstantBuffer)
-    {
-        SubUVConstantBuffer->Release();
-        SubUVConstantBuffer = nullptr;
-    }
-    if (ObjectConstantBuffer)
-    {
-        ObjectConstantBuffer->Release();
-        ObjectConstantBuffer = nullptr;
-    }
+    ReleaseShader(TextureVertexShader);
+    ReleaseBuffer(SubUVConstantBuffer);
+    ReleaseBuffer(ObjectConstantBuffer);
 }
 
 void FRenderer::PrepareTextureShader() const
@@ -964,6 +980,16 @@ void FRenderer::PreparePostProcess(std::shared_ptr<FEditorViewportClient> Active
             ExponentialHeightFogComponent = iter;
         }
     }
+
+    MotionBlurComponent = nullptr;
+
+    for (UMotionBlurComponent* iter : TObjectRange<UMotionBlurComponent>())
+    {
+        if (iter->bIsActive)
+        {
+            MotionBlurComponent = iter;
+        }
+    }
 }
 
 void FRenderer::PostProcess(std::shared_ptr<FEditorViewportClient> ActiveViewport)
@@ -973,6 +999,7 @@ void FRenderer::PostProcess(std::shared_ptr<FEditorViewportClient> ActiveViewpor
     // Draw Fog Quad
     if (ExponentialHeightFogComponent != nullptr) {
         // // TODO: Temp, 임시 코드
+        Graphics->ClearAndSetRTV(Graphics->FogRTV, Graphics->ClearColor);
         UpdateExponentialHeightFogConstant(ExponentialHeightFogComponent);
         Graphics->DeviceContext->PSSetConstantBuffers(3, 1, &ExponentialConstantBuffer);
 
@@ -982,6 +1009,25 @@ void FRenderer::PostProcess(std::shared_ptr<FEditorViewportClient> ActiveViewpor
         Graphics->DeviceContext->PSSetShader(FogShader, nullptr, 0);
         Graphics->DeviceContext->PSSetSamplers(0, 1, &ScreenSamplerState);
 
+
+        DrawFullScreenQuad();
+    }
+
+
+    // Draw Motion Blur
+    if (MotionBlurComponent != nullptr) {
+        // // TODO: Temp, 임시 코드
+        Graphics->ClearAndSetRTV(Graphics->MotionBlurBufferRTV, Graphics->ZeroColor);
+        UpdateMotionBlurConstant(MotionBlurComponent, ActiveViewport);
+        Graphics->DeviceContext->PSSetConstantBuffers(3, 1, &MotionBlurConstantBuffer);
+
+        Graphics->DeviceContext->PSSetShaderResources(0, 1, &Graphics->SceneBufferSRV);
+        Graphics->DeviceContext->PSSetShaderResources(1, 1, &Graphics->VelocityBufferSRV);
+        Graphics->DeviceContext->PSSetShaderResources(2, 1, &Graphics->NormalizedDepthSRV);
+        Graphics->DeviceContext->PSSetShaderResources(3, 1, &Graphics->ViewNormalBufferSRV);
+
+        Graphics->DeviceContext->PSSetShader(MotionBlurShader, nullptr, 0);
+        Graphics->DeviceContext->PSSetSamplers(0, 1, &ScreenSamplerState);
 
         DrawFullScreenQuad();
     }
@@ -1031,12 +1077,12 @@ void FRenderer::CreateLineShader()
     PixelShaderLine->Release();
 }
 
-void FRenderer::ReleaseLineShader() const
+void FRenderer::ReleaseLineShader()
 {
-    if (GridConstantBuffer) GridConstantBuffer->Release();
-    if (LinePrimitiveBuffer) LinePrimitiveBuffer->Release();
-    if (VertexLineShader) VertexLineShader->Release();
-    if (PixelLineShader) PixelLineShader->Release();
+    ReleaseBuffer(GridConstantBuffer);
+    ReleaseBuffer(LinePrimitiveBuffer);
+    ReleaseShader(VertexLineShader);
+    ReleaseShader(PixelLineShader);
 }
 
 ID3D11Buffer* FRenderer::CreateStaticVerticesBuffer() const
@@ -1375,14 +1421,24 @@ void FRenderer::RenderFullScreenQuad(std::shared_ptr<FEditorViewportClient> Acti
     {
         Graphics->DeviceContext->PSSetShaderResources(0, 1, &Graphics->SceneBufferSRV);
 
+        ID3D11ShaderResourceView* nullSRV[1] = {nullptr};
         // TODO: Temp 코드
         if (ExponentialHeightFogComponent)
         {
-            Graphics->DeviceContext->PSSetShaderResources(1, 1, &Graphics->FogSRV);
+            Graphics->DeviceContext->PSSetShaderResources(2, 1, &Graphics->FogSRV);
         }
         else
         {
-            ID3D11ShaderResourceView* nullSRV[1] = {nullptr};
+            Graphics->DeviceContext->PSSetShaderResources(2, 1, nullSRV);
+        }
+
+        // TODO: Temp 코드
+        if (MotionBlurComponent)
+        {
+            Graphics->DeviceContext->PSSetShaderResources(1, 1, &Graphics->MotionBlurBufferSRV);
+        }
+        else
+        {
             Graphics->DeviceContext->PSSetShaderResources(1, 1, nullSRV);
         }
     }

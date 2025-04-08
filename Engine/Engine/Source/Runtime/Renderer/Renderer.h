@@ -9,6 +9,7 @@
 #include "Define.h"
 #include "Container/Set.h"
 
+class UMotionBlurComponent;
 class UExponentialHeightFogComponent;
 class UPrimitiveComponent;
 class ULightComponentBase;
@@ -38,7 +39,9 @@ public:
     ID3D11PixelShader* FinalPixelShader = nullptr;
     ID3D11PixelShader* DepthShader = nullptr;
 
+    // Post Process
     ID3D11PixelShader* FogShader = nullptr;
+    ID3D11PixelShader* MotionBlurShader = nullptr;
 
     ID3D11Buffer* ObjectConstantBuffer = nullptr;
     ID3D11Buffer* ViewConstantBuffer = nullptr;
@@ -50,6 +53,7 @@ public:
     ID3D11Buffer* SubMeshConstantBuffer = nullptr;
     ID3D11Buffer* TextureConstantBuffer = nullptr;
     ID3D11Buffer* ExponentialConstantBuffer = nullptr;
+    ID3D11Buffer* MotionBlurConstantBuffer = nullptr;
 
     ID3D11SamplerState* ScreenSamplerState = nullptr;
 
@@ -68,39 +72,49 @@ public:
     //Release
     void Release();
     void ReleaseShader();
-    void ReleaseBuffer(ID3D11Buffer*& Buffer) const;
+    static void ReleaseShader(ID3D11VertexShader*& Shader);
+    static void ReleaseShader(ID3D11PixelShader*& Shader);
+    static void ReleaseBuffer(ID3D11Buffer*& Buffer);
     void ReleaseConstantBuffer();
 
-    void ResetVertexShader() const;
-    void ResetPixelShader() const;
+    void ResetVertexShader();
+    void ResetPixelShader();
+
+
+private:
     void CreateShader();
 
     void CreateFinalShader();
     void ReleaseFinalShader();
 
+    // Visualization
     void CreateDepthShader();
-    void ReleaseDepthShader();
 
+    // PostProcess
     void CreateFogShader();
-    void ReleaseFogShader();
+    void CreateMotionBlurShader();
+
+    void CreateVisualizationShader();
+    void CreatePostProcessShader();
+    void ReleaseVisualizationShader();
+    void ReleasePostProcessShader();
 
     void CreateScreenSamplerState();
     void ReleaseScreenSamplerState();
-
-    void SetVertexShader(const FWString& filename, const FString& funcname, const FString& version);
-    void SetPixelShader(const FWString& filename, const FString& funcname, const FString& version);
-
-    void ChangeViewMode(EViewModeIndex InViewModeIndex);
 
     // CreateBuffer
     void CreateConstantBuffer();
     void CreateLightingBuffer();
     void CreateLitUnlitBuffer();
+
+public:
     ID3D11Buffer* CreateVertexBuffer(FStaticMeshVertex* vertices, UINT byteWidth) const;
     ID3D11Buffer* CreateVertexBuffer(const TArray<FStaticMeshVertex>& vertices, UINT byteWidth) const;
     ID3D11Buffer* CreateIndexBuffer(uint32* Indices, UINT ByteWidth) const;
     ID3D11Buffer* CreateIndexBuffer(const TArray<uint32>& Indices, UINT ByteWidth) const;
 
+public:
+    void ChangeViewMode(EViewModeIndex InViewModeIndex);
     // update
     void UpdateObjectBuffer(const FMatrix& PrevModelMatrix, const FMatrix& ModelMatrix, const FMatrix& InverseTransposedNormal, FVector4 UUIDColor, bool
                             IsSelected) const;
@@ -112,7 +126,9 @@ public:
     void UpdateLitUnlitConstant(int isLit) const;
     void UpdateSubMeshConstant(bool isSelected) const;
     void UpdateTextureConstant(float UOffset, float VOffset);
+
     void UpdateExponentialHeightFogConstant(UExponentialHeightFogComponent* ExponentialHeightFogComp);
+    void UpdateMotionBlurConstant(UMotionBlurComponent* MotionBlurComponent, std::shared_ptr<FEditorViewportClient> ActiveViewport);
 
     //텍스쳐용 기능 추가
     ID3D11VertexShader* TextureVertexShader = nullptr;
@@ -168,7 +184,7 @@ public:
     // line shader
     void PrepareLineShader() const;
     void CreateLineShader();
-    void ReleaseLineShader() const;
+    void ReleaseLineShader();
     void RenderBatch(const FGridParameters& gridParam, ID3D11Buffer* pVertexBuffer, int boundingBoxCount, int coneCount, int coneSegmentCount, int obbCount) const;
     void UpdateGridConstantBuffer(const FGridParameters& gridParams) const;
     void UpdateLinePrimitveCountBuffer(int numBoundingBoxes, int numCones) const;
@@ -204,6 +220,9 @@ private:
 
     // TODO: Post Processing Target 따로 정리
     UExponentialHeightFogComponent* ExponentialHeightFogComponent = nullptr;
+
+    // TODO: 임시로 아래 추가, 포스트 프로세싱 구조 변경 시 리팩토링 필요.
+    UMotionBlurComponent* MotionBlurComponent = nullptr;
 
 public:
     ID3D11VertexShader* VertexLineShader = nullptr;

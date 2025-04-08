@@ -20,12 +20,13 @@ private:
 
     /* Static Mesh Settings */
     void RenderForStaticMesh(UStaticMeshComponent* StaticMeshComp);
-    
+
     /* Materials Settings */
     void RenderForMaterial(UStaticMeshComponent* StaticMeshComp);
     void RenderMaterialView(UMaterial* Material);
     void RenderForExponentialHeightFog(UExponentialHeightFogComponent* ExponentialHeightFogComponent);
-    
+    void RenderForMotionBlurComponent(UMotionBlurComponent* MotionBlurComponent);
+
     void RenderCreateMaterialView();
 
     /* Text Settings */
@@ -34,7 +35,7 @@ private:
 
     /* Billboard Settings */
     void RenderForBillboard(UBillboardComponent* BillboardComp);
-    
+
 private:
     float Width = 0, Height = 0;
     FVector Location = FVector(0, 0, 0);

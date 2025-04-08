@@ -101,13 +101,16 @@ private:
 
     /** 본인이 소유하고 있는 컴포넌트들의 정보 */
     TArray<UActorComponent*> OwnedComponents;
-    
+
     UTextBillboardComponent* UUIDComponent = nullptr;
 
     void InitUUIDBillboard();
     /** 현재 Actor가 삭제 처리중인지 여부 */
     uint8 bActorIsBeingDestroyed : 1;
     bool bIsActorTickEnable = true;
+
+public:
+    int tempValue = 1;
 
 #if 1 // TODO: WITH_EDITOR 추가
 public:

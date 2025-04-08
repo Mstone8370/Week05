@@ -386,3 +386,13 @@ struct alignas(16) FExponentialHeightFogConstants
     float DistanceFogIntensity; // 거리 기반 안개 영향
     FVector Padding123;
 };
+
+struct alignas(16) FMotionBlurConstants
+{
+    float ScreenSizeX;       // 화면 크기
+    float ScreenSizeY;       // 화면 크기
+    float  MaxBlurPixels;    // 최대 블러 거리 (픽셀 단위)
+    float  VelocityScale;
+    float  DepthThreshold;
+    FVector padding;
+};

@@ -59,6 +59,7 @@ struct PS_INPUT
     int materialIndex : MATERIAL_INDEX;
     float2 Velocity : TEXCOORD2;
     float2 WorldPos : TEXCOORD3;
+    float3 ViewNormal : TEXCOORD4;
 };
 
 struct PS_OUTPUT
@@ -67,6 +68,7 @@ struct PS_OUTPUT
     float4 UUID : SV_Target1;
     float4 WorldPos : SV_Target2;
     float4 Velocity : SV_Target3;
+    float4 Normal : SV_Target4;
 };
 
 float noise(float3 p)
@@ -120,11 +122,11 @@ PS_OUTPUT mainPS(PS_INPUT input)
 {
     PS_OUTPUT output;
 
-    //output.Velocity = float4(input.Velocity, 0, 0);
     output.UUID = UUID;
-    output.Velocity = float4(input.Velocity * 0.5 + 0.5, 0, 1);
-    output.WorldPos = float4(input.WorldPos * 0.5 + 0.5, 0, 1);
-    //output.WorldPos = float4(1, 0, 1, 1);
+    output.Velocity = float4(input.Velocity, 0, 1);
+    //output.WorldPos = float4(input.WorldPos * 0.5 + 0.5, 0, 1);
+    float3 NormalVS = normalize(input.ViewNormal);
+    output.Normal = float4(NormalVS * 0.5f + 0.5f, 1.0f); // 저장용 (0~1로 remap)
 
     float3 texColor = Textures.Sample(Sampler, input.texcoord + UVOffset);
     float3 color;
