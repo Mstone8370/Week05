@@ -259,6 +259,21 @@ void FEditorViewportClient::PivotMoveUp(float Value)
     Pivot = Pivot + ViewTransformOrthographic.GetUpVector() * Value * 0.05f;
 }
 
+FVector FEditorViewportClient::GetWorldLocation() const
+{
+    if (IsPerspective())
+    {
+        return ViewTransformPerspective.GetLocation();
+    }
+
+    if (IsOrtho())
+    {
+        return ViewTransformOrthographic.GetLocation();
+    }
+
+    return FVector::ZeroVector;
+}
+
 void FEditorViewportClient::UpdateViewMatrix()
 {
     if (IsPerspective())

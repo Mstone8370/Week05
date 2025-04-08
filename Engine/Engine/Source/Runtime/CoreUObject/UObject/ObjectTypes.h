@@ -14,6 +14,7 @@ enum OBJECTS
     OBJ_BILLBOARD,
     OBJ_FOG,
     OBJ_MotionBlur,
+    OBJ_FIREBALL,
 	OBJ_END
 };
 enum ARROW_DIR

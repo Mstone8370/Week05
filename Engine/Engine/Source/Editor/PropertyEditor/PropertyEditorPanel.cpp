@@ -13,6 +13,7 @@
 #include "UnrealEd/ImGuiWidget.h"
 #include "UObject/Casts.h"
 #include "UObject/ObjectFactory.h"
+#include "Components/UFireBallComponent.h"
 
 void PropertyEditorPanel::Render()
 {
@@ -41,121 +42,15 @@ void PropertyEditorPanel::Render()
     /* Render Start */
     ImGui::Begin("Detail", nullptr, PanelFlags);
 
-    AEditorPlayer* player = GEngineLoop.GetLevel()->GetEditorPlayer();
-    AActor* PickedActor = GEngineLoop.GetLevel()->GetSelectedActor();
-    if (PickedActor)
+    AEditorPlayer* EditorPlayer = GEngineLoop.GetLevel()->GetEditorPlayer();
+
+    if (AActor* PickedActor = GEngineLoop.GetLevel()->GetSelectedActor())
     {
-        ImGui::SetItemDefaultFocus();
-        // TreeNode 배경색을 변경 (기본 상태)
-        ImGui::PushStyleColor(ImGuiCol_Header, ImVec4(0.1f, 0.1f, 0.1f, 1.0f));
-        if (ImGui::TreeNodeEx("Transform", ImGuiTreeNodeFlags_Framed | ImGuiTreeNodeFlags_DefaultOpen)) // 트리 노드 생성
+        RenderForActor(PickedActor, EditorPlayer);
+
+        if (ULightComponentBase* LightComp = Cast<ULightComponentBase>(PickedActor->GetRootComponent()))
         {
-            Location = PickedActor->GetActorLocation();
-            Rotation = PickedActor->GetActorRotation();
-            Scale = PickedActor->GetActorScale();
-
-            FImGuiWidget::DrawVec3Control("Location", Location, 0, 85);
-            ImGui::Spacing();
-
-            FImGuiWidget::DrawVec3Control("Rotation", Rotation, 0, 85);
-            ImGui::Spacing();
-
-            FImGuiWidget::DrawVec3Control("Scale", Scale, 0, 85);
-            ImGui::Spacing();
-
-            PickedActor->SetActorLocation(Location);
-            PickedActor->SetActorRotation(Rotation);
-            PickedActor->SetActorScale(Scale);
-
-            std::string coordiButtonLabel;
-            if (player->GetCoordiMode() == CoordiMode::CDM_WORLD)
-                coordiButtonLabel = "World";
-            else if (player->GetCoordiMode() == CoordiMode::CDM_LOCAL)
-                coordiButtonLabel = "Local";
-
-            if (ImGui::Button(coordiButtonLabel.c_str(), ImVec2(ImGui::GetWindowContentRegionMax().x * 0.9f, 32)))
-            {
-                player->AddCoordiMode();
-            }
-            ImGui::TreePop(); // 트리 닫기
-        }
-        ImGui::PopStyleColor();
-
-        // TODO: 추후에 RTTI를 이용해서 프로퍼티 출력하기
-        if (ULightComponentBase* lightObj = Cast<ULightComponentBase>(PickedActor->GetRootComponent()))
-        {
-            ImGui::PushStyleColor(ImGuiCol_Header, ImVec4(0.1f, 0.1f, 0.1f, 1.0f));
-            if (ImGui::TreeNodeEx("SpotLight Component", ImGuiTreeNodeFlags_Framed | ImGuiTreeNodeFlags_DefaultOpen)) // 트리 노드 생성
-            {
-                FVector4 currColor = lightObj->GetColor();
-
-                float r = currColor.x;
-                float g = currColor.y;
-                float b = currColor.z;
-                float a = currColor.a;
-                float h, s, v;
-                float lightColor[4] = { r, g, b, a };
-
-                // SpotLight Color
-                if (ImGui::ColorPicker4("##SpotLight Color", lightColor,
-                    ImGuiColorEditFlags_DisplayRGB |
-                    ImGuiColorEditFlags_NoSidePreview |
-                    ImGuiColorEditFlags_NoInputs |
-                    ImGuiColorEditFlags_Float))
-
-                {
-
-                    r = lightColor[0];
-                    g = lightColor[1];
-                    b = lightColor[2];
-                    a = lightColor[3];
-                    lightObj->SetColor(FVector4(r, g, b, a));
-                }
-                RGBToHSV(r, g, b, h, s, v);
-                // RGB/HSV
-                bool changedRGB = false;
-                bool changedHSV = false;
-
-                // RGB
-                ImGui::PushItemWidth(50.0f);
-                if (ImGui::DragFloat("R##R", &r, 0.001f, 0.f, 1.f)) changedRGB = true;
-                ImGui::SameLine();
-                if (ImGui::DragFloat("G##G", &g, 0.001f, 0.f, 1.f)) changedRGB = true;
-                ImGui::SameLine();
-                if (ImGui::DragFloat("B##B", &b, 0.001f, 0.f, 1.f)) changedRGB = true;
-                ImGui::Spacing();
-
-                // HSV
-                if (ImGui::DragFloat("H##H", &h, 0.1f, 0.f, 360)) changedHSV = true;
-                ImGui::SameLine();
-                if (ImGui::DragFloat("S##S", &s, 0.001f, 0.f, 1)) changedHSV = true;
-                ImGui::SameLine();
-                if (ImGui::DragFloat("V##V", &v, 0.001f, 0.f, 1)) changedHSV = true;
-                ImGui::PopItemWidth();
-                ImGui::Spacing();
-
-                if (changedRGB && !changedHSV)
-                {
-                    // RGB -> HSV
-                    RGBToHSV(r, g, b, h, s, v);
-                    lightObj->SetColor(FVector4(r, g, b, a));
-                }
-                else if (changedHSV && !changedRGB)
-                {
-                    // HSV -> RGB
-                    HSVToRGB(h, s, v, r, g, b);
-                    lightObj->SetColor(FVector4(r, g, b, a));
-                }
-
-                // Light Radius
-                float radiusVal = lightObj->GetRadius();
-                if (ImGui::SliderFloat("Radius", &radiusVal, 1.0f, 100.0f))
-                {
-                    lightObj->SetRadius(radiusVal);
-                }
-                ImGui::TreePop();
-            }
-            ImGui::PopStyleColor();
+            RenderForLight(LightComp);
         }
         else if (UTextBillboardComponent* TextComp = Cast<UTextBillboardComponent>(PickedActor->GetRootComponent()))
         {
@@ -165,18 +60,22 @@ void PropertyEditorPanel::Render()
         {
             RenderForTextRender(TextComp);
         }
-        else if (UBillboardComponent* BillboardComponent = Cast<UBillboardComponent>(PickedActor->GetRootComponent()))
+        else if (UBillboardComponent* BillboardComp = Cast<UBillboardComponent>(PickedActor->GetRootComponent()))
         {
-            RenderForBillboard(BillboardComponent);
+            RenderForBillboard(BillboardComp);
         }
-        else if (UStaticMeshComponent* StaticMeshComponent = Cast<UStaticMeshComponent>(PickedActor->GetRootComponent()))
+        else if (UStaticMeshComponent* StaticMeshComp = Cast<UStaticMeshComponent>(PickedActor->GetRootComponent()))
         {
-            RenderForStaticMesh(StaticMeshComponent);
-            RenderForMaterial(StaticMeshComponent);
+            RenderForStaticMesh(StaticMeshComp);
+            RenderForMaterial(StaticMeshComp);
         }
-        else if (UExponentialHeightFogComponent* ExponentialHeightFogComponent = Cast<UExponentialHeightFogComponent>(PickedActor->GetRootComponent()))
+        else if (UExponentialHeightFogComponent* ExponentialHeightFogComp = Cast<UExponentialHeightFogComponent>(PickedActor->GetRootComponent()))
         {
-            RenderForExponentialHeightFog(ExponentialHeightFogComponent);
+            RenderForExponentialHeightFog(ExponentialHeightFogComp);
+        }
+        else if (UFireBallComponent* FireBallComponent = Cast<UFireBallComponent>(PickedActor->GetRootComponent()))
+        {
+            RenderForFireBall(FireBallComponent);
         }
         else if (UMotionBlurComponent* MotionBlurComponent = Cast<UMotionBlurComponent>(PickedActor->GetRootComponent()))
         {
@@ -187,6 +86,89 @@ void PropertyEditorPanel::Render()
     ImGui::End();
 }
 
+void PropertyEditorPanel::RenderForFireBall(UFireBallComponent* FireBallComp)
+{
+    if (!FireBallComp)
+        return;
+
+    ImGui::PushStyleColor(ImGuiCol_Header, ImVec4(0.2f, 0.1f, 0.05f, 1.0f));
+
+    if (ImGui::CollapsingHeader("FireBall Properties", ImGuiTreeNodeFlags_DefaultOpen))
+    {
+        ImGui::Indent(10.0f);
+
+        // 색상 편집기 설정
+        static ImGuiColorEditFlags colorFlags = ImGuiColorEditFlags_NoInputs | ImGuiColorEditFlags_NoAlpha;
+
+        // 현재 색상 값 가져오기 (getter 사용)
+        FVector4 currentColor = FireBallComp->GetColor();
+        float colorValues[3] = {
+            currentColor.x,
+            currentColor.y,
+            currentColor.z
+        };
+
+        // 색상 편집기 표시
+        ImGui::Text("Fire Color");
+        ImGui::SameLine(150.0f);
+        if (ImGui::ColorEdit3("##FireColor", colorValues, colorFlags))
+        {
+            // 새 색상 값 적용 (setter 사용)
+            FVector4 newColor = currentColor;
+            newColor.x = colorValues[0];
+            newColor.y = colorValues[1];
+            newColor.z = colorValues[2];
+            FireBallComp->SetColor(newColor);
+        }
+
+        // Intensity 슬라이더 (getter/setter 사용)
+        float intensity = FireBallComp->GetIntensity();
+        ImGui::Text("Intensity");
+        ImGui::SameLine(150.0f);
+        ImGui::PushItemWidth(200.0f);
+        if (ImGui::SliderFloat("##Intensity", &intensity, 0.1f, 100.0f, "%.2f"))
+        {
+            FireBallComp->SetIntensity(intensity);
+        }
+
+        // Radius 슬라이더 (getter/setter 사용)
+        float radius = FireBallComp->GetRadius();
+        ImGui::Text("Radius");
+        ImGui::SameLine(150.0f);
+        if (ImGui::SliderFloat("##Radius", &radius, 0.1f, 100.0f, "%.1f"))
+        {
+            FireBallComp->SetRadius(radius);
+        }
+
+        // RadiusFallOff 슬라이더 (getter/setter 사용)
+        float falloff = FireBallComp->GetRadiusFallOff();
+        ImGui::Text("Falloff");
+        ImGui::SameLine(150.0f);
+        if (ImGui::SliderFloat("##RadiusFallOff", &falloff, 0.1f, 5.0f, "%.2f"))
+        {
+            FireBallComp->SetRadiusFallOff(falloff);
+        }
+
+        ImGui::PopItemWidth();
+
+        // 미리보기 색상 표시
+        ImGui::Spacing();
+        ImGui::Separator();
+        ImGui::Spacing();
+
+        // 현재 설정에 따른 미리보기 색상 표시
+        ImVec4 previewColor = ImVec4(
+            currentColor.x * intensity,
+            currentColor.y * intensity,
+            currentColor.z * intensity,
+            1.0f
+        );
+
+        ImGui::Unindent(10.0f);
+    }
+
+    ImGui::PopStyleColor();
+}
 void PropertyEditorPanel::RGBToHSV(float r, float g, float b, float& h, float& s, float& v) const
 {
     float mx = FMath::Max(r, FMath::Max(g, b));
@@ -240,6 +222,155 @@ void PropertyEditorPanel::HSVToRGB(float h, float s, float v, float& r, float& g
     else { r = c;  g = 0.0f; b = x; }
 
     r += m;  g += m;  b += m;
+}
+
+void PropertyEditorPanel::RenderForActor(AActor* PickedActor, AEditorPlayer* Player)
+{
+    ImGui::SetItemDefaultFocus();
+    // TreeNode 배경색을 변경 (기본 상태)
+    ImGui::PushStyleColor(ImGuiCol_Header, ImVec4(0.1f, 0.1f, 0.1f, 1.0f));
+
+    if (ImGui::TreeNodeEx(*PickedActor->GetName(), ImGuiTreeNodeFlags_Framed | ImGuiTreeNodeFlags_DefaultOpen)) // 트리 노드 생성
+    {
+        RenderForComponents(PickedActor->GetRootComponent());
+        ImGui::TreePop(); // 트리 닫기
+    }
+
+    if (ImGui::TreeNodeEx("Transform", ImGuiTreeNodeFlags_Framed | ImGuiTreeNodeFlags_DefaultOpen)) // 트리 노드 생성
+    {
+        Location = PickedActor->GetActorLocation();
+        Rotation = PickedActor->GetActorRotation();
+        Scale = PickedActor->GetActorScale();
+
+        FImGuiWidget::DrawVec3Control("Location", Location, 0, 85);
+        ImGui::Spacing();
+
+        FImGuiWidget::DrawVec3Control("Rotation", Rotation, 0, 85);
+        ImGui::Spacing();
+
+        FImGuiWidget::DrawVec3Control("Scale", Scale, 0, 85);
+        ImGui::Spacing();
+
+        PickedActor->SetActorLocation(Location);
+        PickedActor->SetActorRotation(Rotation);
+        PickedActor->SetActorScale(Scale);
+
+        std::string coordiButtonLabel;
+        if (Player->GetCoordiMode() == CoordiMode::CDM_WORLD)
+            coordiButtonLabel = "World";
+        else if (Player->GetCoordiMode() == CoordiMode::CDM_LOCAL)
+            coordiButtonLabel = "Local";
+
+        if (ImGui::Button(coordiButtonLabel.c_str(), ImVec2(ImGui::GetWindowContentRegionMax().x * 0.9f, 32)))
+        {
+            Player->AddCoordiMode();
+        }
+        ImGui::TreePop(); // 트리 닫기
+    }
+    ImGui::PopStyleColor();
+}
+
+void PropertyEditorPanel::RenderForComponents(USceneComponent* Component)
+{
+    if (ImGui::TreeNodeEx(*Component->GetName(), ImGuiTreeNodeFlags_DefaultOpen)) // 트리 노드 생성
+    {
+        if (ImGui::IsItemClicked(ImGuiMouseButton_Right))
+        {
+            SelectedComponentForPopup = Component;
+            ImGui::OpenPopup("ComponentMenu");
+        }
+
+        if (ImGui::BeginPopup("ComponentMenu"))
+        {
+            if (SelectedComponentForPopup)
+            {
+                if (ImGui::MenuItem("Add Component"))
+                {
+                    ImGui::CloseCurrentPopup();
+                    bOpenAddComponentModel = true;
+                }
+
+                // 루트 컴포넌트가 아닌 경우에만 Delete 메뉴 추가
+                AActor* Owner = SelectedComponentForPopup->GetOwner();
+                if (Owner && Owner->GetRootComponent() != SelectedComponentForPopup && ImGui::MenuItem("Delete Component"))
+                {
+                    SelectedComponentForPopup->DestroyComponent();
+                }
+            }
+            ImGui::EndPopup();
+        }
+
+        if (bOpenAddComponentModel)
+        {
+            ImGui::OpenPopup("AddComponentPopup");
+            bOpenAddComponentModel = false;
+        }
+        if (ImGui::BeginPopupModal("AddComponentPopup", nullptr, ImGuiWindowFlags_AlwaysAutoResize))
+        {
+            static int CurrentItem = 0;
+            TArray<FString> Items = { "StaticMesh Component", "Billboard Component", "Text Component" };
+
+            if (SelectedComponentForPopup)
+            {
+                // TODO:
+
+                if (ImGui::BeginCombo("##StaticMesh", *Items[CurrentItem], ImGuiComboFlags_None))
+                {
+                    for (int32 i = 0; i < Items.Num(); ++i)
+                    {
+                        if (ImGui::Selectable(*Items[i], false))
+                        {
+                            CurrentItem = i;
+                        }
+                    }
+
+                    ImGui::EndCombo();
+                }
+            }
+
+            if (ImGui::Button("Add"))
+            {
+                if (CurrentItem == 0)
+                {
+                    auto NewComp = SelectedComponentForPopup->GetOwner()->AddComponent<UStaticMeshComponent>();
+                    NewComp->SetupAttachment(SelectedComponentForPopup);
+                }
+                else if (CurrentItem == 1)
+                {
+                    auto NewComp = SelectedComponentForPopup->GetOwner()->AddComponent<UBillboardComponent>();
+                    NewComp->SetTexture(L"Editor/Icon/S_Actor.png");
+                    NewComp->SetupAttachment(SelectedComponentForPopup);
+                }
+                else if (CurrentItem == 2)
+                {
+                    auto NewComp = SelectedComponentForPopup->GetOwner()->AddComponent<UTextRenderComponent>();
+                    NewComp->SetRowColumnCount(106, 106);
+                    NewComp->SetTexture(L"Assets/Texture/font.png");
+                    NewComp->SetText(L"Default Text");
+                    NewComp->SetupAttachment(SelectedComponentForPopup);
+                    NewComp->SetRotation(FVector(90.f, 0.f, 0.f));
+                }
+
+                ImGui::CloseCurrentPopup();
+            }
+
+            if (ImGui::Button("Close"))
+            {
+                ImGui::CloseCurrentPopup();
+            }
+            ImGui::EndPopup();
+        }
+
+        TArray<USceneComponent*> Children = Component->GetAttachChildren(); // Copy
+        for (USceneComponent* Child : Children)
+        {
+            if (Child)
+            {
+                RenderForComponents(Child);
+            }
+        }
+        ImGui::TreePop(); // 트리 닫기
+    }
 }
 
 void PropertyEditorPanel::RenderForStaticMesh(UStaticMeshComponent* StaticMeshComp)
@@ -300,7 +431,7 @@ void PropertyEditorPanel::RenderForMaterial(UStaticMeshComponent* StaticMeshComp
         }
 
         if (ImGui::Button("    +    ")) {
-            IsCreateMaterial = true;
+            bIsCreateMaterial = true;
         }
 
         ImGui::TreePop();
@@ -337,7 +468,7 @@ void PropertyEditorPanel::RenderForMaterial(UStaticMeshComponent* StaticMeshComp
     {
         RenderMaterialView(SelectedStaticMeshComp->GetMaterial(SelectedMaterialIndex));
     }
-    if (IsCreateMaterial) {
+    if (bIsCreateMaterial) {
         RenderCreateMaterialView();
     }
 }
@@ -516,13 +647,13 @@ void PropertyEditorPanel::RenderCreateMaterialView()
     // 기본 텍스트 입력 필드
     ImGui::SetNextItemWidth(128);
     if (ImGui::InputText("##NewName", materialName, IM_ARRAYSIZE(materialName))) {
-        tempMaterialInfo.MaterialName = materialName;
+        TempMaterialInfo.MaterialName = materialName;
     }
 
-    FVector MatDiffuseColor = tempMaterialInfo.Diffuse;
-    FVector MatSpecularColor = tempMaterialInfo.Specular;
-    FVector MatAmbientColor = tempMaterialInfo.Ambient;
-    FVector MatEmissiveColor = tempMaterialInfo.Emissive;
+    FVector MatDiffuseColor = TempMaterialInfo.Diffuse;
+    FVector MatSpecularColor = TempMaterialInfo.Specular;
+    FVector MatAmbientColor = TempMaterialInfo.Ambient;
+    FVector MatEmissiveColor = TempMaterialInfo.Emissive;
 
     float dr = MatDiffuseColor.X;
     float dg = MatDiffuseColor.Y;
@@ -538,7 +669,7 @@ void PropertyEditorPanel::RenderCreateMaterialView()
     if (ImGui::ColorEdit4("Diffuse##Color", (float*)&DiffuseColorPick, BaseFlag))
     {
         FVector NewColor = { DiffuseColorPick[0], DiffuseColorPick[1], DiffuseColorPick[2] };
-        tempMaterialInfo.Diffuse = NewColor;
+        TempMaterialInfo.Diffuse = NewColor;
     }
 
     float sr = MatSpecularColor.X;
@@ -552,7 +683,7 @@ void PropertyEditorPanel::RenderCreateMaterialView()
     if (ImGui::ColorEdit4("Specular##Color", (float*)&SpecularColorPick, BaseFlag))
     {
         FVector NewColor = { SpecularColorPick[0], SpecularColorPick[1], SpecularColorPick[2] };
-        tempMaterialInfo.Specular = NewColor;
+        TempMaterialInfo.Specular = NewColor;
     }
 
 
@@ -567,7 +698,7 @@ void PropertyEditorPanel::RenderCreateMaterialView()
     if (ImGui::ColorEdit4("Ambient##Color", (float*)&AmbientColorPick, BaseFlag))
     {
         FVector NewColor = { AmbientColorPick[0], AmbientColorPick[1], AmbientColorPick[2] };
-        tempMaterialInfo.Ambient = NewColor;
+        TempMaterialInfo.Ambient = NewColor;
     }
 
 
@@ -582,22 +713,98 @@ void PropertyEditorPanel::RenderCreateMaterialView()
     if (ImGui::ColorEdit4("Emissive##Color", (float*)&EmissiveColorPick, BaseFlag))
     {
         FVector NewColor = { EmissiveColorPick[0], EmissiveColorPick[1], EmissiveColorPick[2] };
-        tempMaterialInfo.Emissive = NewColor;
+        TempMaterialInfo.Emissive = NewColor;
     }
     ImGui::Unindent();
 
     ImGui::NewLine();
     if (ImGui::Button("Create Material")) {
-        FManagerOBJ::CreateMaterial(tempMaterialInfo);
+        FManagerOBJ::CreateMaterial(TempMaterialInfo);
     }
 
     ImGui::NewLine();
     if (ImGui::Button("Close"))
     {
-        IsCreateMaterial = false;
+        bIsCreateMaterial = false;
     }
 
     ImGui::End();
+}
+
+void PropertyEditorPanel::RenderForLight(ULightComponentBase* LightComp)
+{
+    ImGui::PushStyleColor(ImGuiCol_Header, ImVec4(0.1f, 0.1f, 0.1f, 1.0f));
+    if (ImGui::TreeNodeEx("SpotLight Component", ImGuiTreeNodeFlags_Framed | ImGuiTreeNodeFlags_DefaultOpen)) // 트리 노드 생성
+    {
+        FVector4 currColor = LightComp->GetColor();
+
+        float r = currColor.x;
+        float g = currColor.y;
+        float b = currColor.z;
+        float a = currColor.a;
+        float h, s, v;
+        float lightColor[4] = { r, g, b, a };
+
+        // SpotLight Color
+        if (ImGui::ColorPicker4("##SpotLight Color", lightColor,
+            ImGuiColorEditFlags_DisplayRGB |
+            ImGuiColorEditFlags_NoSidePreview |
+            ImGuiColorEditFlags_NoInputs |
+            ImGuiColorEditFlags_Float))
+
+        {
+
+            r = lightColor[0];
+            g = lightColor[1];
+            b = lightColor[2];
+            a = lightColor[3];
+            LightComp->SetColor(FVector4(r, g, b, a));
+        }
+        RGBToHSV(r, g, b, h, s, v);
+        // RGB/HSV
+        bool changedRGB = false;
+        bool changedHSV = false;
+
+        // RGB
+        ImGui::PushItemWidth(50.0f);
+        if (ImGui::DragFloat("R##R", &r, 0.001f, 0.f, 1.f)) changedRGB = true;
+        ImGui::SameLine();
+        if (ImGui::DragFloat("G##G", &g, 0.001f, 0.f, 1.f)) changedRGB = true;
+        ImGui::SameLine();
+        if (ImGui::DragFloat("B##B", &b, 0.001f, 0.f, 1.f)) changedRGB = true;
+        ImGui::Spacing();
+
+        // HSV
+        if (ImGui::DragFloat("H##H", &h, 0.1f, 0.f, 360)) changedHSV = true;
+        ImGui::SameLine();
+        if (ImGui::DragFloat("S##S", &s, 0.001f, 0.f, 1)) changedHSV = true;
+        ImGui::SameLine();
+        if (ImGui::DragFloat("V##V", &v, 0.001f, 0.f, 1)) changedHSV = true;
+        ImGui::PopItemWidth();
+        ImGui::Spacing();
+
+        if (changedRGB && !changedHSV)
+        {
+            // RGB -> HSV
+            RGBToHSV(r, g, b, h, s, v);
+            LightComp->SetColor(FVector4(r, g, b, a));
+        }
+        else if (changedHSV && !changedRGB)
+        {
+            // HSV -> RGB
+            HSVToRGB(h, s, v, r, g, b);
+            LightComp->SetColor(FVector4(r, g, b, a));
+        }
+
+        // Light Radius
+        float radiusVal = LightComp->GetRadius();
+        if (ImGui::SliderFloat("Radius", &radiusVal, 1.0f, 100.0f))
+        {
+            LightComp->SetRadius(radiusVal);
+        }
+        ImGui::TreePop();
+    }
+    ImGui::PopStyleColor();
 }
 
 void PropertyEditorPanel::RenderForTextRender(UTextRenderComponent* TextRenderComp)

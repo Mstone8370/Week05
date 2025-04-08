@@ -39,7 +39,7 @@ void UActorComponent::EndPlay(const EEndPlayReason::Type EndPlayReason)
     bHasBegunPlay = false;
 }
 
-void UActorComponent::DestroyComponent()
+void UActorComponent::DestroyComponent(bool bPromoteChildren)
 {
     if (bIsBeingDestroyed)
     {
@@ -52,10 +52,6 @@ void UActorComponent::DestroyComponent()
     if (AActor* MyOwner = GetOwner())
     {
         MyOwner->RemoveOwnedComponent(this);
-        if (MyOwner->GetRootComponent() == this)
-        {
-            MyOwner->SetRootComponent(nullptr);
-        }
     }
 
     if (bHasBegunPlay)

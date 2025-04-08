@@ -4,6 +4,7 @@
 #include "UObject/ObjectFactory.h"
 #include "UObject/ObjectMacros.h"
 
+
 class FObjectFactory;
 class AActor;
 class UObject;
@@ -12,7 +13,7 @@ class UCameraComponent;
 class AEditorPlayer;
 class USceneComponent;
 class UTransformGizmo;
-
+class UFireBallComponent;
 
 class ULevel : public UObject
 {
@@ -56,6 +57,7 @@ private:
     AEditorPlayer* EditorPlayer = nullptr;
 
 public:
+
     const TArray<AActor*>& GetActors() const { return ActorsArray; }
     void AddActor(AActor* NewActor);
 
@@ -72,6 +74,8 @@ public:
 
     USceneComponent* GetPickingGizmo() const { return pickingGizmo; }
     void SetPickingGizmo(UObject* Object);
+
+
 };
 
 

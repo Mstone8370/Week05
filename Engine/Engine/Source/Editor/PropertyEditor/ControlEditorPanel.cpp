@@ -17,6 +17,7 @@
 #include "tinyfiledialogs/tinyfiledialogs.h"
 #include "UnrealEd/EditorViewportClient.h"
 #include "PropertyEditor/ShowFlags.h"
+#include <Components/UFireBallComponent.h>
 
 void ControlEditorPanel::Render()
 {
@@ -256,36 +257,40 @@ void ControlEditorPanel::CreateModifyButton(ImVec2 ButtonSize, ImFont* IconFont)
 
     if (ImGui::BeginPopup("PrimitiveControl"))
     {
-        struct Primitive {
-            const char* label;
-            int obj;
-        };
-
-        static const Primitive primitives[] = {
-            { .label= "Cube",      .obj= OBJ_CUBE },
-            { .label= "Sphere",    .obj= OBJ_SPHERE },
-            { .label= "SpotLight", .obj= OBJ_SpotLight },
-            { .label= "Particle",  .obj= OBJ_PARTICLE },
-            { .label= "Billboard", .obj= OBJ_BILLBOARD },
-            { .label= "Text",      .obj= OBJ_Text },
-            { .label= "ExponentialHeightFog",      .obj= OBJ_FOG },
-            { .label= "MotionBlur",      .obj= OBJ_MotionBlur }
-        };
-
-        for (const auto& primitive : primitives)
+        struct FPrimitive
         {
-            if (ImGui::Selectable(primitive.label))
+            const char* Label;
+            int Obj;
+        };
+
+        static const FPrimitive Primitives[] = {
+            { .Label = "Cube",                      .Obj = OBJ_CUBE },
+            { .Label = "Sphere",                    .Obj = OBJ_SPHERE },
+            { .Label = "SpotLight",                 .Obj = OBJ_SpotLight },
+            { .Label = "Particle",                  .Obj = OBJ_PARTICLE },
+            { .Label = "Billboard",                 .Obj = OBJ_BILLBOARD },
+            { .Label = "Text",                      .Obj = OBJ_Text },
+            { .Label = "ExponentialHeightFog",      .Obj = OBJ_FOG },
+            { .Label = "FireBall",                 .Obj = OBJ_FIREBALL }
+            { .Label= "MotionBlur",      .Obj= OBJ_MotionBlur }
+        };
+
+        for (const auto& Primitive : Primitives)
+        {
+            if (ImGui::Selectable(Primitive.Label))
             {
                 // GEngineLoop.GetWorld()->SpawnObject(static_cast<OBJECTS>(primitive.obj));
                 ULevel* level = GEngineLoop.GetLevel();
                 AActor* SpawnedActor = nullptr;
-                switch (static_cast<OBJECTS>(primitive.obj))
+                switch (static_cast<OBJECTS>(Primitive.Obj))
                 {
                 case OBJ_SPHERE:
                 {
-                    SpawnedActor = level->SpawnActor<AActor>();
-                    SpawnedActor->SetActorLabel(TEXT("OBJ_SPHERE"));
-                    SpawnedActor->AddComponent<USphereComp>();
+                    AStaticMeshActor* TempActor = level->SpawnActor<AStaticMeshActor>();
+                    TempActor->SetActorLabel(TEXT("OBJ_SPHERE"));
+                    UStaticMeshComponent* MeshComp = TempActor->GetStaticMeshComponent();
+                    FManagerOBJ::CreateStaticMesh("Assets/Sphere.obj");
+                    MeshComp->SetStaticMesh(FManagerOBJ::GetStaticMesh(L"Sphere.obj"));
                     break;
                 }
                 case OBJ_CUBE:
@@ -326,7 +331,7 @@ void ControlEditorPanel::CreateModifyButton(ImVec2 ButtonSize, ImFont* IconFont)
                     TextComponent->SetTexture(L"Assets/Texture/font.png");
                     TextComponent->SetRowColumnCount(106, 106);
                     TextComponent->SetText(L"안녕하세요 Jungle 1");
-                        TextComponent->SetRotation(FVector(90.f, 0.f, 0.f));
+                    TextComponent->SetRotation(FVector(90.f, 0.f, 0.f));
                     break;
                 }
                 case OBJ_BILLBOARD:
@@ -349,6 +354,16 @@ void ControlEditorPanel::CreateModifyButton(ImVec2 ButtonSize, ImFont* IconFont)
                     SpawnedActor = level->SpawnActor<AActor>();
                     SpawnedActor->SetActorLabel(TEXT("MotionBlur"));
                     SpawnedActor->AddComponent<UMotionBlurComponent>();
+                    break;
+                }
+                case OBJ_FIREBALL:
+                {
+                    SpawnedActor = level->SpawnActor<AActor>();
+                    SpawnedActor->SetActorLabel(TEXT("FireBall"));
+                    UFireBallComponent* FireBallComp = SpawnedActor->AddComponent<UFireBallComponent>();
+                    UStaticMeshComponent* MeshComp = SpawnedActor->AddComponent<UStaticMeshComponent>();
+                    FManagerOBJ::CreateStaticMesh("Assets/Sphere.obj");
+                    MeshComp->SetStaticMesh(FManagerOBJ::GetStaticMesh(L"Sphere.obj"));
                     break;
                 }
                 case OBJ_TRIANGLE:
@@ -386,10 +401,10 @@ void ControlEditorPanel::CreateFlagButton() const
     {
         for (int i = 0; i < IM_ARRAYSIZE(ViewTypeNames); i++)
         {
-            bool bIsSelected = ((int)ActiveViewport->GetViewportType() == i);
+            bool bIsSelected = (static_cast<int>(ActiveViewport->GetViewportType()) == i);
             if (ImGui::Selectable(ViewTypeNames[i], bIsSelected))
             {
-                ActiveViewport->SetViewportType((ELevelViewportType)i);
+                ActiveViewport->SetViewportType(static_cast<ELevelViewportType>(i));
             }
 
             if (bIsSelected)
@@ -403,7 +418,7 @@ void ControlEditorPanel::CreateFlagButton() const
     ImGui::SameLine();
 
     const char* ViewModeNames[] = { "Lit", "Unlit", "Wireframe", "Scene Depth", "Velocity" };
-    FString SelectLightControl = ViewModeNames[(int)ActiveViewport->GetViewMode()];
+    FString SelectLightControl = ViewModeNames[static_cast<int>(ActiveViewport->GetViewMode())];
     ImVec2 LightTextSize = ImGui::CalcTextSize(GetData(SelectLightControl));
 
     if (ImGui::Button(GetData(SelectLightControl), ImVec2(30 + LightTextSize.x, 32)))
@@ -415,10 +430,10 @@ void ControlEditorPanel::CreateFlagButton() const
     {
         for (int i = 0; i < IM_ARRAYSIZE(ViewModeNames); i++)
         {
-            bool bIsSelected = ((int)ActiveViewport->GetViewMode() == i);
+            bool bIsSelected = (static_cast<int>(ActiveViewport->GetViewMode()) == i);
             if (ImGui::Selectable(ViewModeNames[i], bIsSelected))
             {
-                ActiveViewport->SetViewMode((EViewModeIndex)i);
+                ActiveViewport->SetViewMode(static_cast<EViewModeIndex>(i));
                 FEngineLoop::GraphicDevice.ChangeRasterizer(ActiveViewport->GetViewMode());
                 FEngineLoop::Renderer.ChangeViewMode(ActiveViewport->GetViewMode());
             }

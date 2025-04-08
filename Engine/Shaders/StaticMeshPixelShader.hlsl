@@ -27,14 +27,19 @@ cbuffer MaterialConstants : register(b4)
 
 cbuffer LightingConstants : register(b5)
 {
-    float3 LightDirection; // 조명 방향 (단위 벡터; 빛이 들어오는 방향의 반대 사용)
-    float LightPad0; // 16바이트 정렬용 패딩
+     // FireBall 정보
+    int FireBallCount;          // 활성화된 FireBall 개수
+    float3 Padding0;            // 16바이트 정렬용 패딩
 
-    float3 LightColor; // 조명 색상 (예: (1, 1, 1))
-    float LightPad1; // 16바이트 정렬용 패딩
-
-    float AmbientFactor; // ambient 계수 (예: 0.1)
-    float3 LightPad2; // 16바이트 정렬 맞춤 추가 패딩
+    struct FireBallInfo
+    {
+        float3 Position; // FireBall 위치
+        float Radius; // 반경
+        float4 Color; // RGB 색상 + Alpha
+        float Intensity; // 강도
+        float RadiusFallOff; // 감쇠 계수
+        float2 Padding; // 16바이트 정렬용 패딩
+    } FireBalls[8];
 };
 
 cbuffer SubMeshConstants : register(b6)
@@ -54,12 +59,13 @@ struct PS_INPUT
     float4 position : SV_POSITION; // 변환된 화면 좌표
     float4 color : COLOR; // 전달할 색상
     float3 normal : NORMAL; // 정규화된 노멀 벡터
-    bool normalFlag : TEXCOORD0; // 노멀 유효성 플래그 (1.0: 유효, 0.0: 무효)
     float2 texcoord : TEXCOORD1;
     int materialIndex : MATERIAL_INDEX;
     float2 Velocity : TEXCOORD2;
     float2 WorldPos : TEXCOORD3;
     float3 ViewNormal : TEXCOORD4;
+    float3 worldPos : TEXCOORD2; // 월드 공간 좌표 추가
+    float3 cameraPos : TEXCOORD3;
 };
 
 struct PS_OUTPUT
@@ -139,49 +145,68 @@ PS_OUTPUT mainPS(PS_INPUT input)
 
     if (IsSelected)
     {
-        color += float3(0.2f, 0.2f, 0.0f); // 노란색 틴트로 하이라이트
-        if (IsSelectedSubMesh)
-            color = float3(1, 1, 1);
+       // color += float3(0.2f, 0.2f, 0.0f); // 노란색 틴트로 하이라이트
+        //if (IsSelectedSubMesh)
+         //   color = float3(1, 1, 1);
     }
 
     // 발광 색상 추가
 
     if (IsLit == 1) // 조명이 적용되는 경우
     {
-        if (input.normalFlag > 0.5)
+        float3 N = normalize(input.normal);
+
+        float3 lightDir = normalize(float3(-1.0f, -0.3f, -2.0f));
+        float diff = max(dot(N, -lightDir), 0.0f);
+
+        // 그림자 대비 강화
+        diff = pow(diff, 1.5f); // 약한 각도는 더 어둡게, 정면은 밝게
+
+        float3 diffuse = diff * color * 1.0f; // 조명 세기 강화
+        float3 ambient = color * 0.01f; // Ambient 확 줄임
+
+        float3 finalColor = diffuse;
+
+        // FireBall 조명 계산 (원본 코드 유지)
+        for (int i = 0; i < FireBallCount; i++)
         {
-            float3 N = normalize(input.normal);
-            float3 L = normalize(LightDirection);
+            // 반경이 0인 FireBall은 건너뛰기 (비활성화된 슬롯)
+            if (FireBalls[i].Radius <= 0.0f)
+                continue;
 
-            // 기본 디퓨즈 계산
-            float diffuse = saturate(dot(N, L));
+            // FireBall과의 거리 계산
+            float3 lightVec = FireBalls[i].Position - input.worldPos;
+            float distance = length(lightVec);
+            // 반경 내에 있는 경우에만 조명 적용
+            if (distance < FireBalls[i].Radius)
+            {
+                // 정규화된 거리 (0~1)
+                float normalizedDist = distance / FireBalls[i].Radius;
 
-            // 스페큘러 계산 (간단한 Blinn-Phong)
-            float3 V = float3(0, 0, 1); // 카메라가 Z 방향을 향한다고 가정
-            float3 H = normalize(L + V);
-            float specular = pow(saturate(dot(N, H)), Material.SpecularScalar * 32) * Material.SpecularScalar;
+                // 감쇠 계산
+                float attenuation = 1.0 - pow(normalizedDist, FireBalls[i].RadiusFallOff);
 
-            // 최종 라이팅 계산
-            float3 ambient = Material.AmbientColor * AmbientFactor;
-            float3 diffuseLight = diffuse * LightColor;
-            float3 specularLight = specular * Material.SpecularColor * LightColor;
+                // 표면 각도 계산
+                float3 L = normalize(lightVec);
+                float NdotL = max(0.0f, dot(N, L));
 
-            color = ambient + (diffuseLight * color) + specularLight;
+                // FireBall 조명 기여도 계산
+                float3 fireBallLight = FireBalls[i].Color.rgb * attenuation * NdotL * FireBalls[i].Intensity;
+
+                // 최종 색상에 FireBall 조명 추가
+                finalColor += fireBallLight * color;
+            }
         }
 
-        // 투명도 적용
-        color += Material.EmissiveColor;
-        output.color = float4(color, Material.TransparencyScalar);
+        // 색상 클램핑 (HDR 효과를 원한다면 이 부분을 조정)
+        finalColor = saturate(finalColor + ambient);
+
+        output.color = float4(finalColor, Material.TransparencyScalar);
         return output;
+
     }
     else // unlit 상태일 때 PaperTexture 효과 적용
     {
-        if (input.normalFlag < 0.5)
-        {
-            output.color = float4(color, Material.TransparencyScalar);
-            return output;
-        }
-
         output.color = float4(color, 1);
         // 투명도 적용
         output.color.a = Material.TransparencyScalar;
