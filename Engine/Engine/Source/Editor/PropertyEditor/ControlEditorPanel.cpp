@@ -271,8 +271,8 @@ void ControlEditorPanel::CreateModifyButton(ImVec2 ButtonSize, ImFont* IconFont)
             { .Label = "Billboard",                 .Obj = OBJ_BILLBOARD },
             { .Label = "Text",                      .Obj = OBJ_Text },
             { .Label = "ExponentialHeightFog",      .Obj = OBJ_FOG },
-            { .Label = "FireBall",                 .Obj = OBJ_FIREBALL }
-            { .Label= "MotionBlur",      .Obj= OBJ_MotionBlur }
+            { .Label= "MotionBlur",      .Obj= OBJ_MotionBlur },
+            { .Label = "FireBall",                 .Obj = OBJ_FIREBALL },
         };
 
         for (const auto& Primitive : Primitives)

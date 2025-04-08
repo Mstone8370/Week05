@@ -38,11 +38,13 @@ float4 main(PSInput input) : SV_TARGET
     float3 NormalVS = ViewNormalBuffer.Sample(Sampler, uv).xyz * 2.0f - 1.0f; // Remap [0,1] → [-1,1]
 
     // Blur 방향은 XY만 고려하므로, normal의 XY만 사용
-    float2 Normal2D = normalize(NormalVS.xy);
+    //float2 Normal2D = normalize(NormalVS.xy);
 
-    float frontFactor = saturate(NormalVS.z);
-    float directionFactor = saturate(dot(normalize(NormalVS.xy), BlurDir));
-    BlurAmount *= frontFactor * directionFactor;
+    //float frontFactor = saturate(NormalVS.z);
+    //BlurAmount *= frontFactor;
+    //float directionFactor = saturate(dot(normalize(NormalVS.xy), BlurDir));
+    //
+    //BlurAmount *= frontFactor * directionFactor;
 
     const int Samples = 8;
     float3 Accum = 0.0;

@@ -61,11 +61,10 @@ struct PS_INPUT
     float3 normal : NORMAL; // 정규화된 노멀 벡터
     float2 texcoord : TEXCOORD1;
     int materialIndex : MATERIAL_INDEX;
-    float2 Velocity : TEXCOORD2;
-    float2 WorldPos : TEXCOORD3;
-    float3 ViewNormal : TEXCOORD4;
     float3 worldPos : TEXCOORD2; // 월드 공간 좌표 추가
-    float3 cameraPos : TEXCOORD3;
+    float3 CameraPos : TEXCOORD3;
+    float2 Velocity : TEXCOORD4;
+    float3 ViewNormal : TEXCOORD5;
 };
 
 struct PS_OUTPUT
