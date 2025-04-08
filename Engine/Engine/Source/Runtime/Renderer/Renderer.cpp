@@ -573,9 +573,9 @@ void FRenderer::UpdateProjectionBuffer(const FMatrix& PrevProjectionMatrix, cons
     }
 }
 
-void FRenderer::UpdateLightBuffer(ULevel* CurrentLevel) const
+void FRenderer::UpdateLightBuffer() const
 {
-    if (!LightingBuffer || !CurrentLevel) return;
+    if (!LightingBuffer) return;
 
     D3D11_MAPPED_SUBRESOURCE mappedResource;
     Graphics->DeviceContext->Map(LightingBuffer, 0, D3D11_MAP_WRITE_DISCARD, 0, &mappedResource);
@@ -1355,7 +1355,7 @@ void FRenderer::RenderScene(ULevel* Level, std::shared_ptr<FEditorViewportClient
 
     if(FireBalls.Num() > 0)
     {
-        UpdateLightBuffer(Level);
+        UpdateLightBuffer();
     }
 
     if (ActiveViewport->GetShowFlag() & static_cast<uint64>(EEngineShowFlags::SF_Primitives))
