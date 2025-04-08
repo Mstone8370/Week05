@@ -18,6 +18,7 @@ struct PS_INPUT
     bool normalFlag : TEXCOORD0; // 노멀 유효성 플래그 (1.0: 유효, 0.0: 무효)
     float2 texcoord : TEXCOORD1;
     int materialIndex : MATERIAL_INDEX;
+    float3 worldPos : TEXCOORD2; // 월드 공간 좌표 추가
 };
 
 PS_INPUT mainVS(VS_INPUT input)
@@ -28,11 +29,12 @@ PS_INPUT mainVS(VS_INPUT input)
 
     // 위치 변환
     output.position = float4(input.position, 1.0);
-    output.position = mul(output.position, ModelMatrix);
-    output.position = mul(output.position, ViewMatrix);
+    float4 worldPosition = mul(output.position, ModelMatrix);
+    output.worldPos = worldPosition.xyz;
+    output.position = mul(worldPosition, ViewMatrix);
     output.position = mul(output.position, ProjectionMatrix);
     output.color = input.color;
-
+   
     if (IsSelected)
     {
         output.color *= 0.5;
@@ -48,7 +50,7 @@ PS_INPUT mainVS(VS_INPUT input)
     else
     {
         //output.normal = normalize(input.normal);
-        output.normal = normalize(mul(input.normal, InverseTranspose));
+        output.normal = mul(float4(input.normal,1.0f), ModelMatrix);
         output.normalFlag = 1.0;
     }
     output.texcoord = input.texcoord;

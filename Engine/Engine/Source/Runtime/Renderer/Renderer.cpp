@@ -24,6 +24,8 @@
 #include "Components/SkySphereComponent.h"
 #include "Components/TextRenderComponent.h"
 #include "ImGUI/imgui_internal.h"
+#include "Components/UFireBallComponent.h"
+
 
 void FRenderer::Initialize(FGraphicsDevice* graphics)
 {
@@ -544,20 +546,31 @@ void FRenderer::UpdateProjectionBuffer(const FMatrix& ProjectionMatrix, float Ne
     }
 }
 
-void FRenderer::UpdateLightBuffer() const
+void FRenderer::UpdateLightBuffer(ULevel* CurrentLevel) const
 {
-    if (!LightingBuffer) return;
+    if (!LightingBuffer || !CurrentLevel) return;
+
     D3D11_MAPPED_SUBRESOURCE mappedResource;
     Graphics->DeviceContext->Map(LightingBuffer, 0, D3D11_MAP_WRITE_DISCARD, 0, &mappedResource);
     if (FLighting* constants = static_cast<FLighting*>(mappedResource.pData))
     {
-        constants->lightDirX = 1.0f;
-        constants->lightDirY = 1.0f;
-        constants->lightDirZ = 1.0f;
-        constants->lightColorX = 1.0f;
-        constants->lightColorY = 1.0f;
-        constants->lightColorZ = 1.0f;
-        constants->AmbientFactor = 0.06f;
+        constants->FireBallCount = FireBalls.Num();
+
+        for (int i = 0; i < constants->FireBallCount; i++)
+        {
+            UFireBallComponent* FireBall = FireBalls[i];
+            constants->FireBalls[i].Position = FireBall->GetWorldLocation();
+            constants->FireBalls[i].Radius = FireBall->GetRadius();
+            constants->FireBalls[i].Intensity = FireBall->GetIntensity();
+            constants->FireBalls[i].RadiusFallOff = FireBall->GetRadiusFallOff();
+            constants->FireBalls[i].Color = FireBall->GetColor();
+        }
+
+        // 나머지 슬롯 초기화
+        for (int i = constants->FireBallCount; i < constants->MAX_FIREBALLS; i++)
+        {
+            constants->FireBalls[i].Radius = 0.0f;
+        }
     }
     Graphics->DeviceContext->Unmap(LightingBuffer, 0);
 }
@@ -1240,6 +1253,10 @@ void FRenderer::PrepareRender(ULevel* Level)
         {
             LightObjs.Add(pLightComp);
         }
+        if (UFireBallComponent* pFireBallComp = Cast<UFireBallComponent>(iter))
+        {
+            FireBalls.Add(pFireBallComp);
+        }
     }
 
     for (const auto iter : Ss)
@@ -1277,7 +1294,8 @@ void FRenderer::RenderScene(ULevel* Level, std::shared_ptr<FEditorViewportClient
     UpdateViewBuffer(ActiveViewport->GetViewMatrix(), ActiveViewport->ViewTransformPerspective.GetLocation());
     UpdateProjectionBuffer(ActiveViewport->GetProjectionMatrix(), ActiveViewport->nearPlane, ActiveViewport->farPlane);
 
-    UpdateLightBuffer();
+    if(FireBalls.Num()>0)
+    UpdateLightBuffer(Level);
 
     if (ActiveViewport->GetShowFlag() & static_cast<uint64>(EEngineShowFlags::SF_Primitives))
     {
@@ -1385,6 +1403,7 @@ void FRenderer::ClearRenderArr()
     GizmoObjs.Empty();
     TextObjs.Empty();
     LightObjs.Empty();
+    FireBalls.Empty();
 }
 
 void FRenderer::RenderStaticMeshes(ULevel* Level, std::shared_ptr<FEditorViewportClient> ActiveViewport)

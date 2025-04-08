@@ -16,6 +16,7 @@
 #include "tinyfiledialogs/tinyfiledialogs.h"
 #include "UnrealEd/EditorViewportClient.h"
 #include "PropertyEditor/ShowFlags.h"
+#include <Components/UFireBallComponent.h>
 
 void ControlEditorPanel::Render()
 {
@@ -267,7 +268,8 @@ void ControlEditorPanel::CreateModifyButton(ImVec2 ButtonSize, ImFont* IconFont)
             { .label= "Particle",  .obj= OBJ_PARTICLE },
             { .label= "Billboard", .obj= OBJ_BILLBOARD },
             { .label= "Text",      .obj= OBJ_Text },
-            { .label= "ExponentialHeightFog",      .obj= OBJ_FOG }
+            { .label= "ExponentialHeightFog",      .obj= OBJ_FOG },
+            {.label = "FireBall",      .obj = OBJ_FIREBALL }
         };
 
         for (const auto& primitive : primitives)
@@ -324,7 +326,7 @@ void ControlEditorPanel::CreateModifyButton(ImVec2 ButtonSize, ImFont* IconFont)
                     TextComponent->SetTexture(L"Assets/Texture/font.png");
                     TextComponent->SetRowColumnCount(106, 106);
                     TextComponent->SetText(L"안녕하세요 Jungle 1");
-                        TextComponent->SetRotation(FVector(90.f, 0.f, 0.f));
+                    TextComponent->SetRotation(FVector(90.f, 0.f, 0.f));
                     break;
                 }
                 case OBJ_BILLBOARD:
@@ -340,6 +342,14 @@ void ControlEditorPanel::CreateModifyButton(ImVec2 ButtonSize, ImFont* IconFont)
                     SpawnedActor = level->SpawnActor<AActor>();
                     SpawnedActor->SetActorLabel(TEXT("FOG"));
                     SpawnedActor->AddComponent<UExponentialHeightFogComponent>();
+                    break;
+                }
+                case OBJ_FIREBALL:
+                {
+                    SpawnedActor = level->SpawnActor<AActor>();
+                    SpawnedActor->SetActorLabel(TEXT("FireBall"));
+                    UFireBallComponent* FireBallComp = SpawnedActor->AddComponent<UFireBallComponent>();
+                    FireBallComp->InitializeComponent();
                     break;
                 }
                 case OBJ_TRIANGLE:

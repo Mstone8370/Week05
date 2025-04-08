@@ -21,6 +21,8 @@ class UBillboardComponent;
 class UStaticMeshComponent;
 class UGizmoBaseComponent;
 struct FStaticMaterial;
+class UFireBallComponent;
+
 
 class FRenderer
 {
@@ -106,7 +108,7 @@ public:
     void UpdateViewBuffer(const FMatrix& ViewMatrix, const FVector& ViewLocation) const;
     void UpdateProjectionBuffer(const FMatrix& ProjectionMatrix, float NearClip, float FarClip) const;
 
-    void UpdateLightBuffer() const;
+    void UpdateLightBuffer(ULevel* CurrentLevel) const;
     void UpdateMaterial(const FObjMaterialInfo& MaterialInfo) const;
     void UpdateLitUnlitConstant(int isLit) const;
     void UpdateSubMeshConstant(bool isSelected) const;
@@ -197,6 +199,7 @@ private:
     TArray<UPrimitiveComponent*> TextObjs;
     TArray<UBillboardComponent*> BillboardObjs;
     TArray<ULightComponentBase*> LightObjs;
+    TArray<UFireBallComponent*> FireBalls;
 
     float litFlag = 0;
 

@@ -27,14 +27,19 @@ cbuffer MaterialConstants : register(b4)
 
 cbuffer LightingConstants : register(b5)
 {
-    float3 LightDirection; // 조명 방향 (단위 벡터; 빛이 들어오는 방향의 반대 사용)
-    float LightPad0; // 16바이트 정렬용 패딩
-
-    float3 LightColor; // 조명 색상 (예: (1, 1, 1))
-    float LightPad1; // 16바이트 정렬용 패딩
-
-    float AmbientFactor; // ambient 계수 (예: 0.1)
-    float3 LightPad2; // 16바이트 정렬 맞춤 추가 패딩
+     // FireBall 정보
+    int FireBallCount;          // 활성화된 FireBall 개수
+    float3 Padding0;            // 16바이트 정렬용 패딩
+    
+    struct FireBallInfo
+    {
+        float3 Position; // FireBall 위치
+        float Radius; // 반경
+        float4 Color; // RGB 색상 + Alpha
+        float Intensity; // 강도
+        float RadiusFallOff; // 감쇠 계수
+        float2 Padding; // 16바이트 정렬용 패딩
+    } FireBalls[8];
 };
 
 cbuffer SubMeshConstants : register(b6)
@@ -57,6 +62,7 @@ struct PS_INPUT
     bool normalFlag : TEXCOORD0; // 노멀 유효성 플래그 (1.0: 유효, 0.0: 무효)
     float2 texcoord : TEXCOORD1;
     int materialIndex : MATERIAL_INDEX;
+    float3 worldPos : TEXCOORD2; // 월드 공간 좌표 추가
 };
 
 struct PS_OUTPUT
@@ -116,8 +122,6 @@ PS_OUTPUT mainPS(PS_INPUT input)
 {
     PS_OUTPUT output;
 
-    output.UUID = UUID;
-
     float3 texColor = Textures.Sample(Sampler, input.texcoord + UVOffset);
     float3 color;
     if (texColor.g == 0) // TODO: boolean으로 변경
@@ -138,31 +142,58 @@ PS_OUTPUT mainPS(PS_INPUT input)
 
     if (IsLit == 1) // 조명이 적용되는 경우
     {
-        if (input.normalFlag > 0.5)
+
+        
+        if (input.normalFlag < 0.5)
         {
-            float3 N = normalize(input.normal);
-            float3 L = normalize(LightDirection);
-
-            // 기본 디퓨즈 계산
-            float diffuse = saturate(dot(N, L));
-
-            // 스페큘러 계산 (간단한 Blinn-Phong)
-            float3 V = float3(0, 0, 1); // 카메라가 Z 방향을 향한다고 가정
-            float3 H = normalize(L + V);
-            float specular = pow(saturate(dot(N, H)), Material.SpecularScalar * 32) * Material.SpecularScalar;
-
-            // 최종 라이팅 계산
-            float3 ambient = Material.AmbientColor * AmbientFactor;
-            float3 diffuseLight = diffuse * LightColor;
-            float3 specularLight = specular * Material.SpecularColor * LightColor;
-
-            color = ambient + (diffuseLight * color) + specularLight;
+            output.color = float4(color, Material.TransparencyScalar);
+            return output;
         }
 
-        // 투명도 적용
-        color += Material.EmissiveColor;
-        output.color = float4(color, Material.TransparencyScalar);
+        float3 N = normalize(input.normal);
+        float3 finalColor = color;
+
+
+
+    // FireBall 조명 계산
+        for (int i = 0; i < FireBallCount; i++)
+        {    
+        // 반경이 0인 FireBall은 건너뛰기 (비활성화된 슬롯)
+            if (FireBalls[i].Radius <= 0.0f)
+                continue;
+        
+        // FireBall과의 거리 계산
+            float3 lightVec = FireBalls[i].Position - input.worldPos;
+
+            float distance = length(lightVec);
+
+        // 반경 내에 있는 경우에만 조명 적용
+            if (distance < FireBalls[i].Radius)
+            {
+            // 정규화된 거리 (0~1)
+                float normalizedDist = distance / FireBalls[i].Radius;
+            
+            // 감쇠 계산
+                float attenuation = 1.0 - pow(normalizedDist, FireBalls[i].RadiusFallOff);
+            
+            // 표면 각도 계산
+                float3 L = normalize(lightVec);
+                float NdotL = max(0.0f, dot(N, L));
+            
+            // FireBall 조명 기여도 계산
+                float3 fireBallLight = FireBalls[i].Color.rgb * attenuation * NdotL * FireBalls[i].Intensity;
+            
+            // 최종 색상에 FireBall 조명 추가
+                finalColor += fireBallLight * color;
+            }
+        }
+    
+    // 색상 클램핑 (HDR 효과를 원한다면 이 부분을 조정)
+        finalColor = saturate(finalColor);
+    
+        output.color = float4(finalColor, Material.TransparencyScalar);
         return output;
+       
     }
     else // unlit 상태일 때 PaperTexture 효과 적용
     {
