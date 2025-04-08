@@ -23,24 +23,38 @@ public:
     void AddRotation(FVector _added);
     void AddScale(FVector _added);
 
+    void UpdatePrevTransform();
+
 protected:
     FVector RelativeLocation;
     FVector RelativeRotation;
-    FQuat QuatRotation;
     FVector RelativeScale3D;
+    FQuat QuatRotation;
+
+    FVector PrevRelativeLocation;
+    FVector PrevRelativeScale3D;
+    FQuat PrevQuatRotation;
 
     USceneComponent* AttachParent = nullptr;
     TArray<USceneComponent*> AttachChildren;
 
 public:
+    FVector GetPrevWorldLocation();
+    FVector GetPrevWorldRotation();
+    FVector GetPrevWorldScale();
+
     virtual FVector GetWorldRotation();
     FVector GetWorldScale();
     FVector GetWorldLocation();
-    FVector GetLocalRotation();
-    FQuat GetQuat() const { return QuatRotation; }
 
+    FQuat GetQuat() const { return QuatRotation; }
+    FVector GetLocalRotation();
     FVector GetLocalScale() const { return RelativeScale3D; }
     FVector GetLocalLocation() const { return RelativeLocation; }
+
+    FVector GetPrevLocalRotation();
+    FVector GetPrevLocalScale() const { return PrevRelativeScale3D; }
+    FVector GetPrevLocalLocation() const { return PrevRelativeLocation; }
 
     void SetLocation(FVector _newLoc) { RelativeLocation = _newLoc; }
     virtual void SetRotation(FVector _newRot);

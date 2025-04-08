@@ -75,9 +75,9 @@ void ULevel::Tick(float DeltaTime)
 
 void ULevel::Release()
 {
-    for (AActor* Actor : ActorsArray)
-    {
-        Actor->EndPlay(EEndPlayReason::WorldTransition);
+	for (AActor* Actor : ActorsArray)
+	{
+		Actor->EndPlay(EEndPlayReason::WorldTransition);
         TArray<UActorComponent*> Components = Actor->GetComponents();
         for (UActorComponent* Component : Components)
         {

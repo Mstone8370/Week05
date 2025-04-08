@@ -13,6 +13,7 @@ enum OBJECTS
 	OBJ_PLAYER,
     OBJ_BILLBOARD,
     OBJ_FOG,
+    OBJ_MotionBlur,
     OBJ_FIREBALL,
 	OBJ_END
 };

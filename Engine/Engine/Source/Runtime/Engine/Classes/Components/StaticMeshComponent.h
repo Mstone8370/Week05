@@ -13,7 +13,7 @@ public:
     virtual UObject* Duplicate() override;
 
 public:
-    PROPERTY(int, selectedSubMeshIndex);
+    PROPERTY(int, selectedSubMeshIndex)
 
     virtual uint32 GetNumMaterials() const override;
     virtual UMaterial* GetMaterial(uint32 ElementIndex) const override;
@@ -22,10 +22,10 @@ public:
     virtual void GetUsedMaterials(TArray<UMaterial*>& Out) const override;
 
     virtual int CheckRayIntersection(FVector& rayOrigin, FVector& rayDirection, float& pfNearHitDistance) override;
-    
+
     UStaticMesh* GetStaticMesh() const { return staticMesh; }
     void SetStaticMesh(UStaticMesh* value)
-    { 
+    {
         staticMesh = value;
         OverrideMaterials.SetNum(value->GetMaterials().Num());
         AABB = FBoundingBox(staticMesh->GetRenderData()->BoundingBoxMin, staticMesh->GetRenderData()->BoundingBoxMax);

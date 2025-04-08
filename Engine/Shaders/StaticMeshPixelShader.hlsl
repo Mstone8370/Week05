@@ -62,13 +62,18 @@ struct PS_INPUT
     float2 texcoord : TEXCOORD1;
     int materialIndex : MATERIAL_INDEX;
     float3 worldPos : TEXCOORD2; // 월드 공간 좌표 추가
-    float3 cameraPos : TEXCOORD3;
+    float3 CameraPos : TEXCOORD3;
+    float2 Velocity : TEXCOORD4;
+    float3 ViewNormal : TEXCOORD5;
 };
 
 struct PS_OUTPUT
 {
     float4 color : SV_Target0;
     float4 UUID : SV_Target1;
+    float4 WorldPos : SV_Target2;
+    float4 Velocity : SV_Target3;
+    float4 Normal : SV_Target4;
 };
 
 float noise(float3 p)
@@ -121,6 +126,12 @@ float4 PaperTexture(float3 originalColor)
 PS_OUTPUT mainPS(PS_INPUT input)
 {
     PS_OUTPUT output;
+
+    output.UUID = UUID;
+    output.Velocity = float4(input.Velocity, 0, 1);
+    //output.WorldPos = float4(input.WorldPos * 0.5 + 0.5, 0, 1);
+    float3 NormalVS = normalize(input.ViewNormal);
+    output.Normal = float4(NormalVS * 0.5f + 0.5f, 1.0f); // 저장용 (0~1로 remap)
 
     float3 texColor = Textures.Sample(Sampler, input.texcoord + UVOffset);
     float3 color;

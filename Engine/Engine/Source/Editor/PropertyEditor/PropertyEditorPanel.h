@@ -34,6 +34,7 @@ private:
     void RenderForMaterial(UStaticMeshComponent* StaticMeshComp);
     void RenderMaterialView(UMaterial* Material);
     void RenderForExponentialHeightFog(UExponentialHeightFogComponent* ExponentialHeightFogComponent);
+    void RenderForMotionBlurComponent(UMotionBlurComponent* MotionBlurComponent);
 
     void RenderCreateMaterialView();
 

@@ -328,6 +328,12 @@ void FEditorViewportClient::UpdateProjectionMatrix()
     }
 }
 
+void FEditorViewportClient::UpdatePrevMatrix()
+{
+    PrevView = View;
+    PrevProjection = Projection;
+}
+
 bool FEditorViewportClient::IsOrtho() const
 {
     return !IsPerspective();

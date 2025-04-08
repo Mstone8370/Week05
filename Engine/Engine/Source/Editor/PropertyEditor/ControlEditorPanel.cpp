@@ -9,6 +9,7 @@
 #include "Components/TextBillboardComponent.h"
 #include "Components/TextRenderComponent.h"
 #include "Components/ExponentialHeightFogComponent.h"
+#include "Components/MotionBlurComponent.h"
 #include "Engine/FLoaderOBJ.h"
 #include "Engine/StaticMeshActor.h"
 #include "ImGUI/imgui_internal.h"
@@ -270,7 +271,8 @@ void ControlEditorPanel::CreateModifyButton(ImVec2 ButtonSize, ImFont* IconFont)
             { .Label = "Billboard",                 .Obj = OBJ_BILLBOARD },
             { .Label = "Text",                      .Obj = OBJ_Text },
             { .Label = "ExponentialHeightFog",      .Obj = OBJ_FOG },
-            { .Label = "FireBall",                 .Obj = OBJ_FIREBALL }
+            { .Label= "MotionBlur",      .Obj= OBJ_MotionBlur },
+            { .Label = "FireBall",                 .Obj = OBJ_FIREBALL },
         };
 
         for (const auto& Primitive : Primitives)
@@ -347,6 +349,13 @@ void ControlEditorPanel::CreateModifyButton(ImVec2 ButtonSize, ImFont* IconFont)
                     SpawnedActor->AddComponent<UExponentialHeightFogComponent>();
                     break;
                 }
+                case OBJ_MotionBlur:
+                {
+                    SpawnedActor = level->SpawnActor<AActor>();
+                    SpawnedActor->SetActorLabel(TEXT("MotionBlur"));
+                    SpawnedActor->AddComponent<UMotionBlurComponent>();
+                    break;
+                }
                 case OBJ_FIREBALL:
                 {
                     SpawnedActor = level->SpawnActor<AActor>();
@@ -408,7 +417,7 @@ void ControlEditorPanel::CreateFlagButton() const
 
     ImGui::SameLine();
 
-    const char* ViewModeNames[] = { "Lit", "Unlit", "Wireframe", "Scene Depth" };
+    const char* ViewModeNames[] = { "Lit", "Unlit", "Wireframe", "Scene Depth", "Velocity" };
     FString SelectLightControl = ViewModeNames[static_cast<int>(ActiveViewport->GetViewMode())];
     ImVec2 LightTextSize = ImGui::CalcTextSize(GetData(SelectLightControl));
 

@@ -18,7 +18,9 @@ struct PS_INPUT
     float2 texcoord : TEXCOORD1;
     int materialIndex : MATERIAL_INDEX;
     float3 worldPos : TEXCOORD2; // 월드 공간 좌표 추가
-    float3 cameraPos : TEXCOORD3;
+    float3 CameraPos : TEXCOORD3;
+    float2 Velocity : TEXCOORD4;
+    float3 ViewNormal : TEXCOORD5;
 };
 
 PS_INPUT mainVS(VS_INPUT input)
@@ -30,7 +32,7 @@ PS_INPUT mainVS(VS_INPUT input)
     // 위치 변환
     output.position = float4(input.position, 1.0);
     float4 worldPosition = mul(output.position, ModelMatrix);
-    output.cameraPos = float3(InvViewMatrix._41, InvViewMatrix._42, InvViewMatrix._43);
+    output.CameraPos = float3(InvViewMatrix._41, InvViewMatrix._42, InvViewMatrix._43);
     output.worldPos = worldPosition.xyz;
     output.position = mul(worldPosition, ViewMatrix);
     output.position = mul(output.position, ProjectionMatrix);
@@ -43,6 +45,25 @@ PS_INPUT mainVS(VS_INPUT input)
 
     output.normal = mul(input.normal, (float3x3)ModelMatrix);
     output.texcoord = input.texcoord;
+
+    float4 PrevPosition = float4(input.position, 1.0);
+    PrevPosition = mul(PrevPosition, PrevModelMatrix);
+    PrevPosition = mul(PrevPosition, PrevViewMatrix);
+    PrevPosition = mul(PrevPosition, PrevProjectionMatrix);
+
+    float4 CurrClip = output.position;
+    float4 PrevClip = PrevPosition;
+
+    float2 CurrNDC = CurrClip.xy / CurrClip.w;
+    float2 PrevNDC = PrevClip.xy / PrevClip.w;
+
+    // 보간할 velocity
+    output.Velocity = CurrNDC - PrevNDC;
+
+    float3 WorldNormal = normalize(mul(float4(input.normal, 0.0), ModelMatrix).xyz);
+    output.ViewNormal = mul(WorldNormal, (float3x3)ViewMatrix); // Rotation only
+
+    //output.WorldPos = PrevNDC;
 
     return output;
 }

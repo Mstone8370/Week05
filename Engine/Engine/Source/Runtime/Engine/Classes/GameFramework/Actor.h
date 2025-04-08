@@ -109,6 +109,9 @@ private:
     uint8 bActorIsBeingDestroyed : 1;
     bool bIsActorTickEnable = true;
 
+public:
+    int tempValue = 1;
+
 #if 1 // TODO: WITH_EDITOR 추가
 public:
     /** Actor의 기본 Label을 가져옵니다. */

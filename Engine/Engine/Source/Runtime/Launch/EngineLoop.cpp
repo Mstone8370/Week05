@@ -148,6 +148,9 @@ void FEngineLoop::Render()
             LevelEditor->SetViewportClient(i);
             Renderer.PrepareRender(GLevel);
             Renderer.RenderScene(GetLevel(),LevelEditor->GetActiveViewportClient());
+
+            LevelEditor->GetActiveViewportClient()->UpdatePrevMatrix();
+            Renderer.OnEndRender();
         }
         GetLevelEditor()->SetViewportClient(ViewportClient);
     }
@@ -161,6 +164,9 @@ void FEngineLoop::Render()
         Renderer.PostProcess(LevelEditor->GetActiveViewportClient());
 
         Renderer.RenderFullScreenQuad(LevelEditor->GetActiveViewportClient());
+
+        LevelEditor->GetActiveViewportClient()->UpdatePrevMatrix();
+        Renderer.OnEndRender();
     }
 }
 
@@ -243,7 +249,15 @@ void FEngineLoop::PIETick(double DeltaTime)
     GLevel->Tick(DeltaTime);
     for (auto& actor : GLevel->GetActors())
     {
-        actor->SetActorRotation(actor->GetActorRotation() + FVector(0.1,0.1,0.1));
+        if (actor->GetActorLocation().Z > 10)
+        {
+            actor->tempValue = -1;
+        }
+        else if (actor->GetActorLocation().Z < -10)
+        {
+            actor->tempValue = 1;
+        }
+        actor->SetActorLocation(actor->GetActorLocation() + FVector(0, 0,1) * DeltaTime * 0.05 * actor->tempValue);
     }
     Render();
 

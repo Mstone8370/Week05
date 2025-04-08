@@ -4,6 +4,7 @@
 #include "Actors/Player.h"
 #include "Components/ExponentialHeightFogComponent.h"
 #include "Components/LightComponent.h"
+#include "Components/MotionBlurComponent.h"
 #include "Components/StaticMeshComponent.h"
 #include "Components/TextBillboardComponent.h"
 #include "Components/TextRenderComponent.h"
@@ -75,6 +76,10 @@ void PropertyEditorPanel::Render()
         else if (UFireBallComponent* FireBallComponent = Cast<UFireBallComponent>(PickedActor->GetRootComponent()))
         {
             RenderForFireBall(FireBallComponent);
+        }
+        else if (UMotionBlurComponent* MotionBlurComponent = Cast<UMotionBlurComponent>(PickedActor->GetRootComponent()))
+        {
+            RenderForMotionBlurComponent(MotionBlurComponent);
         }
     }
 
@@ -612,6 +617,20 @@ void PropertyEditorPanel::RenderForExponentialHeightFog(UExponentialHeightFogCom
         ImGui::SliderFloat("FogEndDistance", &ExponentialHeightFogComponent->FogEndDistance, ExponentialHeightFogComponent->FogStartDistance, 2000.0f);
         ImGui::SliderFloat("DistanceFogIntensity", &ExponentialHeightFogComponent->DistanceFogIntensity, 0.01f, 5.0f);
     }
+    ImGui::PopStyleColor();
+}
+
+void PropertyEditorPanel::RenderForMotionBlurComponent(UMotionBlurComponent* MotionBlurComponent)
+{
+    ImGui::PushStyleColor(ImGuiCol_Header, ImVec4(0.1f, 0.1f, 0.1f, 1.0f));
+
+    if (ImGui::Checkbox("Active", &MotionBlurComponent->bIsActive))
+    {
+    }
+    ImGui::SliderFloat("MaxBlurPixels", &MotionBlurComponent->MaxBlurPixels, 0.f, 64.0f);
+    ImGui::SliderFloat("VelocityScale", &MotionBlurComponent->VelocityScale, 0.01f, .5f);
+    ImGui::SliderFloat("DepthThreshold", &MotionBlurComponent->DepthThreshold, 0.01f, 0.5f);
+
     ImGui::PopStyleColor();
 }
 
