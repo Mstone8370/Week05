@@ -1,12 +1,15 @@
 #include "UFireBallComponent.h"
 
+UFireBallComponent::UFireBallComponent()
+    : Intensity(30.f)
+    , Radius(10.f)
+    , RadiusFallOff(2.f)
+    , Color(1.0f, 0.25f, 0.0f, 1.0f)  // 기본 주황색
+{}
+
 void UFireBallComponent::InitializeComponent()
 {
-    // 기본값 초기화
-    Intensity = 30.0f;
-    Radius = 10.0f;
-    RadiusFallOff = 2.0f;
-    Color = FVector4(.0f, 1.0f, 1.0f, 1.0f); // 기본 주황색
+    Super::InitializeComponent();
 }
 
 float UFireBallComponent::GetIntensity() const

@@ -5,6 +5,10 @@ class UFireBallComponent  :public USceneComponent
 {
     DECLARE_CLASS(UFireBallComponent, USceneComponent)
 
+public:
+    UFireBallComponent();
+    virtual ~UFireBallComponent() = default;
+
     void InitializeComponent() override;
 
     // Getter 함수들

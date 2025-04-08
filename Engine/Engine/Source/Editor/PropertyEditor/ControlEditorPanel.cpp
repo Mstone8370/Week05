@@ -351,10 +351,10 @@ void ControlEditorPanel::CreateModifyButton(ImVec2 ButtonSize, ImFont* IconFont)
                 {
                     SpawnedActor = level->SpawnActor<AActor>();
                     SpawnedActor->SetActorLabel(TEXT("FireBall"));
+                    UFireBallComponent* FireBallComp = SpawnedActor->AddComponent<UFireBallComponent>();
                     UStaticMeshComponent* MeshComp = SpawnedActor->AddComponent<UStaticMeshComponent>();
                     FManagerOBJ::CreateStaticMesh("Assets/Sphere.obj");
                     MeshComp->SetStaticMesh(FManagerOBJ::GetStaticMesh(L"Sphere.obj"));
-                    UFireBallComponent* FireBallComp = SpawnedActor->AddComponent<UFireBallComponent>();
                     break;
                 }
                 case OBJ_TRIANGLE:
