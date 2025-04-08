@@ -16,6 +16,7 @@
 #include "tinyfiledialogs/tinyfiledialogs.h"
 #include "UnrealEd/EditorViewportClient.h"
 #include "PropertyEditor/ShowFlags.h"
+#include <Components/UFireBallComponent.h>
 
 void ControlEditorPanel::Render()
 {
@@ -262,13 +263,14 @@ void ControlEditorPanel::CreateModifyButton(ImVec2 ButtonSize, ImFont* IconFont)
         };
 
         static const FPrimitive Primitives[] = {
-            { .Label= "Cube",                      .Obj= OBJ_CUBE },
-            { .Label= "Sphere",                    .Obj= OBJ_SPHERE },
-            { .Label= "SpotLight",                 .Obj= OBJ_SpotLight },
-            { .Label= "Particle",                  .Obj= OBJ_PARTICLE },
-            { .Label= "Billboard",                 .Obj= OBJ_BILLBOARD },
-            { .Label= "Text",                      .Obj= OBJ_Text },
-            { .Label= "ExponentialHeightFog",      .Obj= OBJ_FOG }
+            { .Label = "Cube",                      .Obj = OBJ_CUBE },
+            { .Label = "Sphere",                    .Obj = OBJ_SPHERE },
+            { .Label = "SpotLight",                 .Obj = OBJ_SpotLight },
+            { .Label = "Particle",                  .Obj = OBJ_PARTICLE },
+            { .Label = "Billboard",                 .Obj = OBJ_BILLBOARD },
+            { .Label = "Text",                      .Obj = OBJ_Text },
+            { .Label = "ExponentialHeightFog",      .Obj = OBJ_FOG },
+            { .Label = "FireBall",                 .Obj = OBJ_FIREBALL }
         };
 
         for (const auto& Primitive : Primitives)
@@ -282,9 +284,11 @@ void ControlEditorPanel::CreateModifyButton(ImVec2 ButtonSize, ImFont* IconFont)
                 {
                 case OBJ_SPHERE:
                 {
-                    SpawnedActor = level->SpawnActor<AActor>();
-                    SpawnedActor->SetActorLabel(TEXT("OBJ_SPHERE"));
-                    SpawnedActor->AddComponent<USphereComp>();
+                    AStaticMeshActor* TempActor = level->SpawnActor<AStaticMeshActor>();
+                    TempActor->SetActorLabel(TEXT("OBJ_SPHERE"));
+                    UStaticMeshComponent* MeshComp = TempActor->GetStaticMeshComponent();
+                    FManagerOBJ::CreateStaticMesh("Assets/Sphere.obj");
+                    MeshComp->SetStaticMesh(FManagerOBJ::GetStaticMesh(L"Sphere.obj"));
                     break;
                 }
                 case OBJ_CUBE:
@@ -325,7 +329,7 @@ void ControlEditorPanel::CreateModifyButton(ImVec2 ButtonSize, ImFont* IconFont)
                     TextComponent->SetTexture(L"Assets/Texture/font.png");
                     TextComponent->SetRowColumnCount(106, 106);
                     TextComponent->SetText(L"안녕하세요 Jungle 1");
-                        TextComponent->SetRotation(FVector(90.f, 0.f, 0.f));
+                    TextComponent->SetRotation(FVector(90.f, 0.f, 0.f));
                     break;
                 }
                 case OBJ_BILLBOARD:
@@ -341,6 +345,16 @@ void ControlEditorPanel::CreateModifyButton(ImVec2 ButtonSize, ImFont* IconFont)
                     SpawnedActor = level->SpawnActor<AActor>();
                     SpawnedActor->SetActorLabel(TEXT("FOG"));
                     SpawnedActor->AddComponent<UExponentialHeightFogComponent>();
+                    break;
+                }
+                case OBJ_FIREBALL:
+                {
+                    SpawnedActor = level->SpawnActor<AActor>();
+                    SpawnedActor->SetActorLabel(TEXT("FireBall"));
+                    UFireBallComponent* FireBallComp = SpawnedActor->AddComponent<UFireBallComponent>();
+                    UStaticMeshComponent* MeshComp = SpawnedActor->AddComponent<UStaticMeshComponent>();
+                    FManagerOBJ::CreateStaticMesh("Assets/Sphere.obj");
+                    MeshComp->SetStaticMesh(FManagerOBJ::GetStaticMesh(L"Sphere.obj"));
                     break;
                 }
                 case OBJ_TRIANGLE:

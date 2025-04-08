@@ -300,16 +300,23 @@ struct FPrimitiveCounts
 	int pad1;
 };
 
+struct FFireBallData
+{
+    FVector Position;     // FireBall 위치
+    float Radius;         // 반경
+    FVector4 Color;       // RGB 색상 + Alpha
+    float Intensity;      // 강도
+    float RadiusFallOff;  // 감쇠 계수
+    float Padding[2];     // 16바이트 정렬
+};
 struct FLighting
 {
-	float lightDirX, lightDirY, lightDirZ; // 조명 방향
-	float pad1; // 16바이트 정렬용 패딩
-	float lightColorX, lightColorY, lightColorZ; // 조명 색상
-	float pad2; // 16바이트 정렬용 패딩
-	float AmbientFactor; // ambient 계수
-	float pad3; // 16바이트 정렬 맞춤 추가 패딩
-	float pad4; // 16바이트 정렬 맞춤 추가 패딩
-	float pad5; // 16바이트 정렬 맞춤 추가 패딩
+    static const int MAX_FIREBALLS = 8; // 최대 지원 FireBall 수
+
+    int FireBallCount;    // 활성화된 FireBall 개수
+    float Padding[3];     // 16바이트 정렬
+
+    FFireBallData FireBalls[MAX_FIREBALLS]; // FireBall 배열
 };
 
 struct FMaterialConstants

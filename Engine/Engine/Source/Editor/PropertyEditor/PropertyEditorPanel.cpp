@@ -12,6 +12,7 @@
 #include "UnrealEd/ImGuiWidget.h"
 #include "UObject/Casts.h"
 #include "UObject/ObjectFactory.h"
+#include "Components/UFireBallComponent.h"
 
 void PropertyEditorPanel::Render()
 {
@@ -71,11 +72,98 @@ void PropertyEditorPanel::Render()
         {
             RenderForExponentialHeightFog(ExponentialHeightFogComp);
         }
+        else if (UFireBallComponent* FireBallComponent = Cast<UFireBallComponent>(PickedActor->GetRootComponent()))
+        {
+            RenderForFireBall(FireBallComponent);
+        }
     }
 
     ImGui::End();
 }
 
+void PropertyEditorPanel::RenderForFireBall(UFireBallComponent* FireBallComp)
+{
+    if (!FireBallComp)
+        return;
+
+    ImGui::PushStyleColor(ImGuiCol_Header, ImVec4(0.2f, 0.1f, 0.05f, 1.0f));
+
+    if (ImGui::CollapsingHeader("FireBall Properties", ImGuiTreeNodeFlags_DefaultOpen))
+    {
+        ImGui::Indent(10.0f);
+
+        // 색상 편집기 설정
+        static ImGuiColorEditFlags colorFlags = ImGuiColorEditFlags_NoInputs | ImGuiColorEditFlags_NoAlpha;
+
+        // 현재 색상 값 가져오기 (getter 사용)
+        FVector4 currentColor = FireBallComp->GetColor();
+        float colorValues[3] = {
+            currentColor.x,
+            currentColor.y,
+            currentColor.z
+        };
+
+        // 색상 편집기 표시
+        ImGui::Text("Fire Color");
+        ImGui::SameLine(150.0f);
+        if (ImGui::ColorEdit3("##FireColor", colorValues, colorFlags))
+        {
+            // 새 색상 값 적용 (setter 사용)
+            FVector4 newColor = currentColor;
+            newColor.x = colorValues[0];
+            newColor.y = colorValues[1];
+            newColor.z = colorValues[2];
+            FireBallComp->SetColor(newColor);
+        }
+
+        // Intensity 슬라이더 (getter/setter 사용)
+        float intensity = FireBallComp->GetIntensity();
+        ImGui::Text("Intensity");
+        ImGui::SameLine(150.0f);
+        ImGui::PushItemWidth(200.0f);
+        if (ImGui::SliderFloat("##Intensity", &intensity, 0.1f, 100.0f, "%.2f"))
+        {
+            FireBallComp->SetIntensity(intensity);
+        }
+
+        // Radius 슬라이더 (getter/setter 사용)
+        float radius = FireBallComp->GetRadius();
+        ImGui::Text("Radius");
+        ImGui::SameLine(150.0f);
+        if (ImGui::SliderFloat("##Radius", &radius, 0.1f, 100.0f, "%.1f"))
+        {
+            FireBallComp->SetRadius(radius);
+        }
+
+        // RadiusFallOff 슬라이더 (getter/setter 사용)
+        float falloff = FireBallComp->GetRadiusFallOff();
+        ImGui::Text("Falloff");
+        ImGui::SameLine(150.0f);
+        if (ImGui::SliderFloat("##RadiusFallOff", &falloff, 0.1f, 5.0f, "%.2f"))
+        {
+            FireBallComp->SetRadiusFallOff(falloff);
+        }
+
+        ImGui::PopItemWidth();
+
+        // 미리보기 색상 표시
+        ImGui::Spacing();
+        ImGui::Separator();
+        ImGui::Spacing();
+
+        // 현재 설정에 따른 미리보기 색상 표시
+        ImVec4 previewColor = ImVec4(
+            currentColor.x * intensity,
+            currentColor.y * intensity,
+            currentColor.z * intensity,
+            1.0f
+        );
+
+        ImGui::Unindent(10.0f);
+    }
+
+    ImGui::PopStyleColor();
+}
 void PropertyEditorPanel::RGBToHSV(float r, float g, float b, float& h, float& s, float& v) const
 {
     float mx = FMath::Max(r, FMath::Max(g, b));

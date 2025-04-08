@@ -7,6 +7,8 @@
 #include "Engine/FLoaderOBJ.h"
 #include "Classes/Components/StaticMeshComponent.h"
 #include "Components/SkySphereComponent.h"
+#include "Components/UFireBallComponent.h"
+
 
 
 void ULevel::Initialize(EWorldType worldType)
@@ -65,28 +67,28 @@ void ULevel::Tick(float DeltaTime)
     PendingBeginPlayActors.Empty();
 
     // 매 틱마다 Actor->Tick(...) 호출
-	for (AActor* Actor : ActorsArray)
-	{
-	    Actor->Tick(DeltaTime);
-	}
+    for (AActor* Actor : ActorsArray)
+    {
+        Actor->Tick(DeltaTime);
+    }
 }
 
 void ULevel::Release()
 {
-	for (AActor* Actor : ActorsArray)
-	{
-		Actor->EndPlay(EEndPlayReason::WorldTransition);
+    for (AActor* Actor : ActorsArray)
+    {
+        Actor->EndPlay(EEndPlayReason::WorldTransition);
         TArray<UActorComponent*> Components = Actor->GetComponents();
-	    for (UActorComponent* Component : Components)
-	    {
-	        GUObjectArray.MarkRemoveObject(Component);
-	    }
-	    GUObjectArray.MarkRemoveObject(Actor);
-	}
+        for (UActorComponent* Component : Components)
+        {
+            GUObjectArray.MarkRemoveObject(Component);
+        }
+        GUObjectArray.MarkRemoveObject(Actor);
+    }
     ActorsArray.Empty();
 
-	pickingGizmo = nullptr;
-	ReleaseBaseObject();
+    pickingGizmo = nullptr;
+    ReleaseBaseObject();
 
     GUObjectArray.ProcessPendingDestroyObjects();
 }
@@ -148,6 +150,8 @@ bool ULevel::DestroyActor(AActor* ThisActor)
     return true;
 }
 
+
+
 void ULevel::AddActor(AActor* NewActor)
 {
     ActorsArray.Add(NewActor);
@@ -156,5 +160,5 @@ void ULevel::AddActor(AActor* NewActor)
 
 void ULevel::SetPickingGizmo(UObject* Object)
 {
-	pickingGizmo = Cast<USceneComponent>(Object);
+    pickingGizmo = Cast<USceneComponent>(Object);
 }
