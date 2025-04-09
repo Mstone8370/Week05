@@ -585,7 +585,7 @@ void FRenderer::UpdateLightBuffer() const
 
         for (int i = 0; i < constants->FireBallCount; i++)
         {
-            UFireBallComponent* FireBall = FireBalls[i];
+            UPointLightComponent* FireBall = FireBalls[i];
             constants->FireBalls[i].Position = FireBall->GetWorldLocation();
             constants->FireBalls[i].Radius = FireBall->GetRadius();
             constants->FireBalls[i].Intensity = FireBall->GetIntensity();
@@ -1312,7 +1312,7 @@ void FRenderer::PrepareRender(ULevel* Level)
         {
             LightObjs.Add(pLightComp);
         }
-        if (UFireBallComponent* pFireBallComp = Cast<UFireBallComponent>(iter))
+        if (UPointLightComponent* pFireBallComp = Cast<UPointLightComponent>(iter))
         {
             FireBalls.Add(pFireBallComp);
         }
@@ -1509,7 +1509,7 @@ void FRenderer::RenderStaticMeshes(ULevel* Level, std::shared_ptr<FEditorViewpor
         FMatrix NormalMatrix = FMatrix::Transpose(FMatrix::Inverse(Model));
         FVector4 UUIDColor = StaticMeshComp->EncodeUUID() / 255.0f;
 
-        UpdateObjectBuffer(PrevModel, Model, NormalMatrix, UUIDColor, Level->GetSelectedActor() == StaticMeshComp->GetOwner());
+        UpdateObjectBuffer(PrevModel, Model, NormalMatrix, UUIDColor, Level->GetSelectedComponent() == StaticMeshComp);
 
         UpdateTextureConstant(0, 0);
 
@@ -1533,7 +1533,7 @@ void FRenderer::RenderStaticMeshes(ULevel* Level, std::shared_ptr<FEditorViewpor
 
 void FRenderer::RenderGizmos(const ULevel* Level, const std::shared_ptr<FEditorViewportClient>& ActiveViewport)
 {
-    if (!Level->GetSelectedActor())
+    if (!Level->GetSelectedTempComponent())
     {
         return;
     }

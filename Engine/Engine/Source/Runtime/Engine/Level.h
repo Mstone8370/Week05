@@ -1,6 +1,8 @@
 #pragma once
 #include "Define.h"
+#include "Components/ActorComponent.h"
 #include "Container/Set.h"
+#include "GameFramework/Actor.h"
 #include "UObject/ObjectFactory.h"
 #include "UObject/ObjectMacros.h"
 
@@ -13,7 +15,7 @@ class UCameraComponent;
 class AEditorPlayer;
 class USceneComponent;
 class UTransformGizmo;
-class UFireBallComponent;
+class UPointLightComponent;
 
 class ULevel : public UObject
 {
@@ -52,6 +54,7 @@ private:
     TArray<AActor*> PendingBeginPlayActors;
 
     AActor* SelectedActor = nullptr;
+    USceneComponent* SelectedComponent = nullptr;
 
     USceneComponent* pickingGizmo = nullptr;
     AEditorPlayer* EditorPlayer = nullptr;
@@ -72,10 +75,46 @@ public:
         SelectedActor = InActor;
     }
 
+    AActor* GetSelectedTempActor() const
+    {
+        AActor* Result = nullptr;
+
+        if (SelectedComponent != nullptr)
+        {
+            Result = SelectedComponent->GetOwner();
+        }
+
+        if (Result == nullptr && SelectedActor != nullptr)
+        {
+            Result = SelectedActor;
+        }
+
+        return Result;
+    }
+
+    USceneComponent* GetSelectedTempComponent() const
+    {
+        if (SelectedComponent != nullptr)
+        {
+            return SelectedComponent;
+        }
+
+        if (SelectedActor != nullptr)
+        {
+            return SelectedActor->GetRootComponent();
+        }
+
+        return nullptr;
+    }
+
+    USceneComponent* GetSelectedComponent() const { return SelectedComponent; }
+    void SetPickedComponent(USceneComponent* InActor)
+    {
+        SelectedComponent = InActor;
+    }
+
     USceneComponent* GetPickingGizmo() const { return pickingGizmo; }
     void SetPickingGizmo(UObject* Object);
-
-
 };
 
 
