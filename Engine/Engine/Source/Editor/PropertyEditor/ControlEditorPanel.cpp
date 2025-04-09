@@ -19,6 +19,8 @@
 #include "PropertyEditor/ShowFlags.h"
 #include <Components/PointLightComponent.h>
 
+#include "Math/MathUtility.h"
+
 void ControlEditorPanel::Render()
 {
     /* Pre Setup */
@@ -228,7 +230,7 @@ void ControlEditorPanel::CreateModifyButton(ImVec2 ButtonSize, ImFont* IconFont)
         ImGui::Text("Camera FOV");
         FOV = &GEngineLoop.GetLevelEditor()->GetActiveViewportClient()->ViewFOV;
         ImGui::SetNextItemWidth(120.0f);
-        if (ImGui::DragFloat("##Fov", FOV, 0.1f, 30.0f, 120.0f, "%.1f"))
+        if (ImGui::DragFloat("##Fov", FOV, 0.1f, 0.1f, 179.9f, "%.1f"))
         {
             //GEngineLoop.GetWorld()->GetCamera()->SetFOV(FOV);
 
@@ -238,10 +240,24 @@ void ControlEditorPanel::CreateModifyButton(ImVec2 ButtonSize, ImFont* IconFont)
         ImGui::Text("Camera Speed");
         CameraSpeed = GEngineLoop.GetLevelEditor()->GetActiveViewportClient()->GetCameraSpeedScalar();
         ImGui::SetNextItemWidth(120.0f);
-        if (ImGui::DragFloat("##CamSpeed", &CameraSpeed, 0.1f, 0.198f, 192.0f, "%.1f"))
+        if (ImGui::DragFloat("##CamSpeed", &CameraSpeed, 0.01f, 0.1f, 192.0f, "%.2f"))
         {
             GEngineLoop.GetLevelEditor()->GetActiveViewportClient()->SetCameraSpeedScalar(CameraSpeed);
         }
+
+        ImGui::Text("Camera Near");
+        ImGui::SetNextItemWidth(120.0f);
+        ImGui::DragFloat("##CamNear", &GEngineLoop.GetLevelEditor()->GetActiveViewportClient()->nearPlane, 0.1f, 0.1f, GEngineLoop.GetLevelEditor()->GetActiveViewportClient()->farPlane, "%.2f");
+        //GEngineLoop.GetLevelEditor()->GetActiveViewportClient()->nearPlane = FMath::Clamp(GEngineLoop.GetLevelEditor()->GetActiveViewportClient()->nearPlane, 0.1f, GEngineLoop.GetLevelEditor()->GetActiveViewportClient()->farPlane);
+
+        ImGui::Text("Camera Far");
+        ImGui::SetNextItemWidth(120.0f);
+        ImGui::DragFloat("##CamFar", &GEngineLoop.GetLevelEditor()->GetActiveViewportClient()->farPlane, .5f, GEngineLoop.GetLevelEditor()->GetActiveViewportClient()->nearPlane, 1000000.f, "%.2f");
+        //GEngineLoop.GetLevelEditor()->GetActiveViewportClient()->farPlane = FMath::Clamp(GEngineLoop.GetLevelEditor()->GetActiveViewportClient()->farPlane, GEngineLoop.GetLevelEditor()->GetActiveViewportClient()->nearPlane, 10000000.f);
+
+        ImGui::Text("Gizmo Control Size");
+        ImGui::SetNextItemWidth(120.0f);
+        ImGui::DragFloat("##Gizmo Control Size", &GEngineLoop.GetLevelEditor()->GizmoScaleWeight, .01f, 0.1f, 4.f, "%.2f");
 
         ImGui::EndPopup();
     }

@@ -44,6 +44,9 @@ private:
     float EditorHeight;
 
 public:
+    float GizmoScaleWeight = 1.f;
+
+public:
     TArray<std::shared_ptr<FEditorViewportClient>>& GetViewports() { return ViewportClients; }
     std::shared_ptr<FEditorViewportClient> GetActiveViewportClient() const
     {
