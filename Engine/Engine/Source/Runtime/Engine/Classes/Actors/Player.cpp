@@ -1,4 +1,4 @@
-﻿#include "Player.h"
+#include "Player.h"
 
 #include "UnrealClient.h"
 #include "Level.h"
@@ -42,14 +42,14 @@ void AEditorPlayer::Input()
             GetCursorPos(&mousePos);
             GetCursorPos(&m_LastMousePos);
 
-            uint32 UUID = GetEngine().GraphicDevice.GetPixelUUID(mousePos);
+            //uint32 UUID = GetEngine().GraphicDevice.GetPixelUUID(mousePos);
             // TArray<UObject*> objectArr = GetWorld()->GetObjectArr();
-            for ( const auto obj : TObjectRange<USceneComponent>())
-            {
-                if (obj->GetUUID() != UUID) continue;
-
-                UE_LOG(LogLevel::Display, *obj->GetName());
-            }
+            // for ( const auto obj : TObjectRange<USceneComponent>())
+            // {
+            //     //if (obj->GetUUID() != UUID) continue;
+            //
+            //     UE_LOG(LogLevel::Display, *obj->GetName());
+            // }
             ScreenToClient(GetEngine().hWnd, &mousePos);
 
             FVector pickPosition;
@@ -119,10 +119,11 @@ void AEditorPlayer::Input()
     if (GetAsyncKeyState(VK_DELETE) & 0x8000)
     {
         ULevel* level = GetLevel();
-        if (AActor* PickedActor = level->GetSelectedActor())
+        if (AActor* PickedActor = level->GetSelectedTempActor())
         {
-            level->DestroyActor(PickedActor);
             level->SetPickedActor(nullptr);
+            level->SetPickedComponent(nullptr);
+            level->DestroyActor(PickedActor);
         }
     }
 }
@@ -130,7 +131,7 @@ void AEditorPlayer::Input()
 bool AEditorPlayer::PickGizmo(FVector& pickPosition)
 {
     bool isPickedGizmo = false;
-    if (GetLevel()->GetSelectedActor())
+    if (GetLevel()->GetSelectedTempComponent())
     {
         if (cMode == CM_TRANSLATION)
         {
@@ -352,7 +353,7 @@ int AEditorPlayer::RayIntersectsObject(const FVector& pickPosition, USceneCompon
 
 void AEditorPlayer::PickedObjControl()
 {
-    if (GetLevel()->GetSelectedActor() && GetLevel()->GetPickingGizmo())
+    if (GetLevel()->GetSelectedTempComponent() && GetLevel()->GetPickingGizmo())
     {
         POINT currentMousePos;
         GetCursorPos(&currentMousePos);
@@ -360,19 +361,19 @@ void AEditorPlayer::PickedObjControl()
         int32 deltaY = currentMousePos.y - m_LastMousePos.y;
 
         // USceneComponent* pObj = GetWorld()->GetPickingObj();
-        AActor* PickedActor = GetLevel()->GetSelectedActor();
+        USceneComponent* SceneComponent = GetLevel()->GetSelectedTempComponent();
         UGizmoBaseComponent* Gizmo = static_cast<UGizmoBaseComponent*>(GetLevel()->GetPickingGizmo());
         switch (cMode)
         {
         case CM_TRANSLATION:
-            ControlTranslation(PickedActor->GetRootComponent(), Gizmo, deltaX, deltaY);
+            ControlTranslation(SceneComponent, Gizmo, deltaX, deltaY);
             break;
         case CM_SCALE:
-            ControlScale(PickedActor->GetRootComponent(), Gizmo, deltaX, deltaY);
+            ControlScale(SceneComponent, Gizmo, deltaX, deltaY);
 
             break;
         case CM_ROTATION:
-            ControlRotation(PickedActor->GetRootComponent(), Gizmo, deltaX, deltaY);
+            ControlRotation(SceneComponent, Gizmo, deltaX, deltaY);
             break;
         default:
             break;

@@ -24,7 +24,7 @@ bool SSplitter::OnPressed(FPoint coord)
 {
     if (!IsHover(coord))
         return false;
-    
+
     return bIsPressed = true;
 }
 
@@ -81,7 +81,7 @@ void SSplitterH::LoadConfig(const TMap<FString, FString>& config)
 
     Rect.width = GetValueFromConfig(config, "SplitterH.Width", 20.0f);
     Rect.height = GetValueFromConfig(config, "SplitterH.Height", 10.0f); // 수평 스플리터는 높이 고정
-    
+
     Rect.leftTopX *= GEngineLoop.GraphicDevice.screenWidth /GetValueFromConfig(config, "SplitterV.Width", 1000.0f);
 }
 

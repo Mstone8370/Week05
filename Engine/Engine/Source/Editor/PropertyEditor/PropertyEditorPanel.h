@@ -13,7 +13,7 @@ class PropertyEditorPanel : public UEditorPanel
 {
 public:
     virtual void Render() override;
-    void RenderForFireBall(UFireBallComponent* FireBallComp);
+    void RenderForFireBall(UPointLightComponent* FireBallComp);
     virtual void OnResize(HWND hWnd) override;
 
 
@@ -21,8 +21,8 @@ private:
     void RGBToHSV(float r, float g, float b, float& h, float& s, float& v) const;
     void HSVToRGB(float h, float s, float v, float& r, float& g, float& b) const;
 
-    void RenderForActor(AActor* PickedActor, AEditorPlayer* Player);
-    void RenderForComponents(USceneComponent* Component);
+    void RenderForSceneComponent(USceneComponent* RootComponent, USceneComponent* SceneComponent, AEditorPlayer* Player);
+    void RenderForActorHierarchy(USceneComponent* Component, bool& bClicked);
     USceneComponent* SelectedComponentForPopup = nullptr;
 
     bool bOpenAddComponentModel = false;

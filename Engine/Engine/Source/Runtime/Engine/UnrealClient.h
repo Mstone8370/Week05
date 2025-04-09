@@ -20,7 +20,7 @@ public:
 
     void Initialize();
 
-    void ResizeViewport(const DXGI_SWAP_CHAIN_DESC& SwapChainDesc);
+    void InitializeViewport(const DXGI_SWAP_CHAIN_DESC& SwapChainDesc);
 
     void ResizeViewport(const FRect& Top, const FRect& Bottom, const FRect& Left, const FRect& Right);
 
@@ -31,6 +31,6 @@ private:
     EViewScreenLocation ViewLocation;   // 뷰포트 위치
 public:
     D3D11_VIEWPORT& GetViewport() { return Viewport; }
-    void SetViewport(D3D11_VIEWPORT _viewport) { Viewport = _viewport; }
+    //void SetViewport(D3D11_VIEWPORT _viewport) { Viewport = _viewport; }
 };
 

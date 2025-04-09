@@ -390,7 +390,7 @@ void ControlEditorPanel::CreateModifyButton(ImVec2 ButtonSize, ImFont* IconFont)
                 {
                     SpawnedActor = level->SpawnActor<AActor>();
                     SpawnedActor->SetActorLabel(TEXT("FireBall"));
-                    UFireBallComponent* FireBallComp = SpawnedActor->AddComponent<UFireBallComponent>();
+                    UPointLightComponent* FireBallComp = SpawnedActor->AddComponent<UPointLightComponent>();
                     UStaticMeshComponent* MeshComp = SpawnedActor->AddComponent<UStaticMeshComponent>();
                     FManagerOBJ::CreateStaticMesh("Assets/Fireball.obj");
                     MeshComp->SetStaticMesh(FManagerOBJ::GetStaticMesh(L"Fireball.obj"));
@@ -406,6 +406,7 @@ void ControlEditorPanel::CreateModifyButton(ImVec2 ButtonSize, ImFont* IconFont)
                 if (SpawnedActor)
                 {
                     level->SetPickedActor(SpawnedActor);
+                    level->SetPickedComponent(nullptr);
                 }
             }
         }

@@ -28,20 +28,9 @@ static LRESULT CALLBACK WndProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM l
     case WM_SIZE:
         if (wParam != SIZE_MINIMIZED)
         {
-            //UGraphicsDevice 객체의 OnResize 함수 호출
-            if (FEngineLoop::GraphicDevice.SwapChain)
-            {
-                FEngineLoop::GraphicDevice.OnResize(hWnd);
-            }
-            for (int i = 0; i < 4; i++)
-            {
-                if (GEngineLoop.GetLevelEditor())
-                {
-                    if (GEngineLoop.GetLevelEditor()->GetViewports()[i])
-                    {
-                        GEngineLoop.GetLevelEditor()->GetViewports()[i]->ResizeViewport(FEngineLoop::GraphicDevice.SwapchainDesc);
-                    }
-                }
+            if (GEngineLoop.GetLevelEditor()){
+                //UGraphicsDevice 객체의 OnResize 함수 호출
+                FEngineLoop::GraphicDevice.OnResize(hWnd, GEngineLoop.GetLevelEditor());
             }
         }
      Console::GetInstance().OnResize(hWnd);
@@ -123,7 +112,10 @@ int32 FEngineLoop::Init(HINSTANCE hInstance)
 
     ResourceManager.Initialize(&Renderer, &GraphicDevice);
     LevelEditor = new SLevelEditor();
-    LevelEditor->Initialize();
+    LevelEditor->Initialize(GraphicDevice.screenWidth, GraphicDevice.screenHeight);
+
+    GraphicDevice.InitializeBuffer(LevelEditor->GetViewports());
+
 
     GWorld = FObjectFactory::ConstructObject<UWorld>();
     WorldContexts.Add({GWorld, EWorldType::Editor});
@@ -139,35 +131,53 @@ int32 FEngineLoop::Init(HINSTANCE hInstance)
 
 void FEngineLoop::Render()
 {
-    GraphicDevice.Prepare();
+    Renderer.PrepareRender(GLevel);
+    uint32 ActivatedIndex = GetLevelEditor()->GetActiveViewportClientIndex();
     if (LevelEditor->IsMultiViewport())
     {
-        std::shared_ptr<FEditorViewportClient> ViewportClient = GetLevelEditor()->GetActiveViewportClient();
-        for (int i = 0; i < 4; ++i)
+        uint32 ViewportClientCount = GetLevelEditor()->GetViewports().Num();
+        for (uint32 i = 0; i < ViewportClientCount; ++i)
         {
-            LevelEditor->SetViewportClient(i);
-            Renderer.PrepareRender(GLevel);
-            Renderer.RenderScene(GetLevel(),LevelEditor->GetActiveViewportClient());
+            //asd
+            LevelEditor->SetViewportClientIndex(i);
+
+            float tempX = LevelEditor->GetActiveViewportClient()->GetViewport()->GetViewport().TopLeftX;
+            float tempY = LevelEditor->GetActiveViewportClient()->GetViewport()->GetViewport().TopLeftY;
+
+            LevelEditor->GetActiveViewportClient()->GetViewport()->GetViewport().TopLeftX = 0;
+            LevelEditor->GetActiveViewportClient()->GetViewport()->GetViewport().TopLeftY = 0;
+            GraphicDevice.Prepare(LevelEditor->GetActiveViewportClient(), i);
+            Renderer.RenderScene(GetLevel(), LevelEditor->GetActiveViewportClient());
+
+            Renderer.SampleAndProcessSRV(LevelEditor->GetActiveViewportClient(), i);
+
+            Renderer.PostProcess(LevelEditor->GetActiveViewportClient(), i);
+
+            LevelEditor->GetActiveViewportClient()->GetViewport()->GetViewport().TopLeftX = tempX;
+            LevelEditor->GetActiveViewportClient()->GetViewport()->GetViewport().TopLeftY = tempY;
+            GraphicDevice.DeviceContext->RSSetViewports(1, &LevelEditor->GetActiveViewportClient()->GetViewport()->GetViewport()); // GPU가 화면을 렌더링할 영역 설정
+
+            // asd
+            Renderer.RenderFullScreenQuad(LevelEditor->GetActiveViewportClient(), i);
 
             LevelEditor->GetActiveViewportClient()->UpdatePrevMatrix();
-            Renderer.OnEndRender();
         }
-        GetLevelEditor()->SetViewportClient(ViewportClient);
+        GetLevelEditor()->SetViewportClientIndex(ActivatedIndex);
     }
     else
     {
-        Renderer.PrepareRender(GLevel);
-        Renderer.RenderScene(GetLevel(),LevelEditor->GetActiveViewportClient());
+        GraphicDevice.Prepare(LevelEditor->GetActiveViewportClient(), ActivatedIndex);
+        Renderer.RenderScene(GetLevel(), LevelEditor->GetActiveViewportClient());
 
-        Renderer.SampleAndProcessSRV(LevelEditor->GetActiveViewportClient());
+        Renderer.SampleAndProcessSRV(LevelEditor->GetActiveViewportClient(), ActivatedIndex);
 
-        Renderer.PostProcess(LevelEditor->GetActiveViewportClient());
+        Renderer.PostProcess(LevelEditor->GetActiveViewportClient(), ActivatedIndex);
 
-        Renderer.RenderFullScreenQuad(LevelEditor->GetActiveViewportClient());
+        Renderer.RenderFullScreenQuad(LevelEditor->GetActiveViewportClient(), ActivatedIndex);
 
         LevelEditor->GetActiveViewportClient()->UpdatePrevMatrix();
-        Renderer.OnEndRender();
     }
+    Renderer.OnEndRender();
 }
 
 void FEngineLoop::Tick()
@@ -227,7 +237,7 @@ void FEngineLoop::EditorTick(double DeltaTime)
 {
     Input();
     GLevel->Tick(DeltaTime);
-    LevelEditor->Tick(DeltaTime);
+    LevelEditor->Tick(DeltaTime, hWnd);
 
     Render();
     UIMgr->BeginFrame();
@@ -305,12 +315,8 @@ void FEngineLoop::Input()
         if (!bTestInput)
         {
             bTestInput = true;
-            if (LevelEditor->IsMultiViewport())
-            {
-                LevelEditor->DisableMultiViewport();
-            }
-            else
-                LevelEditor->EnableMultiViewport();
+            LevelEditor->SetEnableMultiViewport(!LevelEditor->IsMultiViewport());
+            GraphicDevice.OnResize(hWnd, LevelEditor);
         }
     }
     else

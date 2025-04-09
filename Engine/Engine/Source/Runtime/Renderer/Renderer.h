@@ -22,7 +22,7 @@ class UBillboardComponent;
 class UStaticMeshComponent;
 class UGizmoBaseComponent;
 struct FStaticMaterial;
-class UFireBallComponent;
+class UPointLightComponent;
 
 
 class FRenderer
@@ -123,7 +123,7 @@ public:
     void UpdateViewBuffer(const FMatrix& PrevViewMatrix, const FMatrix& ViewMatrix, const FVector& ViewLocation) const;
     void UpdateProjectionBuffer(const FMatrix& PrevProjectionMatrix, const FMatrix& ProjectionMatrix, float NearClip, float FarClip) const;
 
-    void UpdateLightBuffer(ULevel* CurrentLevel) const;
+    void UpdateLightBuffer() const;
     void UpdateMaterial(const FObjMaterialInfo& MaterialInfo) const;
     void UpdateLitUnlitConstant(int isLit) const;
     void UpdateSubMeshConstant(bool isSelected) const;
@@ -174,12 +174,12 @@ public:
     void PrepareRender(ULevel* Level);
     void RenderScene(ULevel* Level, std::shared_ptr<FEditorViewportClient> ActiveViewport);
 
-    void SampleAndProcessSRV(std::shared_ptr<FEditorViewportClient> ActiveViewport);
+    void SampleAndProcessSRV(std::shared_ptr<FEditorViewportClient> ActiveViewport, uint32 ViewportIndex);
 
     void PreparePostProcess(std::shared_ptr<FEditorViewportClient> ActiveViewport);
-    void PostProcess(std::shared_ptr<FEditorViewportClient> ActiveViewport);
+    void PostProcess(std::shared_ptr<FEditorViewportClient> ActiveViewport, uint32 ViewportIndex);
 
-    void RenderFullScreenQuad(std::shared_ptr<FEditorViewportClient> ActiveViewport);
+    void RenderFullScreenQuad(std::shared_ptr<FEditorViewportClient> ActiveViewport, uint32 ViewportIndex);
 
     void DrawFullScreenQuad();
 
@@ -217,7 +217,7 @@ private:
     TArray<UPrimitiveComponent*> TextObjs;
     TArray<UBillboardComponent*> BillboardObjs;
     TArray<ULightComponentBase*> LightObjs;
-    TArray<UFireBallComponent*> FireBalls;
+    TArray<UPointLightComponent*> FireBalls;
 
     float litFlag = 0;
 

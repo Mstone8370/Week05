@@ -182,8 +182,7 @@ FVector USceneComponent::GetWorldLocation()
 	{
 		return FVector(AttachParent->GetWorldLocation() + GetLocalLocation());
 	}
-	else
-		return GetLocalLocation();
+	return GetLocalLocation();
 }
 
 FVector USceneComponent::GetLocalRotation()

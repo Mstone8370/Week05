@@ -1,13 +1,13 @@
 #pragma once
 #include "PrimitiveComponent.h"
 
-class UFireBallComponent  :public USceneComponent
+class UPointLightComponent  :public USceneComponent
 {
-    DECLARE_CLASS(UFireBallComponent, USceneComponent)
+    DECLARE_CLASS(UPointLightComponent, USceneComponent)
 
 public:
-    UFireBallComponent();
-    virtual ~UFireBallComponent() = default;
+    UPointLightComponent();
+    virtual ~UPointLightComponent() = default;
 
     void InitializeComponent() override;
 

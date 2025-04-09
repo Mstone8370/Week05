@@ -34,11 +34,11 @@ void FEditorViewportClient::Draw(FViewport* Viewport)
 
 void FEditorViewportClient::Initialize(int32 viewportIndex)
 {
-
     ViewTransformPerspective.SetLocation(FVector(8.0f, 8.0f, 8.f));
     ViewTransformPerspective.SetRotation(FVector(0.0f, 45.0f, -135.0f));
     Viewport = new FViewport(static_cast<EViewScreenLocation>(viewportIndex));
-    ResizeViewport(FEngineLoop::GraphicDevice.SwapchainDesc);
+
+    Viewport->InitializeViewport(FEngineLoop::GraphicDevice.SwapchainDesc);
     ViewportIndex = viewportIndex;
 }
 
@@ -132,30 +132,30 @@ void FEditorViewportClient::Input()
     // Focus Selected Actor
     if (GetAsyncKeyState('F') & 0x8000)
     {
-        if (AActor* PickedActor = GEngineLoop.GetLevel()->GetSelectedActor())
+        if (USceneComponent* TargetComponent = GEngineLoop.GetLevel()->GetSelectedTempComponent())
         {
             FViewportCameraTransform& ViewTransform = ViewTransformPerspective;
             ViewTransform.SetLocation(
                 // TODO: 10.0f 대신, 정점의 min, max의 거리를 구해서 하면 좋을 듯
-                PickedActor->GetActorLocation() - (ViewTransform.GetForwardVector() * 10.0f)
+                TargetComponent->GetWorldLocation() - (ViewTransform.GetForwardVector() * 10.0f)
             );
         }
     }
 }
-void FEditorViewportClient::ResizeViewport(const DXGI_SWAP_CHAIN_DESC& SwapChainDesc)
-{
-    if (Viewport)
-    {
-        Viewport->ResizeViewport(SwapChainDesc);
-    }
-    else
-    {
-        UE_LOG(LogLevel::Error, "Viewport is nullptr");
-    }
-    AspectRatio = GEngineLoop.GetAspectRatio(GEngineLoop.GraphicDevice.SwapChain);
-    UpdateProjectionMatrix();
-    UpdateViewMatrix();
-}
+// void FEditorViewportClient::ResizeViewport(const DXGI_SWAP_CHAIN_DESC& SwapChainDesc)
+// {
+//     if (Viewport)
+//     {
+//         Viewport->ResizeViewport(SwapChainDesc);
+//     }
+//     else
+//     {
+//         UE_LOG(LogLevel::Error, "Viewport is nullptr");
+//     }
+//     AspectRatio = GEngineLoop.GetAspectRatio(GEngineLoop.GraphicDevice.SwapChain);
+//     UpdateProjectionMatrix();
+//     UpdateViewMatrix();
+// }
 
 void FEditorViewportClient::ResizeViewport(FRect Top, FRect Bottom, FRect Left, FRect Right)
 {
@@ -323,7 +323,7 @@ void FEditorViewportClient::UpdateProjectionMatrix()
             orthoWidth,
             orthoHeight,
             nearPlane,
-            farPlane
+            farPlane + 10000000
         );
     }
 }
