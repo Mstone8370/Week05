@@ -1005,19 +1005,19 @@ void FRenderer::PreparePostProcess(std::shared_ptr<FEditorViewportClient> Active
     }
 }
 
-void FRenderer::PostProcess(std::shared_ptr<FEditorViewportClient> ActiveViewport)
+void FRenderer::PostProcess(std::shared_ptr<FEditorViewportClient> ActiveViewport, uint32 ViewportIndex)
 {
     PreparePostProcess(ActiveViewport);
 
     // Draw Fog Quad
     if (ExponentialHeightFogComponent != nullptr) {
         // // TODO: Temp, 임시 코드
-        Graphics->ClearAndSetRTV(Graphics->FogRTV, Graphics->ClearColor);
+        Graphics->ClearAndSetRTV(Graphics->BufferDataArray[ViewportIndex]->FogRTV, Graphics->ClearColor);
         UpdateExponentialHeightFogConstant(ExponentialHeightFogComponent);
         Graphics->DeviceContext->PSSetConstantBuffers(3, 1, &ExponentialConstantBuffer);
 
-        Graphics->DeviceContext->PSSetShaderResources(0, 1, &Graphics->DepthStencilSRV);
-        Graphics->DeviceContext->PSSetShaderResources(1, 1, &Graphics->WorldPosBufferSRV);
+        Graphics->DeviceContext->PSSetShaderResources(0, 1, &Graphics->BufferDataArray[ViewportIndex]->DepthStencilSRV);
+        Graphics->DeviceContext->PSSetShaderResources(1, 1, &Graphics->BufferDataArray[ViewportIndex]->WorldPosBufferSRV);
 
         Graphics->DeviceContext->PSSetShader(FogShader, nullptr, 0);
         Graphics->DeviceContext->PSSetSamplers(0, 1, &ScreenSamplerState);
@@ -1030,14 +1030,14 @@ void FRenderer::PostProcess(std::shared_ptr<FEditorViewportClient> ActiveViewpor
     // Draw Motion Blur
     if (MotionBlurComponent != nullptr) {
         // // TODO: Temp, 임시 코드
-        Graphics->ClearAndSetRTV(Graphics->MotionBlurBufferRTV, Graphics->ZeroColor);
+        Graphics->ClearAndSetRTV(Graphics->BufferDataArray[ViewportIndex]->MotionBlurBufferRTV, Graphics->ZeroColor);
         UpdateMotionBlurConstant(MotionBlurComponent, ActiveViewport);
         Graphics->DeviceContext->PSSetConstantBuffers(3, 1, &MotionBlurConstantBuffer);
 
-        Graphics->DeviceContext->PSSetShaderResources(0, 1, &Graphics->SceneBufferSRV);
-        Graphics->DeviceContext->PSSetShaderResources(1, 1, &Graphics->VelocityBufferSRV);
-        Graphics->DeviceContext->PSSetShaderResources(2, 1, &Graphics->NormalizedDepthSRV);
-        Graphics->DeviceContext->PSSetShaderResources(3, 1, &Graphics->ViewNormalBufferSRV);
+        Graphics->DeviceContext->PSSetShaderResources(0, 1, &Graphics->BufferDataArray[ViewportIndex]->SceneBufferSRV);
+        Graphics->DeviceContext->PSSetShaderResources(1, 1, &Graphics->BufferDataArray[ViewportIndex]->VelocityBufferSRV);
+        Graphics->DeviceContext->PSSetShaderResources(2, 1, &Graphics->BufferDataArray[ViewportIndex]->NormalizedDepthSRV);
+        Graphics->DeviceContext->PSSetShaderResources(3, 1, &Graphics->BufferDataArray[ViewportIndex]->ViewNormalBufferSRV);
 
         Graphics->DeviceContext->PSSetShader(MotionBlurShader, nullptr, 0);
         Graphics->DeviceContext->PSSetSamplers(0, 1, &ScreenSamplerState);
@@ -1341,11 +1341,11 @@ void FRenderer::PrepareRender(ULevel* Level)
     }
 
     SetDefaultConstantBuffer();
+    Graphics->DeviceContext->ClearRenderTargetView(Graphics->FinalFrameBufferRTV, Graphics->ClearColor); // 렌더 타겟 뷰에 저장된 이전 프레임 데이터를 삭제
 }
 
 void FRenderer::RenderScene(ULevel* Level, std::shared_ptr<FEditorViewportClient> ActiveViewport)
 {
-    Graphics->DeviceContext->RSSetViewports(1, &ActiveViewport->GetD3DViewport());
     Graphics->ChangeRasterizer(ActiveViewport->GetViewMode());
     ChangeViewMode(ActiveViewport->GetViewMode());
 
@@ -1394,12 +1394,12 @@ void FRenderer::RenderScene(ULevel* Level, std::shared_ptr<FEditorViewportClient
     }
 }
 
-void FRenderer::SampleAndProcessSRV(std::shared_ptr<FEditorViewportClient> ActiveViewport)
+void FRenderer::SampleAndProcessSRV(std::shared_ptr<FEditorViewportClient> ActiveViewport, uint32 ViewportIndex)
 {
     // Depth - Normalize
-    Graphics->PrepareDepthMap();
+    Graphics->PrepareDepthMap(ViewportIndex);
 
-    Graphics->DeviceContext->PSSetShaderResources(0, 1, &Graphics->DepthStencilSRV);
+    Graphics->DeviceContext->PSSetShaderResources(0, 1, &Graphics->BufferDataArray[ViewportIndex]->DepthStencilSRV);
 
     Graphics->DeviceContext->PSSetShader(DepthShader, nullptr, 0);
     Graphics->DeviceContext->PSSetSamplers(0, 1, &ScreenSamplerState);
@@ -1407,7 +1407,7 @@ void FRenderer::SampleAndProcessSRV(std::shared_ptr<FEditorViewportClient> Activ
     DrawFullScreenQuad();
 }
 
-void FRenderer::RenderFullScreenQuad(std::shared_ptr<FEditorViewportClient> ActiveViewport)
+void FRenderer::RenderFullScreenQuad(std::shared_ptr<FEditorViewportClient> ActiveViewport, uint32 ViewportIndex)
 {
     Graphics->PrepareFinal();
 
@@ -1422,7 +1422,7 @@ void FRenderer::RenderFullScreenQuad(std::shared_ptr<FEditorViewportClient> Acti
         }
 
         // TODO: Temp, 임시 코드
-        Graphics->DeviceContext->PSSetShaderResources(0, 1, &Graphics->NormalizedDepthSRV);
+        Graphics->DeviceContext->PSSetShaderResources(0, 1, &Graphics->BufferDataArray[ViewportIndex]->NormalizedDepthSRV);
     }
     else if (ViewModeFlags == EViewModeIndex::VMI_Velocity)
     {
@@ -1435,17 +1435,17 @@ void FRenderer::RenderFullScreenQuad(std::shared_ptr<FEditorViewportClient> Acti
         }
 
         // TODO: Temp, 임시 코드
-        Graphics->DeviceContext->PSSetShaderResources(0, 1, &Graphics->VelocityBufferSRV);
+        Graphics->DeviceContext->PSSetShaderResources(0, 1, &Graphics->BufferDataArray[ViewportIndex]->VelocityBufferSRV);
     }
     else
     {
-        Graphics->DeviceContext->PSSetShaderResources(0, 1, &Graphics->SceneBufferSRV);
+        Graphics->DeviceContext->PSSetShaderResources(0, 1, &Graphics->BufferDataArray[ViewportIndex]->SceneBufferSRV);
 
         ID3D11ShaderResourceView* nullSRV[1] = {nullptr};
         // TODO: Temp 코드
         if (ExponentialHeightFogComponent)
         {
-            Graphics->DeviceContext->PSSetShaderResources(2, 1, &Graphics->FogSRV);
+            Graphics->DeviceContext->PSSetShaderResources(2, 1, &Graphics->BufferDataArray[ViewportIndex]->FogSRV);
         }
         else
         {
@@ -1455,7 +1455,7 @@ void FRenderer::RenderFullScreenQuad(std::shared_ptr<FEditorViewportClient> Acti
         // TODO: Temp 코드
         if (MotionBlurComponent)
         {
-            Graphics->DeviceContext->PSSetShaderResources(1, 1, &Graphics->MotionBlurBufferSRV);
+            Graphics->DeviceContext->PSSetShaderResources(1, 1, &Graphics->BufferDataArray[ViewportIndex]->MotionBlurBufferSRV);
         }
         else
         {

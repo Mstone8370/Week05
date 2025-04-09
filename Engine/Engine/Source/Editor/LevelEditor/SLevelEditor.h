@@ -1,38 +1,42 @@
 #pragma once
 #include "Define.h"
 #include "Container/Map.h"
+
+#define ViewportCount 4
+
 class SSplitterH;
 class SSplitterV;
 class ULevel;
 class FEditorViewportClient;
+
 class SLevelEditor
 {
 public:
     SLevelEditor();
     ~SLevelEditor();
-    void Initialize();
-    void Tick(double deltaTime);
-    void Input();
+    void Initialize(UINT ScreenWidth, UINT ScreenHeight);
+    void Tick(double deltaTime, HWND hWnd);
+    void Input(HWND hWnd);
     void Release();
-    
+
     void SelectViewport(POINT point);
-    void OnResize();
-    void ResizeViewports();
-    void EnableMultiViewport();
-    void DisableMultiViewport();
+    void SetEnableMultiViewport(bool bIsEnable);
     bool IsMultiViewport() const;
-    
+
+    void ResizeLevel(UINT ScreenWidth, UINT ScreenHeight);
+
 private:
-    bool bInitialize;
+    void ResizeViewports();
+private:
     SSplitterH* HSplitter;
     SSplitterV* VSplitter;
     ULevel* Level;
-    std::shared_ptr<FEditorViewportClient> viewportClients[4];
-    std::shared_ptr<FEditorViewportClient> ActiveViewportClient;
+    TArray<std::shared_ptr<FEditorViewportClient>> ViewportClients;
+    uint32 ActiveViewportClientIndex;
 
     bool bLButtonDown = false;
     bool bRButtonDown = false;
-    
+
     bool bMultiViewportMode;
 
     POINT lastMousePos;
@@ -40,18 +44,18 @@ private:
     float EditorHeight;
 
 public:
-    std::shared_ptr<FEditorViewportClient>* GetViewports() { return viewportClients; }
+    TArray<std::shared_ptr<FEditorViewportClient>>& GetViewports() { return ViewportClients; }
     std::shared_ptr<FEditorViewportClient> GetActiveViewportClient() const
     {
-        return ActiveViewportClient;
+        return ViewportClients[ActiveViewportClientIndex];
     }
-    void SetViewportClient(std::shared_ptr<FEditorViewportClient> viewportClient)
+    void SetViewportClientIndex(uint32 index)
     {
-        ActiveViewportClient = viewportClient;
+        ActiveViewportClientIndex = index;
     }
-    void SetViewportClient(int index)
+    uint32 GetActiveViewportClientIndex() const
     {
-        ActiveViewportClient = viewportClients[index];
+        return ActiveViewportClientIndex;
     }
 
     //Save And Load

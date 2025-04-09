@@ -91,7 +91,7 @@ public:
     void Release();
 
     void Input();
-    void ResizeViewport(const DXGI_SWAP_CHAIN_DESC& SwapChainDesc);
+    //void ResizeViewport(const DXGI_SWAP_CHAIN_DESC& SwapChainDesc);
     void ResizeViewport(FRect Top, FRect Bottom, FRect Left, FRect Right);
 
     bool IsSelected(const POINT& Point);
@@ -107,11 +107,13 @@ public:
     static FVector Pivot;
     static float OrthoSize;
 
-    FViewport* Viewport;
-    int32 ViewportIndex;
     FViewport* GetViewport() { return Viewport; }
     D3D11_VIEWPORT& GetD3DViewport();
 
+    void UpdatePrevMatrix();
+
+    FViewport* Viewport;
+    int32 ViewportIndex;
     //카메라
     /** Viewport camera transform data for perspective viewports */
     FViewportCameraTransform		ViewTransformPerspective;
@@ -151,8 +153,6 @@ public:
     FMatrix& GetProjectionMatrix() { return Projection; }
     void UpdateViewMatrix();
     void UpdateProjectionMatrix();
-
-    void UpdatePrevMatrix();
 
     bool IsOrtho() const;
     bool IsPerspective() const;

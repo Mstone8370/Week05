@@ -34,11 +34,11 @@ void FEditorViewportClient::Draw(FViewport* Viewport)
 
 void FEditorViewportClient::Initialize(int32 viewportIndex)
 {
-
     ViewTransformPerspective.SetLocation(FVector(8.0f, 8.0f, 8.f));
     ViewTransformPerspective.SetRotation(FVector(0.0f, 45.0f, -135.0f));
     Viewport = new FViewport(static_cast<EViewScreenLocation>(viewportIndex));
-    ResizeViewport(FEngineLoop::GraphicDevice.SwapchainDesc);
+
+    Viewport->InitializeViewport(FEngineLoop::GraphicDevice.SwapchainDesc);
     ViewportIndex = viewportIndex;
 }
 
@@ -142,20 +142,20 @@ void FEditorViewportClient::Input()
         }
     }
 }
-void FEditorViewportClient::ResizeViewport(const DXGI_SWAP_CHAIN_DESC& SwapChainDesc)
-{
-    if (Viewport)
-    {
-        Viewport->ResizeViewport(SwapChainDesc);
-    }
-    else
-    {
-        UE_LOG(LogLevel::Error, "Viewport is nullptr");
-    }
-    AspectRatio = GEngineLoop.GetAspectRatio(GEngineLoop.GraphicDevice.SwapChain);
-    UpdateProjectionMatrix();
-    UpdateViewMatrix();
-}
+// void FEditorViewportClient::ResizeViewport(const DXGI_SWAP_CHAIN_DESC& SwapChainDesc)
+// {
+//     if (Viewport)
+//     {
+//         Viewport->ResizeViewport(SwapChainDesc);
+//     }
+//     else
+//     {
+//         UE_LOG(LogLevel::Error, "Viewport is nullptr");
+//     }
+//     AspectRatio = GEngineLoop.GetAspectRatio(GEngineLoop.GraphicDevice.SwapChain);
+//     UpdateProjectionMatrix();
+//     UpdateViewMatrix();
+// }
 
 void FEditorViewportClient::ResizeViewport(FRect Top, FRect Bottom, FRect Left, FRect Right)
 {
@@ -323,7 +323,7 @@ void FEditorViewportClient::UpdateProjectionMatrix()
             orthoWidth,
             orthoHeight,
             nearPlane,
-            farPlane
+            farPlane + 10000000
         );
     }
 }
