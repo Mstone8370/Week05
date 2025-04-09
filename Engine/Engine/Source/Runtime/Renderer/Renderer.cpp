@@ -691,7 +691,7 @@ void FRenderer::UpdateExponentialHeightFogConstant(UExponentialHeightFogComponen
             constants->FogColor = ExponentialHeightFogComp->FogColor;
             constants->FogDensity = ExponentialHeightFogComp->FogDensity;
             constants->FogFalloff = ExponentialHeightFogComp->FogFalloff;
-            constants->FogHeight = ExponentialHeightFogComp->FogHeight;
+            constants->FogHeight = ExponentialHeightFogComp->GetWorldLocation().Z;
             constants->FogStartDistance = ExponentialHeightFogComp->FogStartDistance;
             constants->FogEndDistance = ExponentialHeightFogComp->FogEndDistance;
             constants->DistanceFogIntensity = ExponentialHeightFogComp->DistanceFogIntensity;
