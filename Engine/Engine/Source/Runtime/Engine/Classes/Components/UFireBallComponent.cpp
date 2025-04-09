@@ -1,53 +1,53 @@
 #include "UFireBallComponent.h"
 
-UFireBallComponent::UFireBallComponent()
+UPointLightComponent::UPointLightComponent()
     : Intensity(8.f)
     , Radius(10.f)
     , RadiusFallOff(2.f)
     , Color(1.0f, 0.25f, 0.0f, 1.0f)  // 기본 주황색
 {}
 
-void UFireBallComponent::InitializeComponent()
+void UPointLightComponent::InitializeComponent()
 {
     Super::InitializeComponent();
 }
 
-float UFireBallComponent::GetIntensity() const
+float UPointLightComponent::GetIntensity() const
 {
     return Intensity;
 }
 
-float UFireBallComponent::GetRadius() const
+float UPointLightComponent::GetRadius() const
 {
     return Radius;
 }
 
-float UFireBallComponent::GetRadiusFallOff() const
+float UPointLightComponent::GetRadiusFallOff() const
 {
     return RadiusFallOff;
 }
 
-FVector4 UFireBallComponent::GetColor() const
+FVector4 UPointLightComponent::GetColor() const
 {
     return Color;
 }
 
-void UFireBallComponent::SetIntensity(float NewIntensity)
+void UPointLightComponent::SetIntensity(float NewIntensity)
 {
     Intensity = NewIntensity;
 }
 
-void UFireBallComponent::SetRadius(float NewRadius)
+void UPointLightComponent::SetRadius(float NewRadius)
 {
     Radius = NewRadius;
 }
 
-void UFireBallComponent::SetRadiusFallOff(float NewRadiusFallOff)
+void UPointLightComponent::SetRadiusFallOff(float NewRadiusFallOff)
 {
     RadiusFallOff = NewRadiusFallOff;
 }
 
-void UFireBallComponent::SetColor(const FVector4& NewColor)
+void UPointLightComponent::SetColor(const FVector4& NewColor)
 {
     Color = NewColor;
 }

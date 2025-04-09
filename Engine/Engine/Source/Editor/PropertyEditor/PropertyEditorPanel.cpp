@@ -44,40 +44,51 @@ void PropertyEditorPanel::Render()
 
     AEditorPlayer* EditorPlayer = GEngineLoop.GetLevel()->GetEditorPlayer();
 
-    if (AActor* PickedActor = GEngineLoop.GetLevel()->GetSelectedActor())
-    {
-        RenderForActor(PickedActor, EditorPlayer);
+    AActor* TargetActor = GEngineLoop.GetLevel()->GetSelectedTempActor();
+    USceneComponent* TargetComponent = GEngineLoop.GetLevel()->GetSelectedTempComponent();
 
-        if (ULightComponentBase* LightComp = Cast<ULightComponentBase>(PickedActor->GetRootComponent()))
+
+    if (TargetActor == nullptr)
+    {
+        ImGui::End();
+        return;
+    }
+
+    if (TargetComponent)
+    {
+        //UE_LOG(LogLevel::Display, "Name: %s", *TargetComponent->GetName());
+        RenderForSceneComponent(TargetActor->GetRootComponent(), TargetComponent, EditorPlayer);
+
+        if (ULightComponentBase* LightComp = Cast<ULightComponentBase>(TargetComponent))
         {
             RenderForLight(LightComp);
         }
-        else if (UTextBillboardComponent* TextComp = Cast<UTextBillboardComponent>(PickedActor->GetRootComponent()))
+        else if (UTextBillboardComponent* TextBillboardComp = Cast<UTextBillboardComponent>(TargetComponent))
         {
-            RenderForTextBillboard(TextComp);
+            RenderForTextBillboard(TextBillboardComp);
         }
-        else if (UTextRenderComponent* TextComp = Cast<UTextRenderComponent>(PickedActor->GetRootComponent()))
+        else if (UTextRenderComponent* TextComp = Cast<UTextRenderComponent>(TargetComponent))
         {
             RenderForTextRender(TextComp);
         }
-        else if (UBillboardComponent* BillboardComp = Cast<UBillboardComponent>(PickedActor->GetRootComponent()))
+        else if (UBillboardComponent* BillboardComp = Cast<UBillboardComponent>(TargetComponent))
         {
             RenderForBillboard(BillboardComp);
         }
-        else if (UStaticMeshComponent* StaticMeshComp = Cast<UStaticMeshComponent>(PickedActor->GetRootComponent()))
+        else if (UStaticMeshComponent* StaticMeshComp = Cast<UStaticMeshComponent>(TargetComponent))
         {
             RenderForStaticMesh(StaticMeshComp);
             RenderForMaterial(StaticMeshComp);
         }
-        else if (UExponentialHeightFogComponent* ExponentialHeightFogComp = Cast<UExponentialHeightFogComponent>(PickedActor->GetRootComponent()))
+        else if (UExponentialHeightFogComponent* ExponentialHeightFogComp = Cast<UExponentialHeightFogComponent>(TargetComponent))
         {
             RenderForExponentialHeightFog(ExponentialHeightFogComp);
         }
-        else if (UFireBallComponent* FireBallComponent = Cast<UFireBallComponent>(PickedActor->GetRootComponent()))
+        else if (UPointLightComponent* FireBallComponent = Cast<UPointLightComponent>(TargetComponent))
         {
             RenderForFireBall(FireBallComponent);
         }
-        else if (UMotionBlurComponent* MotionBlurComponent = Cast<UMotionBlurComponent>(PickedActor->GetRootComponent()))
+        else if (UMotionBlurComponent* MotionBlurComponent = Cast<UMotionBlurComponent>(TargetComponent))
         {
             RenderForMotionBlurComponent(MotionBlurComponent);
         }
@@ -86,7 +97,7 @@ void PropertyEditorPanel::Render()
     ImGui::End();
 }
 
-void PropertyEditorPanel::RenderForFireBall(UFireBallComponent* FireBallComp)
+void PropertyEditorPanel::RenderForFireBall(UPointLightComponent* FireBallComp)
 {
     if (!FireBallComp)
         return;
@@ -224,23 +235,24 @@ void PropertyEditorPanel::HSVToRGB(float h, float s, float v, float& r, float& g
     r += m;  g += m;  b += m;
 }
 
-void PropertyEditorPanel::RenderForActor(AActor* PickedActor, AEditorPlayer* Player)
+void PropertyEditorPanel::RenderForSceneComponent(USceneComponent* RootComponent, USceneComponent* SceneComponent, AEditorPlayer* Player)
 {
     ImGui::SetItemDefaultFocus();
     // TreeNode 배경색을 변경 (기본 상태)
     ImGui::PushStyleColor(ImGuiCol_Header, ImVec4(0.1f, 0.1f, 0.1f, 1.0f));
 
-    if (ImGui::TreeNodeEx(*PickedActor->GetName(), ImGuiTreeNodeFlags_Framed | ImGuiTreeNodeFlags_DefaultOpen)) // 트리 노드 생성
+    if (ImGui::TreeNodeEx(*RootComponent->GetOwner()->GetName(), ImGuiTreeNodeFlags_Framed | ImGuiTreeNodeFlags_DefaultOpen)) // 트리 노드 생성
     {
-        RenderForComponents(PickedActor->GetRootComponent());
+        bool bIsClicked = false;
+        RenderForActorHierarchy(RootComponent, bIsClicked);
         ImGui::TreePop(); // 트리 닫기
     }
 
     if (ImGui::TreeNodeEx("Transform", ImGuiTreeNodeFlags_Framed | ImGuiTreeNodeFlags_DefaultOpen)) // 트리 노드 생성
     {
-        Location = PickedActor->GetActorLocation();
-        Rotation = PickedActor->GetActorRotation();
-        Scale = PickedActor->GetActorScale();
+        Location = SceneComponent->GetLocalLocation();
+        Rotation = SceneComponent->GetLocalRotation();
+        Scale = SceneComponent->GetLocalScale();
 
         FImGuiWidget::DrawVec3Control("Location", Location, 0, 85);
         ImGui::Spacing();
@@ -251,9 +263,9 @@ void PropertyEditorPanel::RenderForActor(AActor* PickedActor, AEditorPlayer* Pla
         FImGuiWidget::DrawVec3Control("Scale", Scale, 0, 85);
         ImGui::Spacing();
 
-        PickedActor->SetActorLocation(Location);
-        PickedActor->SetActorRotation(Rotation);
-        PickedActor->SetActorScale(Scale);
+        SceneComponent->SetLocation(Location);
+        SceneComponent->SetRotation(Rotation);
+        SceneComponent->SetScale(Scale);
 
         std::string coordiButtonLabel;
         if (Player->GetCoordiMode() == CoordiMode::CDM_WORLD)
@@ -270,10 +282,17 @@ void PropertyEditorPanel::RenderForActor(AActor* PickedActor, AEditorPlayer* Pla
     ImGui::PopStyleColor();
 }
 
-void PropertyEditorPanel::RenderForComponents(USceneComponent* Component)
+void PropertyEditorPanel::RenderForActorHierarchy(USceneComponent* Component, bool& bClicked)
 {
     if (ImGui::TreeNodeEx(*Component->GetName(), ImGuiTreeNodeFlags_DefaultOpen)) // 트리 노드 생성
     {
+        if (ImGui::IsItemClicked() && !bClicked) // 클릭 감지
+        {
+            bClicked = true;
+            GEngineLoop.GetLevel()->SetPickedActor(nullptr);
+            GEngineLoop.GetLevel()->SetPickedComponent(Component);
+        }
+
         if (ImGui::IsItemClicked(ImGuiMouseButton_Right))
         {
             SelectedComponentForPopup = Component;
@@ -366,7 +385,7 @@ void PropertyEditorPanel::RenderForComponents(USceneComponent* Component)
         {
             if (Child)
             {
-                RenderForComponents(Child);
+                RenderForActorHierarchy(Child, bClicked);
             }
         }
         ImGui::TreePop(); // 트리 닫기
@@ -375,21 +394,29 @@ void PropertyEditorPanel::RenderForComponents(USceneComponent* Component)
 
 void PropertyEditorPanel::RenderForStaticMesh(UStaticMeshComponent* StaticMeshComp)
 {
-    if (StaticMeshComp->GetStaticMesh() == nullptr)
-    {
-        return;
-    }
-
     ImGui::PushStyleColor(ImGuiCol_Header, ImVec4(0.1f, 0.1f, 0.1f, 1.0f));
     if (ImGui::TreeNodeEx("Static Mesh", ImGuiTreeNodeFlags_Framed | ImGuiTreeNodeFlags_DefaultOpen)) // 트리 노드 생성
     {
         ImGui::Text("StaticMesh");
         ImGui::SameLine();
 
-        FString PreviewName = StaticMeshComp->GetStaticMesh()->GetRenderData()->DisplayName;
+        FString PreviewName;
+        if (StaticMeshComp->GetStaticMesh())
+        {
+            PreviewName = StaticMeshComp->GetStaticMesh()->GetRenderData()->DisplayName;
+        }
+        else
+        {
+            PreviewName = TEXT("None");
+        }
         const TMap<FWString, UStaticMesh*> Meshes = FManagerOBJ::GetStaticMeshes();
         if (ImGui::BeginCombo("##StaticMesh", GetData(PreviewName), ImGuiComboFlags_None))
         {
+            if (ImGui::Selectable(TEXT("None"), false))
+            {
+                StaticMeshComp->SetStaticMesh(nullptr);
+            }
+
             for (auto Mesh : Meshes)
             {
                 if (ImGui::Selectable(GetData(Mesh.Value->GetRenderData()->DisplayName), false))
@@ -831,6 +858,10 @@ void PropertyEditorPanel::RenderForTextRender(UTextRenderComponent* TextRenderCo
                 TextRenderComp->ClearText();
                 int wlen = MultiByteToWideChar(CP_UTF8, 0, buf, -1, nullptr, 0);
                 FWString newWText(wlen, L'\0');
+                if (*(newWText.end()-1) == L'\0')
+                {
+                    newWText.erase(newWText.end()-1, newWText.end());
+                }
                 MultiByteToWideChar(CP_UTF8, 0, buf, -1, newWText.data(), wlen);
                 TextRenderComp->SetText(newWText);
             }

@@ -22,7 +22,7 @@ class UBillboardComponent;
 class UStaticMeshComponent;
 class UGizmoBaseComponent;
 struct FStaticMaterial;
-class UFireBallComponent;
+class UPointLightComponent;
 
 
 class FRenderer
@@ -217,7 +217,7 @@ private:
     TArray<UPrimitiveComponent*> TextObjs;
     TArray<UBillboardComponent*> BillboardObjs;
     TArray<ULightComponentBase*> LightObjs;
-    TArray<UFireBallComponent*> FireBalls;
+    TArray<UPointLightComponent*> FireBalls;
 
     float litFlag = 0;
 

@@ -38,9 +38,10 @@ void OutlinerEditorPanel::Render()
         ULevel* level = GEngineLoop.GetLevel();
         for (AActor* Actor : level->GetActors())
         {
-            if (ImGui::Selectable(*Actor->GetActorLabel(), level->GetSelectedActor() == Actor))
+            if (ImGui::Selectable(*Actor->GetActorLabel(), level->GetSelectedTempActor() == Actor))
             {
                 level->SetPickedActor(Actor);
+                level->SetPickedComponent(nullptr);
                 break;
             }
         }
