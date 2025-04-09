@@ -3,6 +3,7 @@
 Texture2D DiffuseTexture : register(t0);
 Texture2D EmissiveTexture : register(t1);
 Texture2D RoughnessTexture : register(t2);
+Texture2D NormalTexture : register(t2);
 
 cbuffer FlagConstants : register(b3)
 {
@@ -147,6 +148,8 @@ PS_OUTPUT mainPS(PS_INPUT input)
         EmissiveColor = EmissiveTexture.Sample(Sampler, input.texcoord + UVOffset);
     }
 
+    float3 SpecularColor = Material.SpecularColor;
+
     float Shininess = Material.SpecularScalar;
     if (Material.TextureFlag & (1 << 3))
     {
@@ -167,55 +170,63 @@ PS_OUTPUT mainPS(PS_INPUT input)
     {
         float3 Normal = normalize(input.normal);
 
+        // Begin Diffuse
         float3 LightDirection = normalize(float3(-1.0f, -0.3f, -2.0f));
         float Lambert = max(dot(Normal, -LightDirection), 0.0f);
+        float3 Diffuse = Lambert * color;
+        // End Diffuse
 
-        // 그림자 대비 강화
-        Lambert = pow(Lambert, 1.0f); // 약한 각도는 더 어둡게, 정면은 밝게
+        // Begin Specular
+        float3 ViewDirection = normalize(input.CameraPos - input.worldPos);
+        float3 ReflectedDirection = reflect(LightDirection, Normal);
+        float SpecAngle = max(dot(ViewDirection, ReflectedDirection), 0.0f);
+        float3 Specular = pow(SpecAngle, Shininess) * SpecularColor;
+        // End Specular
 
-        float3 Diffuse = Lambert * color * 0.1f; // 조명 세기 강화
-        float3 Ambient = color * 0.01f; // Ambient 확 줄임
-
-        float3 FinalColor = Diffuse;
+        float3 FinalColor = (Diffuse + Specular) * 0.1f;
 
         // FireBall 조명 계산 (원본 코드 유지)
         for (int i = 0; i < FireBallCount; i++)
         {
             // 반경이 0인 FireBall은 건너뛰기 (비활성화된 슬롯)
             if (FireBalls[i].Radius <= 0.0f)
+            {
                 continue;
+            }
 
-            // FireBall과의 거리 계산
             float3 PointLightVector = FireBalls[i].Position - input.worldPos;
             float Distance = length(PointLightVector);
-            float3 PointLightDirection = normalize(PointLightVector);
-
-            // 반경 내에 있는 경우에만 조명 적용
-            if (Distance < FireBalls[i].Radius)
+            if (Distance >= FireBalls[i].Radius)
             {
-                // 정규화된 거리 (0~1)
-                float normalizedDist = Distance / FireBalls[i].Radius;
-
-                // 감쇠 계산
-                float attenuation = 1.0 - pow(normalizedDist, FireBalls[i].RadiusFallOff);
-
-                // 표면 각도 계산
-                float NdotL = max(0.0f, dot(Normal, PointLightDirection));
-
-                // FireBall 조명 기여도 계산
-                float3 fireBallLight = FireBalls[i].Color.rgb * attenuation * NdotL * FireBalls[i].Intensity;
-
-                // 최종 색상에 FireBall 조명 추가
-                FinalColor += fireBallLight * color;
+                continue;
             }
+
+            float3 PointLightDirection = normalize(PointLightVector);
+            float normalizedDist = Distance / FireBalls[i].Radius; // [0 ~ 1]
+            float attenuation = 1.0 - pow(normalizedDist, FireBalls[i].RadiusFallOff);
+
+            // Diffuse 계산
+            float PointLambert = max(dot(Normal, PointLightDirection), 0.0f);
+
+            // Specular 계산
+            float3 PointReflected = reflect(-PointLightDirection, Normal);
+            float PointSpecAngle = max(dot(ViewDirection, PointReflected), 0.0f);
+            float3 PointSpecular = pow(PointSpecAngle, Shininess) * SpecularColor;
+
+            // 포인트 라이트 색상과 강도 적용
+            float3 FireBallColor = FireBalls[i].Color.rgb * FireBalls[i].Intensity;
+            float3 PointDiffuse = PointLambert * FireBallColor;
+
+            // 두 조명 성분 누적 (attenuation 적용)
+            FinalColor += attenuation * (PointDiffuse + PointSpecular) * color;
         }
 
         // 색상 클램핑 (HDR 효과를 원한다면 이 부분을 조정)
-        FinalColor = saturate(FinalColor + Ambient + EmissiveColor * 4.f);
+        float3 Ambient = color * 0.01f; // Ambient 확 줄임
+        FinalColor = saturate(FinalColor) + Ambient + EmissiveColor * 4.f;
 
         output.color = float4(FinalColor, Material.TransparencyScalar);
         return output;
-
     }
     else // unlit 상태일 때 PaperTexture 효과 적용
     {

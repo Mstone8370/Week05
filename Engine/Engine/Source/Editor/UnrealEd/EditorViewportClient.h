@@ -119,12 +119,12 @@ public:
     FViewportCameraTransform		ViewTransformPerspective;
     FViewportCameraTransform        ViewTransformOrthographic;
     // 카메라 정보
-    float ViewFOV = 60.0f;
+    float ViewFOV = 90.0f;
     /** Viewport's stored horizontal field of view (saved in ini files). */
     float FOVAngle = 60.0f;
     float AspectRatio;
-    float nearPlane = 1.0f;
-    float farPlane = 2000.0f;
+    float nearPlane = 0.1f;
+    float farPlane = 500.0f;
     ELevelViewportType ViewportType;
     uint64 ShowFlag;
     EViewModeIndex ViewMode;
