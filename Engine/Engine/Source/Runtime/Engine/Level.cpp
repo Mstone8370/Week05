@@ -20,6 +20,8 @@ void ULevel::Initialize(EWorldType worldType)
     FManagerOBJ::CreateStaticMesh("Assets/Street/Street.obj");
     FManagerOBJ::CreateStaticMesh("Assets/Woojae/Woojea1.obj");
     FManagerOBJ::CreateStaticMesh("Assets/Woojae/Woojea2.obj");
+    FManagerOBJ::CreateStaticMesh("Assets/Sphere.obj");
+    FManagerOBJ::CreateStaticMesh("Assets/Cube.obj");
 }
 
 void ULevel::CreateBaseObject(EWorldType worldType)
