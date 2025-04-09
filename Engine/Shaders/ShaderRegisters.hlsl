@@ -7,7 +7,7 @@ SamplerState Sampler : register(s0);
 cbuffer ObjectBuffer : register(b0)
 {
     row_major matrix ModelMatrix;
-    row_major matrix InverseTranspose;
+    row_major matrix InverseTransposedModel;
     row_major matrix PrevModelMatrix;
     float4 UUID;
     bool IsSelected;

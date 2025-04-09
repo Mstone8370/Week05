@@ -84,12 +84,12 @@ struct FObjMaterialInfo
 
     uint32 TextureFlag = 0;
 
-    FVector Diffuse;  // Kd : Diffuse (Vector4)
-    FVector Specular = FVector(1.f, 1.f, 1.f);  // Ks : Specular (Vector)
-    FVector Ambient;   // Ka : Ambient (Vector)
-    FVector Emissive;  // Ke : Emissive (Vector)
+    FVector Diffuse = FVector(0.7f, 0.7f, 0.7f);  // Kd : Diffuse (Vector4)
+    FVector Specular = FVector(0.5f, 0.5f, 0.5f);  // Ks : Specular (Vector)
+    FVector Ambient = FVector(0.01f, 0.01f, 0.01f);   // Ka : Ambient (Vector)
+    FVector Emissive = FVector::ZeroVector;  // Ke : Emissive (Vector)
 
-    float SpecularScalar; // Ns : Specular Power (Float)
+    float SpecularScalar = 64; // Ns : Specular Power (Float)
     float DensityScalar;  // Ni : Optical Density (Float)
     float TransparencyScalar; // d or Tr  : Transparency of surface (Float)
 

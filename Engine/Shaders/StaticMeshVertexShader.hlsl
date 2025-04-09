@@ -17,8 +17,9 @@ struct PS_INPUT
     float3 normal : NORMAL; // 정규화된 노멀 벡터
     float2 texcoord : TEXCOORD1;
     int materialIndex : MATERIAL_INDEX;
-    float3 worldPos : TEXCOORD2; // 월드 공간 좌표 추가
+    float3 WorldPos : TEXCOORD2; // 월드 공간 좌표 추가
     float3 CameraPos : TEXCOORD3;
+    float3x3 TBN : TBN;
     float2 Velocity : TEXCOORD4;
     float3 ViewNormal : TEXCOORD5;
 };
@@ -33,7 +34,7 @@ PS_INPUT mainVS(VS_INPUT input)
     output.position = float4(input.position, 1.0);
     float4 worldPosition = mul(output.position, ModelMatrix);
     output.CameraPos = float3(InvViewMatrix._41, InvViewMatrix._42, InvViewMatrix._43);
-    output.worldPos = worldPosition.xyz;
+    output.WorldPos = worldPosition.xyz;
     output.position = mul(worldPosition, ViewMatrix);
     output.position = mul(output.position, ProjectionMatrix);
     output.color = input.color;
@@ -43,7 +44,17 @@ PS_INPUT mainVS(VS_INPUT input)
         output.color *= 0.5;
     }
 
-    output.normal = mul(input.normal, (float3x3)ModelMatrix);
+    output.normal = mul(input.normal, (float3x3)InverseTransposedModel);
+
+    float3 BiTangent = cross(input.normal, input.Tangent);
+    matrix<float, 3, 3> TBN = {
+        input.Tangent.x, input.Tangent.y, input.Tangent.z,        // column 0
+        BiTangent.x, BiTangent.y, BiTangent.z,                    // column 1
+        input.normal.x, input.normal.y, input.normal.z            // column 2
+    };
+    //output.TBN = transpose(TBN);
+    output.TBN = TBN;
+
     output.texcoord = input.texcoord;
 
     float4 PrevPosition = float4(input.position, 1.0);

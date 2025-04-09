@@ -301,8 +301,8 @@ void ControlEditorPanel::CreateModifyButton(ImVec2 ButtonSize, ImFont* IconFont)
                     AStaticMeshActor* TempActor = level->SpawnActor<AStaticMeshActor>();
                     TempActor->SetActorLabel(TEXT("OBJ_CUBE"));
                     UStaticMeshComponent* MeshComp = TempActor->GetStaticMeshComponent();
-                    FManagerOBJ::CreateStaticMesh("Assets/helloBlender.obj");
-                    MeshComp->SetStaticMesh(FManagerOBJ::GetStaticMesh(L"helloBlender.obj"));
+                    FManagerOBJ::CreateStaticMesh("Assets/Cube.obj");
+                    MeshComp->SetStaticMesh(FManagerOBJ::GetStaticMesh(L"Cube.obj"));
                     break;
                 }
                 case OBJ_SpotLight:

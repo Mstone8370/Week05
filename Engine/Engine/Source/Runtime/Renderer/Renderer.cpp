@@ -653,6 +653,12 @@ void FRenderer::UpdateMaterial(const FObjMaterialInfo& MaterialInfo) const
             Graphics->DeviceContext->PSSetShaderResources(2, 1, &texture->TextureSRV);
             Graphics->DeviceContext->PSSetSamplers(0, 1, &texture->SamplerState); // TODO: 텍스처가 샘플러를 왜 가지고있어
         }
+        if (MaterialInfo.TextureFlag & (1 << 3))
+        {
+            std::shared_ptr<FTexture> texture = FEngineLoop::ResourceManager.GetTexture(MaterialInfo.NormalTexturePath);
+            Graphics->DeviceContext->PSSetShaderResources(3, 1, &texture->TextureSRV);
+            Graphics->DeviceContext->PSSetSamplers(0, 1, &texture->SamplerState); // TODO: 텍스처가 샘플러를 왜 가지고있어
+        }
     }
     else
     {
