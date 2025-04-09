@@ -581,7 +581,7 @@ void FRenderer::UpdateLightBuffer() const
     Graphics->DeviceContext->Map(LightingBuffer, 0, D3D11_MAP_WRITE_DISCARD, 0, &mappedResource);
     if (FLighting* constants = static_cast<FLighting*>(mappedResource.pData))
     {
-        constants->FireBallCount = FireBalls.Num();
+        constants->FireBallCount = FireBalls.Num()>=constants->MAX_FIREBALLS?constants->MAX_FIREBALLS:FireBalls.Num();
 
         for (int i = 0; i < constants->FireBallCount; i++)
         {
