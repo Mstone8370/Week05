@@ -329,7 +329,7 @@ void PropertyEditorPanel::RenderForActorHierarchy(USceneComponent* Component, bo
         if (ImGui::BeginPopupModal("AddComponentPopup", nullptr, ImGuiWindowFlags_AlwaysAutoResize))
         {
             static int CurrentItem = 0;
-            TArray<FString> Items = { "StaticMesh Component", "Billboard Component", "Text Component" };
+            TArray<FString> Items = { "StaticMesh Component", "Billboard Component", "Text Component", "Point Light Component" };
 
             if (SelectedComponentForPopup)
             {
@@ -370,6 +370,11 @@ void PropertyEditorPanel::RenderForActorHierarchy(USceneComponent* Component, bo
                     NewComp->SetText(L"Default Text");
                     NewComp->SetupAttachment(SelectedComponentForPopup);
                     NewComp->SetRotation(FVector(90.f, 0.f, 0.f));
+                }
+                else if (CurrentItem == 3)
+                {
+                    auto NewComp = SelectedComponentForPopup->GetOwner()->AddComponent<UPointLightComponent>();
+                    NewComp->SetupAttachment(SelectedComponentForPopup);
                 }
 
                 ImGui::CloseCurrentPopup();
