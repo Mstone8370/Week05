@@ -53,7 +53,11 @@ std::shared_ptr<FTexture> FResourceMgr::GetTexture(const FWString& name)
     auto* TempValue = textureMap.Find(name);
     if (!TempValue)
     {
-        LoadTextureFromFile(FEngineLoop::GraphicDevice.Device, name.c_str());
+        HRESULT hr = LoadTextureFromFile(FEngineLoop::GraphicDevice.Device, name.c_str());
+        if (FAILED(hr))
+        {
+            return nullptr;
+        }
         return *textureMap.Find(name);
     }
     return TempValue ? *TempValue : nullptr;

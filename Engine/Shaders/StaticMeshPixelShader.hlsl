@@ -1,6 +1,9 @@
 #include "ShaderRegisters.hlsl"
 
-Texture2D Textures : register(t0);
+Texture2D DiffuseTexture : register(t0);
+Texture2D EmissiveTexture : register(t1);
+Texture2D RoughnessTexture : register(t2);
+Texture2D NormalTexture : register(t3);
 
 cbuffer FlagConstants : register(b3)
 {
@@ -17,7 +20,7 @@ struct FMaterial
     float3 SpecularColor;
     float SpecularScalar;
     float3 EmissiveColor;
-    float MaterialPad0;
+    uint TextureFlag;
 };
 
 cbuffer MaterialConstants : register(b4)
@@ -61,8 +64,9 @@ struct PS_INPUT
     float3 normal : NORMAL; // 정규화된 노멀 벡터
     float2 texcoord : TEXCOORD1;
     int materialIndex : MATERIAL_INDEX;
-    float3 worldPos : TEXCOORD2; // 월드 공간 좌표 추가
+    float3 WorldPos : TEXCOORD2; // 월드 공간 좌표 추가
     float3 CameraPos : TEXCOORD3;
+    float3x3 TBN : TBN;
     float2 Velocity : TEXCOORD4;
     float3 ViewNormal : TEXCOORD5;
 };
@@ -88,6 +92,14 @@ float LinearToSRGB(float val)
     // linear가 임계값보다 큰지 판별 후 선형 보간
     float t = step(0.0031308, val); // linear >= 0.0031308이면 t = 1, 아니면 t = 0
     return lerp(low, high, t);
+}
+
+float3 LinearToSRGB(float3 color)
+{
+    color.r = LinearToSRGB(color.r);
+    color.g = LinearToSRGB(color.g);
+    color.b = LinearToSRGB(color.b);
+    return color;
 }
 
 float SRGBToLinear(float val)
@@ -133,13 +145,16 @@ PS_OUTPUT mainPS(PS_INPUT input)
     float3 NormalVS = normalize(input.ViewNormal);
     output.Normal = float4(NormalVS * 0.5f + 0.5f, 1.0f); // 저장용 (0~1로 remap)
 
-    float3 texColor = Textures.Sample(Sampler, input.texcoord + UVOffset);
-    float3 color;
-    if (texColor.g == 0) // TODO: boolean으로 변경
-        color = saturate(Material.DiffuseColor);
-    else
+    float3 color = Material.DiffuseColor;
+    if (Material.TextureFlag & (1 << 0))
     {
-        color = texColor + Material.DiffuseColor;
+        color = DiffuseTexture.Sample(Sampler, input.texcoord + UVOffset);
+    }
+
+    float3 EmissiveColor = Material.EmissiveColor;
+    if (Material.TextureFlag & (1 << 1))
+    {
+        EmissiveColor = EmissiveTexture.Sample(Sampler, input.texcoord + UVOffset);
     }
 
     if (IsSelected)
@@ -149,67 +164,90 @@ PS_OUTPUT mainPS(PS_INPUT input)
          //   color = float3(1, 1, 1);
     }
 
-    // 발광 색상 추가
-
-    if (IsLit == 1) // 조명이 적용되는 경우
+    if (IsLit == 0)
     {
-        float3 N = normalize(input.normal);
-
-        float3 lightDir = normalize(float3(-1.0f, -0.3f, -2.0f));
-        float diff = max(dot(N, -lightDir), 0.0f);
-
-        // 그림자 대비 강화
-        diff = pow(diff, 1.5f); // 약한 각도는 더 어둡게, 정면은 밝게
-
-        float3 diffuse = diff * color * 1.0f; // 조명 세기 강화
-        float3 ambient = color * 0.01f; // Ambient 확 줄임
-
-        float3 finalColor = diffuse;
-
-        // FireBall 조명 계산 (원본 코드 유지)
-        for (int i = 0; i < FireBallCount; i++)
-        {
-            // 반경이 0인 FireBall은 건너뛰기 (비활성화된 슬롯)
-            if (FireBalls[i].Radius <= 0.0f)
-                continue;
-
-            // FireBall과의 거리 계산
-            float3 lightVec = FireBalls[i].Position - input.worldPos;
-            float distance = length(lightVec);
-            // 반경 내에 있는 경우에만 조명 적용
-            if (distance < FireBalls[i].Radius)
-            {
-                // 정규화된 거리 (0~1)
-                float normalizedDist = distance / FireBalls[i].Radius;
-
-                // 감쇠 계산
-                float attenuation = 1.0 - pow(normalizedDist, FireBalls[i].RadiusFallOff);
-
-                // 표면 각도 계산
-                float3 L = normalize(lightVec);
-                float NdotL = max(0.0f, dot(N, L));
-
-                // FireBall 조명 기여도 계산
-                float3 fireBallLight = FireBalls[i].Color.rgb * attenuation * NdotL * FireBalls[i].Intensity;
-
-                // 최종 색상에 FireBall 조명 추가
-                finalColor += fireBallLight * color;
-            }
-        }
-
-        // 색상 클램핑 (HDR 효과를 원한다면 이 부분을 조정)
-        finalColor = saturate(finalColor + ambient);
-
-        output.color = float4(finalColor, Material.TransparencyScalar);
-        return output;
-
-    }
-    else // unlit 상태일 때 PaperTexture 효과 적용
-    {
-        output.color = float4(color, 1);
+        output.color = float4(color + EmissiveColor, 1);
         // 투명도 적용
         output.color.a = Material.TransparencyScalar;
 
         return output;
     }
+
+    float3 Normal = normalize(input.normal);
+    if (Material.TextureFlag & (1 << 3))
+    {
+        float3 SampledNormal = NormalTexture.Sample(Sampler, input.texcoord + UVOffset);
+        SampledNormal = LinearToSRGB(SampledNormal);
+        Normal = normalize(2.f * SampledNormal - 1.f);
+        Normal = normalize(mul(mul(Normal, input.TBN), (float3x3) InverseTransposedModel));
+    }
+
+    float3 LightDirection = normalize(float3(-1.0f, -0.3f, -2.0f));
+
+    // Begin Diffuse
+    float Lambert = max(dot(Normal, -LightDirection), 0.0f);
+    float3 Diffuse = Lambert * color;
+    // End Diffuse
+
+    // Begin Specular
+    float3 SpecularColor = Material.SpecularColor;
+
+    float Shininess = Material.SpecularScalar;
+    if (Material.TextureFlag & (1 << 2))
+    {
+        float3 RoughnessMap = RoughnessTexture.Sample(Sampler, input.texcoord + UVOffset);
+        RoughnessMap = LinearToSRGB(RoughnessMap);
+        Shininess = (1.f - RoughnessMap.r) * 128.f; // Roughness 맵은 0에서 1 사이. Shininess는 0에서 128 사이.
+    }
+
+    float3 ViewDirection = normalize(input.CameraPos - input.WorldPos);
+    float3 ReflectedDirection = reflect(LightDirection, Normal);
+    float SpecAngle = max(dot(ViewDirection, ReflectedDirection), 0.0f);
+    float3 Specular = pow(SpecAngle, Shininess) * SpecularColor;
+    // End Specular
+
+    float3 FinalColor = (Diffuse + Specular) * 0.1f;
+
+    // FireBall 조명 계산 (원본 코드 유지)
+    for (int i = 0; i < FireBallCount; i++)
+    {
+        // 반경이 0인 FireBall은 건너뛰기 (비활성화된 슬롯)
+        if (FireBalls[i].Radius <= 0.0f)
+        {
+            continue;
+        }
+
+        float3 PointLightVector = FireBalls[i].Position - input.WorldPos;
+        float Distance = length(PointLightVector);
+        if (Distance >= FireBalls[i].Radius)
+        {
+            continue;
+        }
+
+        float3 PointLightDirection = normalize(PointLightVector);
+        float normalizedDist = Distance / FireBalls[i].Radius; // [0 ~ 1]
+        float attenuation = 1.0 - pow(normalizedDist, FireBalls[i].RadiusFallOff);
+
+        // Diffuse 계산
+        float PointLambert = max(dot(Normal, PointLightDirection), 0.0f);
+
+        // Specular 계산
+        float3 PointReflected = reflect(-PointLightDirection, Normal);
+        float PointSpecAngle = max(dot(ViewDirection, PointReflected), 0.0f);
+        float3 PointSpecular = pow(PointSpecAngle, Shininess) * SpecularColor;
+
+        // 포인트 라이트 색상과 강도 적용
+        float3 FireBallColor = FireBalls[i].Color.rgb * FireBalls[i].Intensity;
+        float3 PointDiffuse = PointLambert * FireBallColor;
+
+        // 두 조명 성분 누적 (attenuation 적용)
+        FinalColor += attenuation * (PointDiffuse + PointSpecular) * color;
+    }
+
+    // 색상 클램핑 (HDR 효과를 원한다면 이 부분을 조정)
+    float3 Ambient = color * 0.01f; // Ambient 확 줄임
+    FinalColor = saturate(FinalColor) + Ambient + EmissiveColor * 4.f;
+
+    output.color = float4(FinalColor, Material.TransparencyScalar);
+    return output;
 }

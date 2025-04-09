@@ -82,12 +82,14 @@ struct FObjMaterialInfo
     bool bHasTexture = false;  // Has Texture?
     bool bTransparent = false; // Has alpha channel?
 
-    FVector Diffuse;  // Kd : Diffuse (Vector4)
-    FVector Specular;  // Ks : Specular (Vector)
-    FVector Ambient;   // Ka : Ambient (Vector)
-    FVector Emissive;  // Ke : Emissive (Vector)
+    uint32 TextureFlag = 0;
 
-    float SpecularScalar; // Ns : Specular Power (Float)
+    FVector Diffuse = FVector(0.7f, 0.7f, 0.7f);  // Kd : Diffuse (Vector4)
+    FVector Specular = FVector(0.5f, 0.5f, 0.5f);  // Ks : Specular (Vector)
+    FVector Ambient = FVector(0.01f, 0.01f, 0.01f);   // Ka : Ambient (Vector)
+    FVector Emissive = FVector::ZeroVector;  // Ke : Emissive (Vector)
+
+    float SpecularScalar = 64; // Ns : Specular Power (Float)
     float DensityScalar;  // Ni : Optical Density (Float)
     float TransparencyScalar; // d or Tr  : Transparency of surface (Float)
 
@@ -100,7 +102,7 @@ struct FObjMaterialInfo
     FString AmbientTextureName;  // map_Ka : Ambient texture
     FWString AmbientTexturePath;
 
-    FString SpecularTextureName; // map_Ks : Specular texture
+    FString SpecularTextureName; // map_Ks : Specular Color texture
     FWString SpecularTexturePath;
 
     FString BumpTextureName;     // map_Bump : Bump texture
@@ -108,6 +110,15 @@ struct FObjMaterialInfo
 
     FString AlphaTextureName;    // map_d : Alpha texture
     FWString AlphaTexturePath;
+
+    FString EmissiveTextureName;    // map_Ke : Emissive texture
+    FWString EmissiveTexturePath;
+
+    FString RoughnessTextureName;    // map_Ns : Roughness texture
+    FWString RoughnessTexturePath;
+
+    FString NormalTextureName;    // map_Bump : Roughness texture
+    FWString NormalTexturePath;
 };
 
 enum class EWorldType
@@ -328,7 +339,7 @@ struct FMaterialConstants
     FVector SpecularColor;
     float SpecularScalar;
     FVector EmmisiveColor;
-    float MaterialPad0;
+    uint32 TextureFlag;
 };
 
 struct FObjectConstants

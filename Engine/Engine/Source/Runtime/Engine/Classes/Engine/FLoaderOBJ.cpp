@@ -307,8 +307,61 @@ bool FLoaderOBJ::ParseMaterial(FObjInfo& OutObjInfo, OBJ::FStaticMeshRenderData&
             FWString TexturePath = OutObjInfo.PathName + OutFStaticMesh.Materials[MaterialIndex].DiffuseTextureName.ToWideString();
             OutFStaticMesh.Materials[MaterialIndex].DiffuseTexturePath = TexturePath;
             OutFStaticMesh.Materials[MaterialIndex].bHasTexture = true;
+            if (CreateTextureFromFile(OutFStaticMesh.Materials[MaterialIndex].DiffuseTexturePath))
+            {
+                OutFStaticMesh.Materials[MaterialIndex].TextureFlag |= (1 << 0);
+            }
+        }
 
-            CreateTextureFromFile(OutFStaticMesh.Materials[MaterialIndex].DiffuseTexturePath);
+        if (Token == "map_Ke")
+        {
+            LineStream >> Line;
+            OutFStaticMesh.Materials[MaterialIndex].EmissiveTextureName = Line;
+
+            FWString TexturePath = OutObjInfo.PathName + OutFStaticMesh.Materials[MaterialIndex].EmissiveTextureName.ToWideString();
+            OutFStaticMesh.Materials[MaterialIndex].EmissiveTexturePath = TexturePath;
+            OutFStaticMesh.Materials[MaterialIndex].bHasTexture = true;
+            if (CreateTextureFromFile(OutFStaticMesh.Materials[MaterialIndex].EmissiveTexturePath))
+            {
+                OutFStaticMesh.Materials[MaterialIndex].TextureFlag |= (1 << 1); // TODO: 하드코딩 개선하기
+            }
+        }
+
+        if (Token == "map_Ns")
+        {
+            LineStream >> Line;
+            OutFStaticMesh.Materials[MaterialIndex].RoughnessTextureName = Line;
+
+            FWString TexturePath = OutObjInfo.PathName + OutFStaticMesh.Materials[MaterialIndex].RoughnessTextureName.ToWideString();
+            OutFStaticMesh.Materials[MaterialIndex].RoughnessTexturePath = TexturePath;
+            OutFStaticMesh.Materials[MaterialIndex].bHasTexture = true;
+            if (CreateTextureFromFile(OutFStaticMesh.Materials[MaterialIndex].RoughnessTexturePath))
+            {
+                OutFStaticMesh.Materials[MaterialIndex].TextureFlag |= (1 << 2); // TODO: 하드코딩 개선하기
+            }
+        }
+
+        if (Token == "map_Bump")
+        {
+            FString BumpTextureName;
+
+            // 마지막에 오는 텍스처 파일 이름만 저장
+            while (LineStream >> Line)
+            {
+                if (Line[0] != '-')
+                {
+                    BumpTextureName = Line;
+                }
+            }
+            OutFStaticMesh.Materials[MaterialIndex].NormalTextureName = BumpTextureName;
+
+            FWString TexturePath = OutObjInfo.PathName + BumpTextureName.ToWideString();
+            OutFStaticMesh.Materials[MaterialIndex].NormalTexturePath = TexturePath;
+            OutFStaticMesh.Materials[MaterialIndex].bHasTexture = true;
+            if (CreateTextureFromFile(OutFStaticMesh.Materials[MaterialIndex].NormalTexturePath))
+            {
+                OutFStaticMesh.Materials[MaterialIndex].TextureFlag |= (1 << 3); // TODO: 하드코딩 개선 필요
+            }
         }
     }
 
