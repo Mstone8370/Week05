@@ -179,7 +179,7 @@ PS_OUTPUT mainPS(PS_INPUT input)
         float3 SampledNormal = NormalTexture.Sample(Sampler, input.texcoord + UVOffset);
         SampledNormal = LinearToSRGB(SampledNormal);
         Normal = normalize(2.f * SampledNormal - 1.f);
-        Normal = normalize(mul(mul(Normal, input.TBN), (float3x3) ModelMatrix));
+        Normal = normalize(mul(mul(Normal, input.TBN), (float3x3) InverseTransposedModel));
     }
 
     float3 LightDirection = normalize(float3(-1.0f, -0.3f, -2.0f));
@@ -197,7 +197,7 @@ PS_OUTPUT mainPS(PS_INPUT input)
     {
         float3 RoughnessMap = RoughnessTexture.Sample(Sampler, input.texcoord + UVOffset);
         RoughnessMap = LinearToSRGB(RoughnessMap);
-        Shininess = (1.f - RoughnessMap.r) * 128.f;
+        Shininess = (1.f - RoughnessMap.r) * 128.f; // Roughness 맵은 0에서 1 사이. Shininess는 0에서 128 사이.
     }
 
     float3 ViewDirection = normalize(input.CameraPos - input.WorldPos);
