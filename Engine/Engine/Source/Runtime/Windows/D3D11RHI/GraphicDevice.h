@@ -46,9 +46,13 @@ private:
         ID3D11DepthStencilView* DepthStencilView = nullptr;  // 깊이/스텐실 뷰
 
         // Process Scene (Scene 가공)
-        ID3D11Texture2D* DepthBuffer = nullptr;
+        ID3D11Texture2D* NormalizedDepthBuffer = nullptr;
         ID3D11ShaderResourceView* NormalizedDepthSRV = nullptr;
-        ID3D11RenderTargetView* DepthRTV = nullptr;
+        ID3D11RenderTargetView* NormalizedDepthRTV = nullptr;
+
+        ID3D11Texture2D* VisualizationVelocityBuffer = nullptr;
+        ID3D11ShaderResourceView* VisualizationVelocityBufferSRV = nullptr;
+        ID3D11RenderTargetView* VisualizationVelocityBufferRTV = nullptr;
 
         // Post Processing
         ID3D11Texture2D* FogBuffer = nullptr;
@@ -117,6 +121,7 @@ public:
     void SwapBuffer();
     void Prepare(std::shared_ptr<FEditorViewportClient> ActiveViewport, uint32 ViewportIndex);
     void PrepareDepthMap(uint32 ViewportIndex);
+    void PrepareVisualizationVelocity(uint32 ViewportIndex);
     void PreparePostProcess();
     void PrepareFinal();
     void OnResize(HWND hWindow, SLevelEditor* LevelEditor);

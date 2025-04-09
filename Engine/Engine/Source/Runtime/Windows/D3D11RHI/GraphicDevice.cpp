@@ -421,7 +421,7 @@ void FGraphicsDevice::CreateProcessSceneBuffer(const D3D11_VIEWPORT& Viewport, s
         BufferDesc.Usage = D3D11_USAGE_DEFAULT;
         BufferDesc.BindFlags = D3D11_BIND_RENDER_TARGET | D3D11_BIND_SHADER_RESOURCE;
 
-        Device->CreateTexture2D(&BufferDesc, nullptr, &BufferData->DepthBuffer);
+        Device->CreateTexture2D(&BufferDesc, nullptr, &BufferData->NormalizedDepthBuffer);
 
         // TODO Check - Format을 이전꺼랑 동일하게 했어야 되는지 헷갈림, 일단 동일하게 함.
 
@@ -431,22 +431,58 @@ void FGraphicsDevice::CreateProcessSceneBuffer(const D3D11_VIEWPORT& Viewport, s
         SRVDesc.Texture2D.MostDetailedMip = 0;
         SRVDesc.Texture2D.MipLevels = 1;
 
-        Device->CreateShaderResourceView(BufferData->DepthBuffer, &SRVDesc, &BufferData->NormalizedDepthSRV);
+        Device->CreateShaderResourceView(BufferData->NormalizedDepthBuffer, &SRVDesc, &BufferData->NormalizedDepthSRV);
 
         // 렌더 타겟 뷰 생성
         D3D11_RENDER_TARGET_VIEW_DESC RTVDesc = {};
         RTVDesc.Format = BufferDesc.Format; // 색상 포맷
         RTVDesc.ViewDimension = D3D11_RTV_DIMENSION_TEXTURE2D; // 2D 텍스처
 
-        Device->CreateRenderTargetView(BufferData->DepthBuffer, &RTVDesc, &BufferData->DepthRTV);
+        Device->CreateRenderTargetView(BufferData->NormalizedDepthBuffer, &RTVDesc, &BufferData->NormalizedDepthRTV);
+    }
+
+    // Velocity - Visualization
+    {
+        D3D11_TEXTURE2D_DESC BufferDesc = {};
+        BufferDesc.Width = Viewport.Width;
+        BufferDesc.Height = Viewport.Height;
+        BufferDesc.MipLevels = 1;
+        BufferDesc.ArraySize = 1;
+        BufferDesc.Format = DXGI_FORMAT_B8G8R8A8_UNORM;
+        BufferDesc.SampleDesc.Count = 1;
+        BufferDesc.Usage = D3D11_USAGE_DEFAULT;
+        BufferDesc.BindFlags = D3D11_BIND_RENDER_TARGET | D3D11_BIND_SHADER_RESOURCE;
+
+        Device->CreateTexture2D(&BufferDesc, nullptr, &BufferData->VisualizationVelocityBuffer);
+
+        // TODO Check - Format을 이전꺼랑 동일하게 했어야 되는지 헷갈림, 일단 동일하게 함.
+
+        D3D11_SHADER_RESOURCE_VIEW_DESC SRVDesc = {};
+        SRVDesc.Format = BufferDesc.Format;
+        SRVDesc.ViewDimension = D3D11_SRV_DIMENSION_TEXTURE2D;
+        SRVDesc.Texture2D.MostDetailedMip = 0;
+        SRVDesc.Texture2D.MipLevels = 1;
+
+        Device->CreateShaderResourceView(BufferData->VisualizationVelocityBuffer, &SRVDesc, &BufferData->VisualizationVelocityBufferSRV);
+
+        // 렌더 타겟 뷰 생성
+        D3D11_RENDER_TARGET_VIEW_DESC RTVDesc = {};
+        RTVDesc.Format = BufferDesc.Format; // 색상 포맷
+        RTVDesc.ViewDimension = D3D11_RTV_DIMENSION_TEXTURE2D; // 2D 텍스처
+
+        Device->CreateRenderTargetView(BufferData->VisualizationVelocityBuffer, &RTVDesc, &BufferData->VisualizationVelocityBufferRTV);
     }
 }
 
 void FGraphicsDevice::ReleaseProcessSceneBuffer(std::shared_ptr<FBufferData>& BufferData)
 {
-    ReleaseBuffer(BufferData->DepthBuffer);
+    ReleaseBuffer(BufferData->NormalizedDepthBuffer);
     ReleaseBufferSRV(BufferData->NormalizedDepthSRV);
-    ReleaseBufferRTV(BufferData->DepthRTV);
+    ReleaseBufferRTV(BufferData->NormalizedDepthRTV);
+
+    ReleaseBuffer(BufferData->VisualizationVelocityBuffer);
+    ReleaseBufferSRV(BufferData->VisualizationVelocityBufferSRV);
+    ReleaseBufferRTV(BufferData->VisualizationVelocityBufferRTV);
 }
 
 void FGraphicsDevice::CreatePostProcessBuffer(const D3D11_VIEWPORT& Viewport, std::shared_ptr<FBufferData>& BufferData)
@@ -612,12 +648,23 @@ void FGraphicsDevice::Prepare(std::shared_ptr<FEditorViewportClient> ActiveViewp
 
 void FGraphicsDevice::PrepareDepthMap(uint32 ViewportIndex)
 {
-    DeviceContext->ClearRenderTargetView(BufferDataArray[ViewportIndex]->DepthRTV, ClearColor); // 렌더 타겟 뷰에 저장된 이전 프레임 데이터를 삭제
+    DeviceContext->ClearRenderTargetView(BufferDataArray[ViewportIndex]->NormalizedDepthRTV, ClearColor); // 렌더 타겟 뷰에 저장된 이전 프레임 데이터를 삭제
     DeviceContext->IASetPrimitiveTopology(D3D11_PRIMITIVE_TOPOLOGY_TRIANGLELIST); // 정정 연결 방식 설정
 
     ChangeRasterizer(EViewModeIndex::VMI_Lit);
 
-    DeviceContext->OMSetRenderTargets(1, &BufferDataArray[ViewportIndex]->DepthRTV, nullptr);
+    DeviceContext->OMSetRenderTargets(1, &BufferDataArray[ViewportIndex]->NormalizedDepthRTV, nullptr);
+    DeviceContext->OMSetBlendState(nullptr, nullptr, 0xffffffff); // 블렌뎅 상태 설정, 기본블렌딩 상태임
+}
+
+void FGraphicsDevice::PrepareVisualizationVelocity(uint32 ViewportIndex)
+{
+    DeviceContext->ClearRenderTargetView(BufferDataArray[ViewportIndex]->VisualizationVelocityBufferRTV, ZeroColor); // 렌더 타겟 뷰에 저장된 이전 프레임 데이터를 삭제
+    DeviceContext->IASetPrimitiveTopology(D3D11_PRIMITIVE_TOPOLOGY_TRIANGLELIST); // 정정 연결 방식 설정
+
+    ChangeRasterizer(EViewModeIndex::VMI_Lit);
+
+    DeviceContext->OMSetRenderTargets(1, &BufferDataArray[ViewportIndex]->VisualizationVelocityBufferRTV, nullptr);
     DeviceContext->OMSetBlendState(nullptr, nullptr, 0xffffffff); // 블렌뎅 상태 설정, 기본블렌딩 상태임
 }
 

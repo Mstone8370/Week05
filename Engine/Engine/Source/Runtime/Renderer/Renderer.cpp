@@ -114,14 +114,24 @@ void FRenderer::ReleaseFinalShader()
     ReleaseShader(FinalPixelShader);
 }
 
-void FRenderer::CreateDepthShader()
+void FRenderer::CreateNormalizedDepthShader()
 {
-    ID3DBlob* FinalPixelShaderCSO;
+    ID3DBlob* PixelShaderCSO;
 
-    D3DCompileFromFile(L"Shaders/NormalizeDepthShader.hlsl", nullptr, D3D_COMPILE_STANDARD_FILE_INCLUDE, "main", "ps_5_0", 0, 0, &FinalPixelShaderCSO, nullptr);
-    Graphics->Device->CreatePixelShader(FinalPixelShaderCSO->GetBufferPointer(), FinalPixelShaderCSO->GetBufferSize(), nullptr, &DepthShader);
+    D3DCompileFromFile(L"Shaders/NormalizeDepthShader.hlsl", nullptr, D3D_COMPILE_STANDARD_FILE_INCLUDE, "main", "ps_5_0", 0, 0, &PixelShaderCSO, nullptr);
+    Graphics->Device->CreatePixelShader(PixelShaderCSO->GetBufferPointer(), PixelShaderCSO->GetBufferSize(), nullptr, &NormalizedDepthShader);
 
-    FinalPixelShaderCSO->Release();
+    PixelShaderCSO->Release();
+}
+
+void FRenderer::CreateVisualizationVelocityShader()
+{
+    ID3DBlob* PixelShaderCSO;
+
+    D3DCompileFromFile(L"Shaders/VisualizationVelocityShader.hlsl", nullptr, D3D_COMPILE_STANDARD_FILE_INCLUDE, "main", "ps_5_0", 0, 0, &PixelShaderCSO, nullptr);
+    Graphics->Device->CreatePixelShader(PixelShaderCSO->GetBufferPointer(), PixelShaderCSO->GetBufferSize(), nullptr, &VisualizationVelocityShader);
+
+    PixelShaderCSO->Release();
 }
 
 void FRenderer::CreateFogShader()
@@ -147,7 +157,8 @@ void FRenderer::CreateMotionBlurShader()
 
 void FRenderer::CreateVisualizationShader()
 {
-    CreateDepthShader();
+    CreateNormalizedDepthShader();
+    CreateVisualizationVelocityShader();
 }
 
 void FRenderer::CreatePostProcessShader()
@@ -158,7 +169,7 @@ void FRenderer::CreatePostProcessShader()
 
 void FRenderer::ReleaseVisualizationShader()
 {
-    ReleaseShader(DepthShader);
+    ReleaseShader(NormalizedDepthShader);
 }
 
 void FRenderer::ReleasePostProcessShader()
@@ -1401,7 +1412,18 @@ void FRenderer::SampleAndProcessSRV(std::shared_ptr<FEditorViewportClient> Activ
 
     Graphics->DeviceContext->PSSetShaderResources(0, 1, &Graphics->BufferDataArray[ViewportIndex]->DepthStencilSRV);
 
-    Graphics->DeviceContext->PSSetShader(DepthShader, nullptr, 0);
+    Graphics->DeviceContext->PSSetShader(NormalizedDepthShader, nullptr, 0);
+    Graphics->DeviceContext->PSSetSamplers(0, 1, &ScreenSamplerState);
+
+    DrawFullScreenQuad();
+
+
+    // Velocity - Visualization
+    Graphics->PrepareVisualizationVelocity(ViewportIndex);
+
+    Graphics->DeviceContext->PSSetShaderResources(0, 1, &Graphics->BufferDataArray[ViewportIndex]->VelocityBufferSRV);
+
+    Graphics->DeviceContext->PSSetShader(VisualizationVelocityShader, nullptr, 0);
     Graphics->DeviceContext->PSSetSamplers(0, 1, &ScreenSamplerState);
 
     DrawFullScreenQuad();
@@ -1414,7 +1436,7 @@ void FRenderer::RenderFullScreenQuad(std::shared_ptr<FEditorViewportClient> Acti
     if (ViewModeFlags == EViewModeIndex::VMI_SceneDepth)
     {
         // TODO: 텍스처 슬롯 개수만큼 null -> 임시코드임
-        int n = 2;
+        int n = 5;
         for (int i = 0; i < n; i++)
         {
             ID3D11ShaderResourceView* nullSRV[1] = {nullptr};
@@ -1427,7 +1449,7 @@ void FRenderer::RenderFullScreenQuad(std::shared_ptr<FEditorViewportClient> Acti
     else if (ViewModeFlags == EViewModeIndex::VMI_Velocity)
     {
         // TODO: 텍스처 슬롯 개수만큼 null -> 임시코드임
-        int n = 2;
+        int n = 5;
         for (int i = 0; i < n; i++)
         {
             ID3D11ShaderResourceView* nullSRV[1] = {nullptr};
@@ -1435,7 +1457,7 @@ void FRenderer::RenderFullScreenQuad(std::shared_ptr<FEditorViewportClient> Acti
         }
 
         // TODO: Temp, 임시 코드
-        Graphics->DeviceContext->PSSetShaderResources(0, 1, &Graphics->BufferDataArray[ViewportIndex]->VelocityBufferSRV);
+        Graphics->DeviceContext->PSSetShaderResources(0, 1, &Graphics->BufferDataArray[ViewportIndex]->VisualizationVelocityBufferSRV);
     }
     else
     {
