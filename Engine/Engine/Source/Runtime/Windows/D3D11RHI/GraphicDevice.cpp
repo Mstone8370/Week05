@@ -765,6 +765,7 @@ void FGraphicsDevice::ChangeRasterizer(EViewModeIndex evi)
     case EViewModeIndex::VMI_Unlit:
     case EViewModeIndex::VMI_SceneDepth:
     case EViewModeIndex::VMI_Velocity:
+    case EViewModeIndex::VMI_Normal:
         CurrentRasterizer = RasterizerStateSOLID;
         break;
     default:

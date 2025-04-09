@@ -291,6 +291,7 @@ void FRenderer::ChangeViewMode(EViewModeIndex InViewModeIndex)
     case EViewModeIndex::VMI_Unlit:
     case EViewModeIndex::VMI_SceneDepth:
     case EViewModeIndex::VMI_Velocity:
+    case EViewModeIndex::VMI_Normal:
         UpdateLitUnlitConstant(0);
         break;
     default:
@@ -1490,6 +1491,19 @@ void FRenderer::RenderFullScreenQuad(std::shared_ptr<FEditorViewportClient> Acti
 
         // TODO: Temp, 임시 코드
         Graphics->DeviceContext->PSSetShaderResources(0, 1, &Graphics->BufferDataArray[ViewportIndex]->VisualizationVelocityBufferSRV);
+    }
+    else if (ViewModeFlags == EViewModeIndex::VMI_Normal)
+    {
+        // TODO: 텍스처 슬롯 개수만큼 null -> 임시코드임
+        int n = 5;
+        for (int i = 0; i < n; i++)
+        {
+            ID3D11ShaderResourceView* nullSRV[1] = {nullptr};
+            Graphics->DeviceContext->PSSetShaderResources(i, 1, nullSRV);
+        }
+
+        // TODO: Temp, 임시 코드
+        Graphics->DeviceContext->PSSetShaderResources(0, 1, &Graphics->BufferDataArray[ViewportIndex]->ViewNormalBufferSRV);
     }
     else
     {

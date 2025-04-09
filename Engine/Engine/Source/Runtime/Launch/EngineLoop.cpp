@@ -9,6 +9,7 @@
 #include "LevelEditor/SLevelEditor.h"
 #include "World.h"
 #include "GameFramework/Actor.h"
+#include "Math/MathUtility.h"
 
 
 extern LRESULT ImGui_ImplWin32_WndProcHandler(HWND hwnd, UINT msg, WPARAM wParam, LPARAM lParam);
@@ -255,19 +256,22 @@ void FEngineLoop::EditorTick(double DeltaTime)
 
 void FEngineLoop::PIETick(double DeltaTime)
 {
+    static double time;
+    time += DeltaTime * 0.01;
     Input();
     GLevel->Tick(DeltaTime);
     for (auto& actor : GLevel->GetActors())
     {
-        if (actor->GetActorLocation().Z > 10)
+        if (actor->GetActorLocation().Z > 5)
         {
             actor->tempValue = -1;
         }
-        else if (actor->GetActorLocation().Z < -10)
+        else if (actor->GetActorLocation().Z < -5)
         {
             actor->tempValue = 1;
         }
-        actor->SetActorLocation(actor->GetActorLocation() + FVector(0, 0,1) * DeltaTime * 0.05 * actor->tempValue);
+
+        actor->SetActorLocation(FVector(FMath::Sin(time), 0, FMath::Cos(time)) * 2);
     }
     Render();
 

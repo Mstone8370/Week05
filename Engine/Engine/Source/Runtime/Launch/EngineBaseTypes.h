@@ -7,6 +7,7 @@ enum EViewModeIndex
     VMI_Wireframe = 2,
     VMI_SceneDepth = 3,
     VMI_Velocity = 4,
+    VMI_Normal = 5,
 };
 
 
