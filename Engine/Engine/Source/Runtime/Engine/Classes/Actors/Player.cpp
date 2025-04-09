@@ -1,4 +1,4 @@
-﻿#include "Player.h"
+#include "Player.h"
 
 #include "UnrealClient.h"
 #include "Level.h"
@@ -121,9 +121,9 @@ void AEditorPlayer::Input()
         ULevel* level = GetLevel();
         if (AActor* PickedActor = level->GetSelectedTempActor())
         {
-            level->DestroyActor(PickedActor);
             level->SetPickedActor(nullptr);
             level->SetPickedComponent(nullptr);
+            level->DestroyActor(PickedActor);
         }
     }
 }

@@ -594,7 +594,7 @@ void FRenderer::UpdateLightBuffer() const
         }
 
         // 나머지 슬롯 초기화
-        for (int i = constants->FireBallCount; i < constants->MAX_FIREBALLS; i++)
+        for (int i = constants->FireBallCount; i < FLighting::MAX_FIREBALLS; i++)
         {
             constants->FireBalls[i].Radius = 0.0f;
         }
@@ -1353,7 +1353,7 @@ void FRenderer::RenderScene(ULevel* Level, std::shared_ptr<FEditorViewportClient
     UpdateViewBuffer(ActiveViewport->GetPrevViewMatrix(), ActiveViewport->GetViewMatrix(), ActiveViewport->ViewTransformPerspective.GetLocation());
     UpdateProjectionBuffer(ActiveViewport->GetPrevProjectionMatrix(), ActiveViewport->GetProjectionMatrix(), ActiveViewport->nearPlane, ActiveViewport->farPlane);
 
-    if(FireBalls.Num() > 0)
+    if(FireBalls.Num() >= 0)
     {
         UpdateLightBuffer();
     }

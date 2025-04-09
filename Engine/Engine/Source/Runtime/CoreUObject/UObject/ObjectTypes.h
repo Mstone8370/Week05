@@ -15,6 +15,9 @@ enum OBJECTS
     OBJ_FOG,
     OBJ_MotionBlur,
     OBJ_FIREBALL,
+    OBJ_STREET,
+    OBJ_WOOJAE1,
+    OBJ_WOOJAE2,
 	OBJ_END
 };
 enum ARROW_DIR

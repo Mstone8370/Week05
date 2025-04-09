@@ -313,6 +313,8 @@ void PropertyEditorPanel::RenderForActorHierarchy(USceneComponent* Component, bo
                 AActor* Owner = SelectedComponentForPopup->GetOwner();
                 if (Owner && Owner->GetRootComponent() != SelectedComponentForPopup && ImGui::MenuItem("Delete Component"))
                 {
+                    GEngineLoop.GetLevel()->SetPickedActor(nullptr);
+                    GEngineLoop.GetLevel()->SetPickedComponent(nullptr);
                     SelectedComponentForPopup->DestroyComponent();
                 }
             }

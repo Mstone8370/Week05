@@ -599,7 +599,7 @@ void FGraphicsDevice::Prepare(std::shared_ptr<FEditorViewportClient> ActiveViewp
 
     DeviceContext->IASetPrimitiveTopology(D3D11_PRIMITIVE_TOPOLOGY_TRIANGLELIST); // 정정 연결 방식 설정
 
-    //DeviceContext->RSSetViewports(1, &ViewportInfo); // GPU가 화면을 렌더링할 영역 설정
+    // DeviceContext->RSSetViewports(1, &ViewportInfo); // GPU가 화면을 렌더링할 영역 설정
     DeviceContext->RSSetState(CurrentRasterizer); //레스터 라이저 상태 설정
 
     DeviceContext->RSSetViewports(1, &ActiveViewport->GetViewport()->GetViewport()); // GPU가 화면을 렌더링할 영역 설정
