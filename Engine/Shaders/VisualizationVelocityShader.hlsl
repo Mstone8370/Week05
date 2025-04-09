@@ -11,7 +11,7 @@ struct PSInput
 float4 main(PSInput input) : SV_TARGET
 {
     float2 uv = input.texCoord;
-    float2 velocity = VelocityBuffer.Sample(Sampler, uv).rg;
+    float2 velocity = VelocityBuffer.Sample(Sampler, uv).rg * 10; // 시각화를 위해 10배 함.
     velocity = (velocity + float2(1, 1)) * 0.5f;
     float4 col = float4(velocity, 0, 1.0f);
 

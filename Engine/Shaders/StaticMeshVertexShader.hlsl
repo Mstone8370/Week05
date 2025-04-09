@@ -52,7 +52,6 @@ PS_INPUT mainVS(VS_INPUT input)
         BiTangent.x, BiTangent.y, BiTangent.z,                    // column 1
         input.normal.x, input.normal.y, input.normal.z            // column 2
     };
-    //output.TBN = transpose(TBN);
     output.TBN = TBN;
 
     output.texcoord = input.texcoord;
