@@ -174,12 +174,12 @@ public:
     void PrepareRender(ULevel* Level);
     void RenderScene(ULevel* Level, std::shared_ptr<FEditorViewportClient> ActiveViewport);
 
-    void SampleAndProcessSRV(std::shared_ptr<FEditorViewportClient> ActiveViewport);
+    void SampleAndProcessSRV(std::shared_ptr<FEditorViewportClient> ActiveViewport, uint32 ViewportIndex);
 
     void PreparePostProcess(std::shared_ptr<FEditorViewportClient> ActiveViewport);
-    void PostProcess(std::shared_ptr<FEditorViewportClient> ActiveViewport);
+    void PostProcess(std::shared_ptr<FEditorViewportClient> ActiveViewport, uint32 ViewportIndex);
 
-    void RenderFullScreenQuad(std::shared_ptr<FEditorViewportClient> ActiveViewport);
+    void RenderFullScreenQuad(std::shared_ptr<FEditorViewportClient> ActiveViewport, uint32 ViewportIndex);
 
     void DrawFullScreenQuad();
 
