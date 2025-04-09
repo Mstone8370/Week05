@@ -271,8 +271,11 @@ void ControlEditorPanel::CreateModifyButton(ImVec2 ButtonSize, ImFont* IconFont)
             { .Label = "Billboard",                 .Obj = OBJ_BILLBOARD },
             { .Label = "Text",                      .Obj = OBJ_Text },
             { .Label = "ExponentialHeightFog",      .Obj = OBJ_FOG },
-            { .Label= "MotionBlur",      .Obj= OBJ_MotionBlur },
-            { .Label = "FireBall",                 .Obj = OBJ_FIREBALL },
+            { .Label = "MotionBlur",                .Obj = OBJ_MotionBlur },
+            { .Label = "FireBall",                  .Obj = OBJ_FIREBALL },
+            { .Label = "Street",                    .Obj = OBJ_STREET },
+            { .Label = "Woojae1",                   .Obj = OBJ_WOOJAE1 },
+            { .Label = "Woojae2",                   .Obj = OBJ_WOOJAE2 },
         };
 
         for (const auto& Primitive : Primitives)
@@ -356,14 +359,41 @@ void ControlEditorPanel::CreateModifyButton(ImVec2 ButtonSize, ImFont* IconFont)
                     SpawnedActor->AddComponent<UMotionBlurComponent>();
                     break;
                 }
+                case OBJ_STREET :
+                {
+                    SpawnedActor = level->SpawnActor<AActor>();
+                    SpawnedActor->SetActorLabel(TEXT("Street"));
+                    UStaticMeshComponent* MeshComp = SpawnedActor->AddComponent<UStaticMeshComponent>();
+                    FManagerOBJ::CreateStaticMesh("Assets/Street/Street.obj");
+                    MeshComp->SetStaticMesh(FManagerOBJ::GetStaticMesh(L"Street.obj"));
+                    break;
+                }
+                case OBJ_WOOJAE1:
+                {
+                    SpawnedActor = level->SpawnActor<AActor>();
+                    SpawnedActor->SetActorLabel(TEXT("WOOJAE1"));
+                    UStaticMeshComponent* MeshComp = SpawnedActor->AddComponent<UStaticMeshComponent>();
+                    FManagerOBJ::CreateStaticMesh("Assets/Woojae/Woojae1.obj");
+                    MeshComp->SetStaticMesh(FManagerOBJ::GetStaticMesh(L"Woojae1.obj"));
+                    break;
+                }
+                case OBJ_WOOJAE2:
+                {
+                    SpawnedActor = level->SpawnActor<AActor>();
+                    SpawnedActor->SetActorLabel(TEXT("WOOJAE2"));
+                    UStaticMeshComponent* MeshComp = SpawnedActor->AddComponent<UStaticMeshComponent>();
+                    FManagerOBJ::CreateStaticMesh("Assets/Woojae/Woojae2.obj");
+                    MeshComp->SetStaticMesh(FManagerOBJ::GetStaticMesh(L"Woojae2.obj"));
+                    break;
+                }
                 case OBJ_FIREBALL:
                 {
                     SpawnedActor = level->SpawnActor<AActor>();
                     SpawnedActor->SetActorLabel(TEXT("FireBall"));
                     UFireBallComponent* FireBallComp = SpawnedActor->AddComponent<UFireBallComponent>();
                     UStaticMeshComponent* MeshComp = SpawnedActor->AddComponent<UStaticMeshComponent>();
-                    FManagerOBJ::CreateStaticMesh("Assets/Sphere.obj");
-                    MeshComp->SetStaticMesh(FManagerOBJ::GetStaticMesh(L"Sphere.obj"));
+                    FManagerOBJ::CreateStaticMesh("Assets/Fireball.obj");
+                    MeshComp->SetStaticMesh(FManagerOBJ::GetStaticMesh(L"Fireball.obj"));
                     break;
                 }
                 case OBJ_TRIANGLE:

@@ -16,8 +16,10 @@ void ULevel::Initialize(EWorldType worldType)
     // TODO: Load Scene
     CreateBaseObject(worldType);
     //SpawnObject(OBJ_CUBE);
-    FManagerOBJ::CreateStaticMesh("Assets/Dodge/Dodge.obj");
-    FManagerOBJ::CreateStaticMesh("Assets/SkySphere.obj");
+
+    FManagerOBJ::CreateStaticMesh("Assets/Street/Street.obj");
+    FManagerOBJ::CreateStaticMesh("Assets/Woojae/Woojea1.obj");
+    FManagerOBJ::CreateStaticMesh("Assets/Woojae/Woojea2.obj");
 }
 
 void ULevel::CreateBaseObject(EWorldType worldType)

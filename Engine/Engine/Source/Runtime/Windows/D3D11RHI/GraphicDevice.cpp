@@ -413,7 +413,7 @@ void FGraphicsDevice::CreateProcessSceneBuffer()
         RTVDesc.Format = BufferDesc.Format; // 색상 포맷
         RTVDesc.ViewDimension = D3D11_RTV_DIMENSION_TEXTURE2D; // 2D 텍스처
 
-        Device->CreateRenderTargetView(DepthBuffer, &RTVDesc, &DepthRTV);
+        Device->CreateRenderTargetView(DepthBuffer, &RTVDesc, &NormalizedDepthRTV);
     }
 }
 
@@ -421,7 +421,7 @@ void FGraphicsDevice::ReleaseProcessSceneBuffer()
 {
     ReleaseBuffer(DepthBuffer);
     ReleaseBufferSRV(NormalizedDepthSRV);
-    ReleaseBufferRTV(DepthRTV);
+    ReleaseBufferRTV(NormalizedDepthRTV);
 }
 
 void FGraphicsDevice::CreatePostProcessBuffer()
@@ -570,7 +570,7 @@ void FGraphicsDevice::Prepare()
 
     DeviceContext->IASetPrimitiveTopology(D3D11_PRIMITIVE_TOPOLOGY_TRIANGLELIST); // 정정 연결 방식 설정
 
-    //DeviceContext->RSSetViewports(1, &ViewportInfo); // GPU가 화면을 렌더링할 영역 설정
+    // DeviceContext->RSSetViewports(1, &ViewportInfo); // GPU가 화면을 렌더링할 영역 설정
     DeviceContext->RSSetState(CurrentRasterizer); //레스터 라이저 상태 설정
 
     DeviceContext->OMSetDepthStencilState(DepthStencilState, 0);
@@ -597,12 +597,12 @@ void FGraphicsDevice::Prepare(D3D11_VIEWPORT* viewport)
 
 void FGraphicsDevice::PrepareDepthMap()
 {
-    DeviceContext->ClearRenderTargetView(DepthRTV, ClearColor); // 렌더 타겟 뷰에 저장된 이전 프레임 데이터를 삭제
+    DeviceContext->ClearRenderTargetView(NormalizedDepthRTV, ClearColor); // 렌더 타겟 뷰에 저장된 이전 프레임 데이터를 삭제
     DeviceContext->IASetPrimitiveTopology(D3D11_PRIMITIVE_TOPOLOGY_TRIANGLELIST); // 정정 연결 방식 설정
 
     ChangeRasterizer(EViewModeIndex::VMI_Lit);
 
-    DeviceContext->OMSetRenderTargets(1, &DepthRTV, nullptr);
+    DeviceContext->OMSetRenderTargets(1, &NormalizedDepthRTV, nullptr);
     DeviceContext->OMSetBlendState(nullptr, nullptr, 0xffffffff); // 블렌뎅 상태 설정, 기본블렌딩 상태임
 }
 

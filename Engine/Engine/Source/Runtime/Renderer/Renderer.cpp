@@ -594,7 +594,7 @@ void FRenderer::UpdateLightBuffer(ULevel* CurrentLevel) const
         }
 
         // 나머지 슬롯 초기화
-        for (int i = constants->FireBallCount; i < constants->MAX_FIREBALLS; i++)
+        for (int i = constants->FireBallCount; i < FLighting::MAX_FIREBALLS; i++)
         {
             constants->FireBalls[i].Radius = 0.0f;
         }

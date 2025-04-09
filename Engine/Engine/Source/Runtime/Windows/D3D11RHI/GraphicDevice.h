@@ -46,7 +46,7 @@ public:
     // Process Scene (Scene 가공)
     ID3D11Texture2D* DepthBuffer = nullptr;
     ID3D11ShaderResourceView* NormalizedDepthSRV = nullptr;
-    ID3D11RenderTargetView* DepthRTV = nullptr;
+    ID3D11RenderTargetView* NormalizedDepthRTV = nullptr;
 
     // Post Processing
     ID3D11Texture2D* FogBuffer = nullptr;
