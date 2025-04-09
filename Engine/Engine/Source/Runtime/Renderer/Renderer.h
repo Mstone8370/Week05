@@ -39,7 +39,8 @@ public:
 
     ID3D11VertexShader* FinalVertexShader = nullptr;
     ID3D11PixelShader* FinalPixelShader = nullptr;
-    ID3D11PixelShader* DepthShader = nullptr;
+    ID3D11PixelShader* NormalizedDepthShader = nullptr;
+    ID3D11PixelShader* VisualizationVelocityShader = nullptr;
 
     // Post Process
     ID3D11PixelShader* FogShader = nullptr;
@@ -90,7 +91,8 @@ private:
     void ReleaseFinalShader();
 
     // Visualization
-    void CreateDepthShader();
+    void CreateNormalizedDepthShader();
+    void CreateVisualizationVelocityShader();
 
     // PostProcess
     void CreateFogShader();
