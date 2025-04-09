@@ -1,4 +1,4 @@
-#include "UFireBallComponent.h"
+#include "PointLightComponent.h"
 
 UPointLightComponent::UPointLightComponent()
     : Intensity(8.f)

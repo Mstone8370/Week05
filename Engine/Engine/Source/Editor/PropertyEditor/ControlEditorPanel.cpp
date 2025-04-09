@@ -17,7 +17,7 @@
 #include "tinyfiledialogs/tinyfiledialogs.h"
 #include "UnrealEd/EditorViewportClient.h"
 #include "PropertyEditor/ShowFlags.h"
-#include <Components/UFireBallComponent.h>
+#include <Components/PointLightComponent.h>
 
 void ControlEditorPanel::Render()
 {

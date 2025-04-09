@@ -7,7 +7,7 @@
 #include "Engine/FLoaderOBJ.h"
 #include "Classes/Components/StaticMeshComponent.h"
 #include "Components/SkySphereComponent.h"
-#include "Components/UFireBallComponent.h"
+#include "Components/PointLightComponent.h"
 
 
 

@@ -236,7 +236,7 @@
     <ClCompile Include="Engine\Source\Runtime\Engine\Level.cpp" />
     <ClCompile Include="Engine\Source\Runtime\Engine\Classes\Components\QuadTexture.cpp" />
     <ClCompile Include="Engine\Source\ThirdParty\tinyfiledialogs\tinyfiledialogs.cpp" />
-    <ClCompile Include="Engine\Source\Runtime\Engine\Classes\Components\UFireBallComponent.cpp" />
+    <ClCompile Include="Engine\Source\Runtime\Engine\Classes\Components\PointLightComponent.cpp" />
     <None Include="Shaders\ShaderRegisters.hlsl" />
   </ItemGroup>
   <ItemGroup>
@@ -348,7 +348,7 @@
     <ClInclude Include="Engine\Source\Runtime\Engine\Classes\Components\TextBillboardComponent.h" />
     <ClInclude Include="Engine\Source\Runtime\Engine\Classes\Components\TextRenderComponent.h" />
     <ClInclude Include="Engine\Source\Runtime\Engine\Level.h" />
-    <ClInclude Include="Engine\Source\Runtime\Engine\Classes\Components\UFireBallComponent.h" />
+    <ClInclude Include="Engine\Source\Runtime\Engine\Classes\Components\PointLightComponent.h" />
   </ItemGroup>
   <ItemGroup>
     <FxCompile Include="Shaders\NormalizeDepthShader.hlsl">

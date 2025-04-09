@@ -13,7 +13,7 @@
 #include "UnrealEd/ImGuiWidget.h"
 #include "UObject/Casts.h"
 #include "UObject/ObjectFactory.h"
-#include "Components/UFireBallComponent.h"
+#include "Components/PointLightComponent.h"
 
 void PropertyEditorPanel::Render()
 {
