@@ -68,11 +68,20 @@ void FRenderer::CreateShader()
 {
     ID3DBlob* VertexShaderCSO;
     ID3DBlob* PixelShaderCSO;
+    ID3DBlob* ErrorBlob;
 
-    D3DCompileFromFile(L"Shaders/StaticMeshVertexShader.hlsl", nullptr, D3D_COMPILE_STANDARD_FILE_INCLUDE, "mainVS", "vs_5_0", 0, 0, &VertexShaderCSO, nullptr);
+    D3DCompileFromFile(L"Shaders/StaticMeshVertexShader.hlsl", nullptr, D3D_COMPILE_STANDARD_FILE_INCLUDE, "mainVS", "vs_5_0", 0, 0, &VertexShaderCSO, &ErrorBlob);
+    if (ErrorBlob != nullptr)
+    {
+        std::string error = (char*)ErrorBlob->GetBufferPointer();
+    }
     Graphics->Device->CreateVertexShader(VertexShaderCSO->GetBufferPointer(), VertexShaderCSO->GetBufferSize(), nullptr, &VertexShader);
 
-    D3DCompileFromFile(L"Shaders/StaticMeshPixelShader.hlsl", nullptr, D3D_COMPILE_STANDARD_FILE_INCLUDE, "mainPS", "ps_5_0", 0, 0, &PixelShaderCSO, nullptr);
+    D3DCompileFromFile(L"Shaders/StaticMeshPixelShader.hlsl", nullptr, D3D_COMPILE_STANDARD_FILE_INCLUDE, "mainPS", "ps_5_0", 0, 0, &PixelShaderCSO, &ErrorBlob);
+    if (ErrorBlob != nullptr)
+    {
+        std::string error = (char*)ErrorBlob->GetBufferPointer();
+    }
     Graphics->Device->CreatePixelShader(PixelShaderCSO->GetBufferPointer(), PixelShaderCSO->GetBufferSize(), nullptr, &PixelShader);
 
     D3D11_INPUT_ELEMENT_DESC layout[] = {
@@ -90,6 +99,7 @@ void FRenderer::CreateShader()
 
     VertexShaderCSO->Release();
     PixelShaderCSO->Release();
+    ErrorBlob->Release();
 }
 
 void FRenderer::CreateFinalShader()
@@ -618,15 +628,31 @@ void FRenderer::UpdateMaterial(const FObjMaterialInfo& MaterialInfo) const
             constants->SpecularColor = MaterialInfo.Specular;
             constants->SpecularScalar = MaterialInfo.SpecularScalar;
             constants->EmmisiveColor = MaterialInfo.Emissive;
+            constants->TextureFlag = MaterialInfo.TextureFlag;
         }
         Graphics->DeviceContext->Unmap(MaterialConstantBuffer, 0);
     }
 
     if (MaterialInfo.bHasTexture == true)
     {
-        std::shared_ptr<FTexture> texture = FEngineLoop::ResourceManager.GetTexture(MaterialInfo.DiffuseTexturePath);
-        Graphics->DeviceContext->PSSetShaderResources(0, 1, &texture->TextureSRV);
-        Graphics->DeviceContext->PSSetSamplers(0, 1, &texture->SamplerState);
+        if (MaterialInfo.TextureFlag & (1 << 0))
+        {
+            std::shared_ptr<FTexture> texture = FEngineLoop::ResourceManager.GetTexture(MaterialInfo.DiffuseTexturePath);
+            Graphics->DeviceContext->PSSetShaderResources(0, 1, &texture->TextureSRV);
+            Graphics->DeviceContext->PSSetSamplers(0, 1, &texture->SamplerState);
+        }
+        if (MaterialInfo.TextureFlag & (1 << 1))
+        {
+            std::shared_ptr<FTexture> texture = FEngineLoop::ResourceManager.GetTexture(MaterialInfo.EmissiveTexturePath);
+            Graphics->DeviceContext->PSSetShaderResources(1, 1, &texture->TextureSRV);
+            Graphics->DeviceContext->PSSetSamplers(0, 1, &texture->SamplerState); // TODO: 텍스처가 샘플러를 왜 가지고있어
+        }
+        if (MaterialInfo.TextureFlag & (1 << 2))
+        {
+            std::shared_ptr<FTexture> texture = FEngineLoop::ResourceManager.GetTexture(MaterialInfo.RoughnessTexturePath);
+            Graphics->DeviceContext->PSSetShaderResources(2, 1, &texture->TextureSRV);
+            Graphics->DeviceContext->PSSetSamplers(0, 1, &texture->SamplerState); // TODO: 텍스처가 샘플러를 왜 가지고있어
+        }
     }
     else
     {
