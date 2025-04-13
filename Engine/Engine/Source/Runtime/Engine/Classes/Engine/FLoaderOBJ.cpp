@@ -379,7 +379,6 @@ bool FLoaderOBJ::ConvertToStaticMesh(const FObjInfo& RawData, OBJ::FStaticMeshRe
     // 고유 정점을 기반으로 FVertexSimple 배열 생성
     TMap<std::string, uint32> IndexMap; // 중복 체크용
 
-    TArray<FTempStaticMeshVertex> TempVertices;
     for (int32 i = 0; i < RawData.VertexIndices.Num(); i++)
     {
         const uint32 VertexIndex = RawData.VertexIndices[i];
@@ -407,30 +406,30 @@ bool FLoaderOBJ::ConvertToStaticMesh(const FObjInfo& RawData, OBJ::FStaticMeshRe
         }
         else
         {
-            FTempStaticMeshVertex TempStaticMeshVertex = {};
-            TempStaticMeshVertex.MaterialIndex = MaterialIndex;
-            TempStaticMeshVertex.X = RawData.Vertices[VertexIndex].X;
-            TempStaticMeshVertex.Y = RawData.Vertices[VertexIndex].Y;
-            TempStaticMeshVertex.Z = RawData.Vertices[VertexIndex].Z;
+            FStaticMeshVertex StaticMeshVertex = {};
+            StaticMeshVertex.MaterialIndex = MaterialIndex;
+            StaticMeshVertex.X = RawData.Vertices[VertexIndex].X;
+            StaticMeshVertex.Y = RawData.Vertices[VertexIndex].Y;
+            StaticMeshVertex.Z = RawData.Vertices[VertexIndex].Z;
 
-            TempStaticMeshVertex.R = 0.0f; TempStaticMeshVertex.G = 0.0f; TempStaticMeshVertex.B = 0.0f; TempStaticMeshVertex.A = 1.0f; // 기본 색상
+            StaticMeshVertex.R = 0.0f; StaticMeshVertex.G = 0.0f; StaticMeshVertex.B = 0.0f; StaticMeshVertex.A = 1.0f; // 기본 색상
 
             if (UVIndex != UINT32_MAX && UVIndex < RawData.UVs.Num())
             {
-                TempStaticMeshVertex.U = RawData.UVs[UVIndex].X;
-                TempStaticMeshVertex.V = RawData.UVs[UVIndex].Y;
+                StaticMeshVertex.U = RawData.UVs[UVIndex].X;
+                StaticMeshVertex.V = RawData.UVs[UVIndex].Y;
             }
 
             if (NormalIndex != UINT32_MAX && NormalIndex < RawData.Normals.Num())
             {
-                TempStaticMeshVertex.NormalX = RawData.Normals[NormalIndex].X;
-                TempStaticMeshVertex.NormalY = RawData.Normals[NormalIndex].Y;
-                TempStaticMeshVertex.NormalZ = RawData.Normals[NormalIndex].Z;
+                StaticMeshVertex.NormalX = RawData.Normals[NormalIndex].X;
+                StaticMeshVertex.NormalY = RawData.Normals[NormalIndex].Y;
+                StaticMeshVertex.NormalZ = RawData.Normals[NormalIndex].Z;
             }
 
-            FinalIndex = TempVertices.Num();
-            TempVertices.Add(TempStaticMeshVertex);
+            FinalIndex = OutStaticMesh.Vertices.Num();
             IndexMap[Key] = FinalIndex;
+            OutStaticMesh.Vertices.Add(StaticMeshVertex);
         }
 
         OutStaticMesh.Indices.Add(FinalIndex);
@@ -439,51 +438,13 @@ bool FLoaderOBJ::ConvertToStaticMesh(const FObjInfo& RawData, OBJ::FStaticMeshRe
     // Tangent
     for (int32 i = 0; i < OutStaticMesh.Indices.Num(); i += 3)
     {
-        FTempStaticMeshVertex& Vertex0 = TempVertices[OutStaticMesh.Indices[i]];
-        FTempStaticMeshVertex& Vertex1 = TempVertices[OutStaticMesh.Indices[i + 1]];
-        FTempStaticMeshVertex& Vertex2 = TempVertices[OutStaticMesh.Indices[i + 2]];
+        FStaticMeshVertex& Vertex0 = OutStaticMesh.Vertices[OutStaticMesh.Indices[i]];
+        FStaticMeshVertex& Vertex1 = OutStaticMesh.Vertices[OutStaticMesh.Indices[i + 1]];
+        FStaticMeshVertex& Vertex2 = OutStaticMesh.Vertices[OutStaticMesh.Indices[i + 2]];
 
         CalculateTangent(Vertex0, Vertex1, Vertex2);
         CalculateTangent(Vertex1, Vertex2, Vertex0);
         CalculateTangent(Vertex2, Vertex0, Vertex1);
-    }
-
-    for (FTempStaticMeshVertex& Vertex : TempVertices)
-    {
-        if (Vertex.TangentNum > 0 && false)
-        {
-            FVector AveragedTangent = {
-                Vertex.AccumulatedTangent.X / static_cast<float>(Vertex.TangentNum),
-                Vertex.AccumulatedTangent.Y / static_cast<float>(Vertex.TangentNum),
-                Vertex.AccumulatedTangent.Z / static_cast<float>(Vertex.TangentNum)
-            };
-            // Gram-Schmidt: Tangent = (Tangent - (Normal • Tangent) * Normal)
-            FVector Normal = FVector(Vertex.NormalX, Vertex.NormalY, Vertex.NormalZ);
-            AveragedTangent = AveragedTangent - Normal * Normal.Dot(AveragedTangent);
-            AveragedTangent = AveragedTangent.Normalize();
-            Vertex.TangentX = AveragedTangent.X;
-            Vertex.TangentY = AveragedTangent.Y;
-            Vertex.TangentZ = AveragedTangent.Z;
-        }
-
-        FStaticMeshVertex StaticMeshVertex = {};
-        StaticMeshVertex.X = Vertex.X;
-        StaticMeshVertex.Y = Vertex.Y;
-        StaticMeshVertex.Z = Vertex.Z;
-        StaticMeshVertex.NormalX = Vertex.NormalX;
-        StaticMeshVertex.NormalY = Vertex.NormalY;
-        StaticMeshVertex.NormalZ = Vertex.NormalZ;
-        StaticMeshVertex.TangentX = Vertex.TangentX;
-        StaticMeshVertex.TangentY = Vertex.TangentY;
-        StaticMeshVertex.TangentZ = Vertex.TangentZ;
-        StaticMeshVertex.U = Vertex.U;
-        StaticMeshVertex.V = Vertex.V;
-        StaticMeshVertex.R = Vertex.R;
-        StaticMeshVertex.G = Vertex.G;
-        StaticMeshVertex.B = Vertex.B;
-        StaticMeshVertex.A = Vertex.A;
-        StaticMeshVertex.MaterialIndex = Vertex.MaterialIndex;
-        OutStaticMesh.Vertices.Add(StaticMeshVertex);
     }
 
     // Calculate StaticMesh BoundingBox
@@ -529,7 +490,7 @@ void FLoaderOBJ::ComputeBoundingBox(const TArray<FStaticMeshVertex>& InVertices,
     OutMaxVector = MaxVector;
 }
 
-void FLoaderOBJ::CalculateTangent(FTempStaticMeshVertex& PivotVertex, const FTempStaticMeshVertex& Vertex1, const FTempStaticMeshVertex& Vertex2)
+void FLoaderOBJ::CalculateTangent(FStaticMeshVertex& PivotVertex, const FStaticMeshVertex& Vertex1, const FStaticMeshVertex& Vertex2)
 {
 
     const float s1 = Vertex1.U - PivotVertex.U;
@@ -552,9 +513,6 @@ void FLoaderOBJ::CalculateTangent(FTempStaticMeshVertex& PivotVertex, const FTem
     PivotVertex.TangentX = Tangent.X;
     PivotVertex.TangentY = Tangent.Y;
     PivotVertex.TangentZ = Tangent.Z;
-
-    PivotVertex.AccumulatedTangent = PivotVertex.AccumulatedTangent + Tangent;
-    PivotVertex.TangentNum += 1;
 }
 
 OBJ::FStaticMeshRenderData* FManagerOBJ::LoadObjStaticMeshAsset(const FString& PathFileName)
