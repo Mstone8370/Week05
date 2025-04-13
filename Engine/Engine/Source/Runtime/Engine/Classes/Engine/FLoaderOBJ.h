@@ -19,7 +19,7 @@ struct FTempStaticMeshVertex
     float R, G, B, A;
     uint32 MaterialIndex;
 
-    FVector AccumulatedTangent;
+    FVector AccumulatedTangent = FVector::ZeroVector;
     uint32 TangentNum;
 };
 
