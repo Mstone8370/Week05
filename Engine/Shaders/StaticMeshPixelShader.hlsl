@@ -174,6 +174,7 @@ PS_OUTPUT mainPS(PS_INPUT input)
     }
 
     float3 Normal = normalize(input.normal);
+    // float3 Normal = input.normal;
     if (Material.TextureFlag & (1 << 3))
     {
         float3 SampledNormal = NormalTexture.Sample(Sampler, input.texcoord + UVOffset);
@@ -206,7 +207,7 @@ PS_OUTPUT mainPS(PS_INPUT input)
     float3 Specular = pow(SpecAngle, Shininess) * SpecularColor;
     // End Specular
 
-    float3 FinalColor = (Diffuse + Specular) * 0.1f;
+    float3 FinalColor = (Diffuse + Specular) * 1.0f;
 
     // FireBall 조명 계산 (원본 코드 유지)
     for (int i = 0; i < FireBallCount; i++)

@@ -9,6 +9,20 @@
 class UStaticMesh;
 struct FManagerOBJ;
 
+// For CalculateTangent
+struct FTempStaticMeshVertex
+{
+    float X, Y, Z;
+    float NormalX, NormalY, NormalZ;
+    float TangentX, TangentY, TangentZ;
+    float U = 0, V = 0;
+    float R, G, B, A;
+    uint32 MaterialIndex;
+
+    FVector AccumulatedTangent;
+    uint32 TangentNum;
+};
+
 struct FLoaderOBJ
 {
     // Obj Parsing (*.obj to FObjInfo)
@@ -25,7 +39,7 @@ struct FLoaderOBJ
     static void ComputeBoundingBox(const TArray<FStaticMeshVertex>& InVertices, FVector& OutMinVector, FVector& OutMaxVector);
 
 private:
-    static void CalculateTangent(FStaticMeshVertex& PivotVertex, const FStaticMeshVertex& Vertex1, const FStaticMeshVertex& Vertex2);
+    static void CalculateTangent(FTempStaticMeshVertex& PivotVertex, const FTempStaticMeshVertex& Vertex1, const FTempStaticMeshVertex& Vertex2);
 };
 
 struct FManagerOBJ

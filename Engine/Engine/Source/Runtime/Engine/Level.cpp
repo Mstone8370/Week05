@@ -21,6 +21,14 @@ void ULevel::Initialize(EWorldType worldType)
     FManagerOBJ::CreateStaticMesh("Assets/Cube.obj");
     FManagerOBJ::CreateStaticMesh("Assets/Fireball.obj");
 
+    FManagerOBJ::CreateStaticMesh("Assets/Nessie/Nessie.obj");
+
+    AActor* Nessie = SpawnActor<AActor>();
+    UStaticMeshComponent* Mesh = Nessie->AddComponent<UStaticMeshComponent>();
+    Mesh->SetStaticMesh(FManagerOBJ::GetStaticMesh(L"Nessie.obj"));
+    Mesh->SetScale(FVector(5.f, 5.f, 5.f));
+    Nessie->SetRootComponent(Mesh);
+
 #ifndef _DEBUG
     FManagerOBJ::CreateStaticMesh("Assets/Street/Street.obj");
     FManagerOBJ::CreateStaticMesh("Assets/Woojae/Woojae1.obj");
